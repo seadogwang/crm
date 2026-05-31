@@ -2,11 +2,14 @@ package com.loyalty.saas.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "member_account")
+@Table(name = "member_account",
+        uniqueConstraints = {@UniqueConstraint(name = "uk_member_account_code_type",
+                columnNames = {"program_code", "member_id", "account_type"})})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class MemberAccount {
 
@@ -23,22 +26,34 @@ public class MemberAccount {
     @Column(name = "account_type", nullable = false, length = 50)
     private String accountType;
 
-    /** 实时余额（与设计文档不同，此 DB 维护了 balance 字段） */
-    @Column(name = "balance", nullable = false, precision = 20, scale = 2)
+    @Column(name = "balance", nullable = false, precision = 20, scale = 4)
     @Builder.Default
     private BigDecimal balance = BigDecimal.ZERO;
 
-    /** 累计获得（只增不减，报表用） */
-    @Column(name = "total_accrued", precision = 20, scale = 2)
+    @Column(name = "total_accrued", precision = 20, scale = 4)
     @Builder.Default
     private BigDecimal totalAccrued = BigDecimal.ZERO;
 
-    /** 累计消耗（只增不减，报表用） */
-    @Column(name = "total_redeemed", precision = 20, scale = 2)
+    @Column(name = "total_redeemed", precision = 20, scale = 4)
     @Builder.Default
     private BigDecimal totalRedeemed = BigDecimal.ZERO;
 
-    /** 乐观锁版本号 */
+    @Column(name = "total_expired", precision = 20, scale = 4)
+    @Builder.Default
+    private BigDecimal totalExpired = BigDecimal.ZERO;
+
+    @Column(name = "overdraft_limit", precision = 20, scale = 4)
+    @Builder.Default
+    private BigDecimal overdraftLimit = BigDecimal.ZERO;
+
+    @Column(name = "credit_limit", precision = 20, scale = 4)
+    @Builder.Default
+    private BigDecimal creditLimit = BigDecimal.ZERO;
+
+    @Column(name = "credit_used", precision = 20, scale = 4)
+    @Builder.Default
+    private BigDecimal creditUsed = BigDecimal.ZERO;
+
     @Version
     @Column(name = "version", nullable = false)
     @Builder.Default

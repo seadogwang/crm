@@ -2,6 +2,8 @@ package com.loyalty.saas.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -96,6 +98,7 @@ public class AccountTransaction implements Serializable {
     private String operationKey;
 
     /** 扩展属性 (JSONB) */
+    @JdbcTypeCode(SqlTypes.JSON)
     @jakarta.persistence.Column(name = "ext_attributes", columnDefinition = "jsonb")
     @Builder.Default
     private Map<String, Object> extAttributes = new LinkedHashMap<>();
