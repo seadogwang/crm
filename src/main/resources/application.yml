@@ -1,0 +1,102 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: loyalty-saas
+  profiles:
+    active: dev
+
+  # PostgreSQL 数据源 — 连接 loyalty_dev 数据库
+  datasource:
+    url: jdbc:postgresql://localhost:5432/loyalty_dev
+    username: loyalty_app
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA / Hibernate 配置
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none  # 生产环境使用 validate，本地测试先用 none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        # Hibernate 6 的 Map<String,Object> 映射 JSONB 需要明确指定 JDBC 类型
+        type:
+          preferred_jsonb_jdbc_type: JSON
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  # MyBatis-Plus 配置
+  mybatis-plus:
+    mapper-locations: classpath*:/mapper/**/*.xml
+    global-config:
+      db-config:
+        id-type: auto
+    configuration:
+      log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+  # Redis / Redisson 配置
+  redis:
+    host: localhost
+    port: 6379
+    # password: ${REDIS_PASSWORD:}
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 4
+
+# Redisson 详细配置
+redisson:
+  single-server-config:
+    address: "redis://localhost:6379"
+    connection-pool-size: 16
+    connection-minimum-idle-size: 8
+
+# 日志
+logging:
+  level:
+    root: INFO
+    com.loyalty.saas: DEBUG
+    com.loyalty.saas.common.interceptor: DEBUG
+    org.hibernate.SQL: WARN
+    org.hibernate.engine.transaction: WARN
+
+# 应用自定义配置
+loyalty:
+  event-bus:
+    # 本地事件总线虚拟分区数（对应 Kafka 分区数）
+    virtual-partitions: 8
+    # 消费线程池队列容量
+    queue-capacity: 10000
+  tenant:
+    # 租户隔离模式: strict (生产) / lenient (本地开发)
+    isolation-mode: strict
+    # 多租户表名列表（拦截器自动注入 program_code）
+    multi-tenant-tables:
+      - program
+      - member
+      - member_unique_key
+      - account_transaction
+      - redemption_allocation
+      - member_account
+      - channel_adapter_config
+      - channel_spi_log
+      - event_inbox
+      - tier_change_log
+      - rule_snapshot
+  security:
+    # 查询哨兵模式：true=强制所有查询携带 programCode
+    query-sentinel-enabled: true
