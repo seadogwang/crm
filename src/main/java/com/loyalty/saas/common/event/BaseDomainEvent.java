@@ -72,6 +72,14 @@ public abstract class BaseDomainEvent implements Serializable {
         this.occurredAt = Instant.now();
     }
 
+    /** 无参构造（供 JPA/序列化框架使用） */
+    protected BaseDomainEvent() {
+        this.eventId = UUID.randomUUID().toString();
+        this.eventType = "UNKNOWN";
+        this.programCode = null;
+        this.occurredAt = Instant.now();
+    }
+
     /**
      * 获取事件唯一 ID。
      */

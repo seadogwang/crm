@@ -60,9 +60,22 @@ public class EventInbox {
     @Builder.Default
     private Integer retryCount = 0;
 
+    /** 最大重试次数 */
+    @Column(name = "max_retry")
+    @Builder.Default
+    private Integer maxRetry = 3;
+
     /** 错误信息 */
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
+
+    /** 拒绝原因: DUPLICATE / MISSING_FIELDS / SIGN_FAILED */
+    @Column(name = "reject_reason", length = 50)
+    private String rejectReason;
+
+    /** 下次重试时间（指数退避） */
+    @Column(name = "next_retry_at")
+    private LocalDateTime nextRetryAt;
 
     /** 链路追踪 ID */
     @Column(name = "trace_id", length = 100)

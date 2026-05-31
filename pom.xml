@@ -93,6 +93,22 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
+        <!-- GraalVM Polyglot: JavaScript 脚本沙箱引擎 (js-community 需要 GraalVM 运行时或本地安装) -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>23.1.4</version>
+        </dependency>
+        <!--
+        js-community 运行时依赖需从 GraalVM 仓库获取或本地安装：
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>js-community</artifactId>
+            <version>23.1.4</version>
+            <scope>runtime</scope>
+        </dependency>
+        -->
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
