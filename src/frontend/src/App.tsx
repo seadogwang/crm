@@ -10,6 +10,16 @@ import EntityModeler from './components/EntityModeler/EntityModeler';
 import SchemaBuilder from './components/SchemaBuilder/SchemaBuilder';
 import DynamicRenderer from './components/DynamicRenderer/DynamicRenderer';
 import ScriptingWorkbench from './components/ScriptingWorkbench/ScriptingWorkbench';
+import MemberList from './pages/MemberList';
+import PointsGrant from './pages/PointsGrant';
+import PointsRedeem from './pages/PointsRedeem';
+import PointsHistory from './pages/PointsHistory';
+import TierConfig from './pages/TierConfig';
+import RuleManagement from './pages/RuleManagement';
+import ChannelConfig from './pages/ChannelConfig';
+import EventInbox from './pages/EventInbox';
+import AuditLogs from './pages/AuditLogs';
+import NotificationPage from './pages/NotificationPage';
 
 const { Sider, Content } = Layout;
 const { Text } = Typography;
@@ -90,22 +100,18 @@ const App: React.FC = () => {
     switch (activePage) {
       case 'entity-modeler': return <EntityModeler />;
       case 'form-designer': return <SchemaBuilder entityType="MEMBER" />;
-      case 'dynamic-renderer': return <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
-        <DynamicRenderer programCode="PROG001" memberId={8821} />
-      </div>;
+      case 'member-list': return <MemberList />;
+      case 'dynamic-renderer': return <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}><DynamicRenderer programCode="PROG001" memberId={8821} /></div>;
+      case 'points-grant': return <PointsGrant />;
+      case 'points-redeem': return <PointsRedeem />;
+      case 'points-history': return <PointsHistory />;
+      case 'tier-config': return <TierConfig />;
+      case 'rule-management': return <RuleManagement />;
+      case 'channel-config': return <ChannelConfig />;
       case 'scripting': return <ScriptingWorkbench defaultChannel="TMALL" />;
-
-      // ---- 其他页面：后端 API 全部就绪，前端待实现 ----
-      case 'member-list':    return <PlaceholderPage title="会员管理" desc="会员搜索、列表、新建、编辑、合并、禁用" icon={<TeamOutlined />} />;
-      case 'points-grant':   return <PlaceholderPage title="积分发放" desc="手动发分：选择会员 → 选择积分类型 → 输入金额 → 提交（走瀑布流冲抵引擎）" icon={<DollarOutlined />} />;
-      case 'points-redeem':  return <PlaceholderPage title="积分核销" desc="手动核销：选择会员 → 输入金额 → 系统 FIFO 扣减 + 生成 RedemptionAllocation" icon={<ThunderboltOutlined />} />;
-      case 'points-history': return <PlaceholderPage title="流水查询" desc="按会员/时间/交易类型查询 account_transaction 流水" icon={<HistoryOutlined />} />;
-      case 'tier-config':    return <PlaceholderPage title="等级阶梯配置" desc="配置各等级升级/保级条件（tier_definition 表）" icon={<CrownOutlined />} />;
-      case 'rule-management': return <PlaceholderPage title="规则管理" desc="DRL 规则列表、新建、编辑、发布、沙箱回归测试、AI 生成" icon={<SettingOutlined />} />;
-      case 'channel-config': return <PlaceholderPage title="渠道配置" desc="天猫/京东/抖音/微信小程序适配器配置（auth_config/request_mapping）" icon={<ApiOutlined />} />;
-      case 'event-inbox':    return <PlaceholderPage title="事件收件箱" desc="监控 event_inbox 状态、死信重放、手动重试" icon={<InboxOutlined />} />;
-      case 'audit-logs':     return <PlaceholderPage title="审计日志" desc="越权访问记录、操作审计、租户污染检测" icon={<AuditOutlined />} />;
-      case 'notification':   return <PlaceholderPage title="通知管理" desc="短信/微信模板配置、发送记录、重试" icon={<BellOutlined />} />;
+      case 'event-inbox': return <EventInbox />;
+      case 'audit-logs': return <AuditLogs />;
+      case 'notification': return <NotificationPage />;
       default: return null;
     }
   };
@@ -150,20 +156,5 @@ const App: React.FC = () => {
     </ConfigProvider>
   );
 };
-
-/** 占位页面 — 后端 API 已就绪，前端待实现 */
-const PlaceholderPage: React.FC<{ title: string; desc: string; icon: React.ReactNode }> = ({ title, desc, icon }) => (
-  <div style={{
-    background: '#fff', borderRadius: 8, padding: 60, textAlign: 'center',
-    border: '1px solid #e8e8e8',
-  }}>
-    <div style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }}>{icon}</div>
-    <h2 style={{ marginBottom: 8 }}>{title}</h2>
-    <p style={{ color: '#999', fontSize: 14 }}>{desc}</p>
-    <p style={{ color: '#bbb', fontSize: 12, marginTop: 16 }}>
-      ✅ 后端 API 已完成&nbsp;&nbsp;|&nbsp;&nbsp;⏳ 前端页面待实现
-    </p>
-  </div>
-);
 
 export default App;
