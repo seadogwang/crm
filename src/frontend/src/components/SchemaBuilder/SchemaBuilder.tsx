@@ -1,16 +1,20 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  Button, Card, Space, Modal, message, Input, Select, Switch,
-  Form, Checkbox, Tag, Tooltip, Alert, Collapse,
+  Button, Card, Space, message, Input, Switch, Form, Tag, Tooltip, Alert,
+  Steps, Result, Descriptions, Badge, Drawer, Typography,
 } from 'antd';
 import {
-  PlusOutlined, DeleteOutlined, SaveOutlined,
-  DragOutlined, ExclamationCircleOutlined, CodeOutlined,
+  DeleteOutlined, SaveOutlined, DragOutlined,
+  ExclamationCircleOutlined, CodeOutlined, EyeOutlined,
+  CheckCircleOutlined, SendOutlined, ArrowRightOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { FieldSchema, JsonSchema, ComponentRegistryEntry } from '../../types';
-import { checkFieldDeprecation, saveSchema } from '../../api';
+import { checkFieldDeprecation, saveSchema, getSchema } from '../../api';
+
+const { Text, Title, Paragraph } = Typography;
 
 // ==================== 组件注册表 ====================
 const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
@@ -26,12 +30,16 @@ const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
 
 const DRAG_TYPE = 'FIELD_PALETTE_ITEM';
 
-// ==================== 字段面板 ====================
-interface FieldPaletteProps {
-  onDragStart?: (entry: ComponentRegistryEntry) => void;
-}
+/**
+ * 🎯 完整操作流程：
+ *
+ *   步骤 1: 拖拽组件 → 配置字段属性
+ *   步骤 2: 点击「保存并发布」→ 写入后端 /api/schemas/MEMBER
+ *   步骤 3: 去「动态渲染器」标签页 → 打开会员 → 看到新的表单字段
+ */
 
-const FieldPalette: React.FC<FieldPaletteProps> = ({ onDragStart }) => {
+// ==================== 字段面板（左栏） ====================
+const FieldPalette: React.FC = () => {
   const categories = useMemo(() => {
     const map = new Map<string, ComponentRegistryEntry[]>();
     for (const entry of COMPONENT_REGISTRY) {
@@ -43,18 +51,18 @@ const FieldPalette: React.FC<FieldPaletteProps> = ({ onDragStart }) => {
   }, []);
 
   const categoryLabels: Record<string, string> = {
-    basic: '基础组件',
-    advanced: '高级组件',
-    custom: '自定义组件',
+    basic: '基础组件', advanced: '高级组件', custom: '自定义组件',
   };
 
   return (
     <Card title="组件面板" size="small" style={{ height: '100%' }}>
       {[...categories.entries()].map(([category, entries]) => (
         <div key={category} style={{ marginBottom: 16 }}>
-          <h4 style={{ fontSize: 12, color: '#999', marginBottom: 8 }}>{categoryLabels[category]}</h4>
+          <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+            {categoryLabels[category]}
+          </Text>
           {entries.map((entry) => (
-            <DraggableFieldItem key={entry.name} entry={entry} onDragStart={onDragStart} />
+            <DraggableFieldItem key={entry.name} entry={entry} />
           ))}
         </div>
       ))}
@@ -62,13 +70,10 @@ const FieldPalette: React.FC<FieldPaletteProps> = ({ onDragStart }) => {
   );
 };
 
-const DraggableFieldItem: React.FC<{ entry: ComponentRegistryEntry; onDragStart?: (e: ComponentRegistryEntry) => void }> = ({ entry, onDragStart }) => {
+const DraggableFieldItem: React.FC<{ entry: ComponentRegistryEntry }> = ({ entry }) => {
   const [{ isDragging }, dragRef] = useDrag(() => ({
     type: DRAG_TYPE,
-    item: () => {
-      onDragStart?.(entry);
-      return { ...entry };
-    },
+    item: { ...entry },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   }), [entry]);
 
@@ -88,7 +93,7 @@ const DraggableFieldItem: React.FC<{ entry: ComponentRegistryEntry; onDragStart?
   );
 };
 
-// ==================== 设计画布 ====================
+// ==================== 设计画布（中栏） ====================
 interface DesignCanvasProps {
   schema: JsonSchema;
   onChange: (schema: JsonSchema) => void;
@@ -96,61 +101,40 @@ interface DesignCanvasProps {
 
 const DesignCanvas: React.FC<DesignCanvasProps> = ({ schema, onChange }) => {
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [deprecationModal, setDeprecationModal] = useState<{ key: string } | null>(null);
 
   const [{ isOver }, dropRef] = useDrop(() => ({
     accept: DRAG_TYPE,
     drop: (item: ComponentRegistryEntry) => {
       const key = `field_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      const newSchema: JsonSchema = {
+      onChange({
         ...schema,
         properties: {
           ...schema.properties,
           [key]: { ...item.defaultSchema, title: `${item.label}_${Object.keys(schema.properties).length + 1}` },
         },
-      };
-      onChange(newSchema);
+      });
+      message.success(`已添加字段: ${item.label}`);
     },
     collect: (monitor) => ({ isOver: monitor.isOver() }),
-  }), [schema]);
+  }), [schema, onChange]);
 
   const fields = Object.entries(schema.properties);
 
   const updateField = useCallback((key: string, updates: Partial<FieldSchema>) => {
-    onChange({
-      ...schema,
-      properties: {
-        ...schema.properties,
-        [key]: { ...schema.properties[key], ...updates },
-      },
-    });
+    onChange({ ...schema, properties: { ...schema.properties, [key]: { ...schema.properties[key], ...updates } } });
   }, [schema, onChange]);
 
   const removeField = useCallback(async (key: string) => {
-    // 先检查是否被规则引用
-    try {
-      const check = await checkFieldDeprecation('MEMBER', key);
-      if (!check.safe_to_deprecate) {
-        Modal.warning({
-          title: '无法删除',
-          content: `字段 [${key}] 被以下规则引用:\n${check.referencing_rules.map(r => `${r.rule_code} (v${r.version})`).join('\n')}\n\n请先修改规则后再删除该字段。`,
-        });
-        return;
-      }
-    } catch {
-      // 检查失败时仍允许标记废弃
+    const check = await checkFieldDeprecation('MEMBER', key).catch(() => null);
+    if (check && !check.safe_to_deprecate) {
+      message.warning(`字段被规则引用，已标记为废弃而非删除`);
     }
-
-    // 标记为 deprecated 而非物理删除
-    const updated = { ...schema.properties[key], deprecated: true, deprecated_at: new Date().toISOString() };
     onChange({
       ...schema,
-      properties: { ...schema.properties, [key]: updated },
+      properties: { ...schema.properties, [key]: { ...schema.properties[key], deprecated: true, deprecated_at: new Date().toISOString() } },
     });
-    message.info(`字段 [${key}] 已标记为废弃（前端仅读态展示）`);
+    message.info(`字段已标记为废弃`);
   }, [schema, onChange]);
-
-  const isFieldDeprecated = (field: FieldSchema) => field.deprecated === true;
 
   return (
     <div
@@ -162,9 +146,10 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({ schema, onChange }) => {
       }}
     >
       {fields.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#999', padding: 60 }}>
-          <DragOutlined style={{ fontSize: 32 }} />
-          <p>从左侧拖拽组件到此处</p>
+        <div style={{ textAlign: 'center', color: '#999', padding: 80 }}>
+          <DragOutlined style={{ fontSize: 40 }} />
+          <p style={{ marginTop: 16, fontSize: 16 }}>👈 从左侧拖拽组件到这里</p>
+          <p style={{ fontSize: 13, color: '#bbb' }}>例如：拖一个"文本输入"作为"宠物名称"字段</p>
         </div>
       )}
 
@@ -173,9 +158,9 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({ schema, onChange }) => {
           key={key}
           style={{
             padding: 12, marginBottom: 8, borderRadius: 6,
-            background: isFieldDeprecated(field) ? '#fff7e6' : '#fff',
-            border: `1px solid ${isFieldDeprecated(field) ? '#faad14' : '#e8e8e8'}`,
-            opacity: isFieldDeprecated(field) ? 0.7 : 1,
+            background: field.deprecated ? '#fff7e6' : '#fff',
+            border: `1px solid ${field.deprecated ? '#faad14' : '#e8e8e8'}`,
+            opacity: field.deprecated ? 0.7 : 1,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -183,8 +168,7 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({ schema, onChange }) => {
               <strong>{field.title}</strong>
               <Tag style={{ marginLeft: 8 }} color="blue">{field['x-component'] || field.type}</Tag>
               {field.required && <Tag color="red">必填</Tag>}
-              {isFieldDeprecated(field) && <Tag color="orange">已废弃</Tag>}
-              {field['x-reactions'] && <Tooltip title={field['x-reactions']}><CodeOutlined /></Tooltip>}
+              {field.deprecated && <Tag color="orange">已废弃</Tag>}
             </span>
             <Space>
               <Button size="small" onClick={() => setEditingKey(key === editingKey ? null : key)}>
@@ -203,35 +187,14 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({ schema, onChange }) => {
                 <Form.Item label="必填">
                   <Switch checked={field.required} onChange={(v) => updateField(key, { required: v })} />
                 </Form.Item>
-                <Form.Item label="联动表达式 (x-reactions)">
+                <Form.Item label="联动表达式 (可选)">
                   <Input.TextArea
-                    rows={3}
+                    rows={2}
                     value={field['x-reactions'] || ''}
                     onChange={(e) => updateField(key, { 'x-reactions': e.target.value || undefined })}
                     placeholder='{{ $self.visible = ($deps[0] === "dog") }}'
                   />
                 </Form.Item>
-                <Form.Item label="联动依赖字段 (x-dependencies)">
-                  <Select
-                    mode="tags"
-                    value={field['x-dependencies'] || []}
-                    onChange={(vals) => updateField(key, { 'x-dependencies': vals })}
-                    placeholder="选择依赖字段"
-                    options={fields.filter(([k]) => k !== key).map(([k, f]) => ({ label: f.title, value: k }))}
-                  />
-                </Form.Item>
-                {field.type === 'string' && (
-                  <Form.Item label="枚举选项">
-                    <Select
-                      mode="tags"
-                      value={field.enum?.map(e => `${e.label}:${e.value}`) || []}
-                      onChange={(vals) => updateField(key, {
-                        enum: vals.map((v: string) => { const [label, value] = v.split(':'); return { label, value }; }),
-                      })}
-                      placeholder="格式: 标签:值"
-                    />
-                  </Form.Item>
-                )}
               </Form>
             </div>
           )}
@@ -241,46 +204,75 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({ schema, onChange }) => {
   );
 };
 
-// ==================== SchemaBuilder 主组件 ====================
+// ==================== 主组件 ====================
 export interface SchemaBuilderProps {
-  /** 实体类型（MEMBER / CUSTOM_ENTITY 等） */
-  entityType: string;
-  /** 初始 Schema（编辑已有时传入） */
-  initialSchema?: JsonSchema;
-  /** 保存成功回调 */
-  onSave?: (schema: JsonSchema) => void;
+  entityType?: string;
+  onPublished?: () => void;
 }
 
-const SchemaBuilder: React.FC<SchemaBuilderProps> = ({ entityType, initialSchema, onSave }) => {
-  const [schema, setSchema] = useState<JsonSchema>(
-    initialSchema || { type: 'object', properties: {} }
-  );
+const SchemaBuilder: React.FC<SchemaBuilderProps> = ({ entityType = 'MEMBER', onPublished }) => {
+  const [schema, setSchema] = useState<JsonSchema>({ type: 'object', properties: {} });
+  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [jsonPreview, setJsonPreview] = useState(false);
+  const [published, setPublished] = useState(false);
+  const [showJson, setShowJson] = useState(false);
+  const [loadingSchema, setLoadingSchema] = useState(true);
 
-  const handleSave = useCallback(async () => {
+  // 加载当前生效的 Schema
+  useEffect(() => {
+    getSchema(entityType).then(data => {
+      if (data?.schema) {
+        setSchema(data.schema);
+        setCurrentVersion(data.version);
+      }
+    }).catch(() => {}).finally(() => setLoadingSchema(false));
+  }, [entityType]);
+
+  const handlePublish = useCallback(async () => {
     setSaving(true);
     try {
       await saveSchema(entityType, schema);
-      message.success('Schema 保存成功！');
-      onSave?.(schema);
+      setPublished(true);
+      setCurrentVersion(`v${Date.now()}`);
+      message.success('Schema 已保存并发布！');
+      onPublished?.();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '保存失败';
-      message.error(msg);
+      message.error(e instanceof Error ? e.message : '发布失败');
     } finally {
       setSaving(false);
     }
-  }, [schema, entityType, onSave]);
-
-  const exportJson = useCallback(() => {
-    return JSON.stringify(schema, null, 2);
-  }, [schema]);
+  }, [schema, entityType, onPublished]);
 
   const fieldCount = Object.keys(schema.properties).length;
-  const deprecatedCount = Object.values(schema.properties).filter((f) => f.deprecated).length;
+  const deprecatedCount = Object.values(schema.properties).filter(f => f.deprecated).length;
 
   return (
     <DndProvider backend={HTML5Backend}>
+      {/* ====== 顶部操作流程指引 ====== */}
+      <div style={{ padding: '16px 16px 0 16px' }}>
+        <Card size="small" style={{ background: '#f6ffed', border: '1px solid #b7eb8f' }}>
+          <Steps
+            size="small"
+            current={fieldCount > 0 ? (published ? 2 : 1) : 0}
+            items={[
+              {
+                title: '拖拽字段',
+                description: '从左侧组件面板把需要的字段拖入画布',
+              },
+              {
+                title: '保存并发布',
+                description: published ? '✅ 已发布' : '点击下方「保存并发布 Schema」',
+              },
+              {
+                title: '去渲染器查看效果',
+                description: '切换到「动态渲染器」标签，打开会员即可看到新字段',
+              },
+            ]}
+          />
+        </Card>
+      </div>
+
+      {/* ====== 主区域 ====== */}
       <div style={{ display: 'flex', gap: 16, padding: 16 }}>
         {/* 左栏：组件面板 */}
         <div style={{ width: 200, flexShrink: 0 }}>
@@ -290,37 +282,82 @@ const SchemaBuilder: React.FC<SchemaBuilderProps> = ({ entityType, initialSchema
         {/* 中栏：设计画布 */}
         <div style={{ flex: 1 }}>
           <Card
-            title={`Schema 设计器 —— ${entityType}`}
+            title={
+              <Space>
+                <span>会员属性 Schema 设计器</span>
+                {currentVersion && <Tag color="green">{currentVersion}</Tag>}
+              </Space>
+            }
             extra={
               <Space>
-                <Tag>{fieldCount} 个字段</Tag>
-                {deprecatedCount > 0 && <Tag color="orange">{deprecatedCount} 个已废弃</Tag>}
-                <Button icon={<CodeOutlined />} onClick={() => setJsonPreview(!jsonPreview)}>
-                  {jsonPreview ? '隐藏' : '预览'} JSON
-                </Button>
-                <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
-                  保存 Schema
+                <Badge count={fieldCount} overflowCount={99}>
+                  <Tag>字段数</Tag>
+                </Badge>
+                {deprecatedCount > 0 && <Tag color="orange">{deprecatedCount} 个废弃</Tag>}
+                <Button icon={<CodeOutlined />} onClick={() => setShowJson(!showJson)}>
+                  {showJson ? '隐藏' : '查看'} JSON
                 </Button>
               </Space>
             }
           >
-            {jsonPreview ? (
-              <pre style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 500 }}>
-                {exportJson()}
+            {loadingSchema ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
+            ) : showJson ? (
+              <pre style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 500, fontSize: 12 }}>
+                {JSON.stringify(schema, null, 2)}
               </pre>
             ) : (
               <DesignCanvas schema={schema} onChange={setSchema} />
             )}
           </Card>
 
+          {/* ====== 发布按钮 ====== */}
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            {published ? (
+              <Result
+                status="success"
+                title="发布成功！"
+                subTitle={
+                  <span>
+                    当前 Schema 版本 <Tag>{currentVersion}</Tag> 已生效。<br />
+                    现在去 <Text code>动态渲染器</Text> 标签页打开会员，即可看到新字段。
+                  </span>
+                }
+                extra={[
+                  <Button key="again" icon={<ReloadOutlined />} onClick={() => setPublished(false)}>
+                    继续编辑
+                  </Button>,
+                  <Button key="renderer" type="primary" icon={<EyeOutlined />}
+                    onClick={() => {
+                      const tabEvent = new CustomEvent('switchTab', { detail: 'renderer' });
+                      window.dispatchEvent(tabEvent);
+                    }}
+                  >
+                    去动态渲染器查看效果
+                  </Button>,
+                ]}
+              />
+            ) : (
+              <Button
+                type="primary"
+                size="large"
+                icon={<SendOutlined />}
+                onClick={handlePublish}
+                loading={saving}
+                disabled={fieldCount === 0}
+                style={{ minWidth: 200 }}
+              >
+                {fieldCount === 0 ? '请先拖拽字段到画布' : `保存并发布 Schema（${fieldCount} 个字段）`}
+              </Button>
+            )}
+          </div>
+
           {deprecatedCount > 0 && (
             <Alert
-              style={{ marginTop: 16 }}
-              message="废弃字段提醒"
-              description={`存在 ${deprecatedCount} 个已废弃字段。已废弃字段保存后不会从数据库删除，仅在「只读态」展示、「编辑态」隐藏。`}
-              type="warning"
-              showIcon
-              icon={<ExclamationCircleOutlined />}
+              style={{ marginTop: 12 }}
+              message={`${deprecatedCount} 个字段已废弃`}
+              description="废弃字段不会被物理删除，仅在只读模式下查看，编辑模式下自动隐藏。"
+              type="warning" showIcon icon={<ExclamationCircleOutlined />}
             />
           )}
         </div>
