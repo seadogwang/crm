@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ConfigProvider, Layout, Menu, theme, Typography } from 'antd';
 import {
   PartitionOutlined, BuildOutlined, FormOutlined, CodeOutlined,
@@ -118,6 +120,7 @@ const App: React.FC = () => {
 
   return (
     <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}>
+      <DndProvider backend={HTML5Backend}>
       <Layout style={{ minHeight: '100vh' }}>
         <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}
           style={{ background: token.colorBgContainer }} width={220}>
@@ -153,6 +156,7 @@ const App: React.FC = () => {
           </Content>
         </Layout>
       </Layout>
+      </DndProvider>
     </ConfigProvider>
   );
 };

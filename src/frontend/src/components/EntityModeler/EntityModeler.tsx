@@ -8,7 +8,7 @@ import {
   SaveOutlined, ExportOutlined, LinkOutlined, TableOutlined,
   AimOutlined, EyeOutlined,
 } from '@ant-design/icons';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { EntityModel, EntityField, EntityRelationship, FieldType, EntityTemplate } from './types';
 
@@ -443,8 +443,7 @@ const EntityModeler: React.FC = () => {
   }), [addEntity]);
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div style={{ display: 'flex', flex: 1, minHeight: 'calc(100vh - 180px)', gap: 0, background: '#f5f5f5' }}>
+    <div style={{ display: 'flex', flex: 1, minHeight: 'calc(100vh - 180px)', gap: 0, background: '#f5f5f5' }}>
 
         {/* 左工具栏 */}
         <div style={{ width: 220, padding: 12, background: '#fff', borderRight: '1px solid #e8e8e8' }}>
@@ -544,7 +543,7 @@ const EntityModeler: React.FC = () => {
           {exportSchema()}
         </pre>
       </Drawer>
-    </DndProvider>
+    </>
   );
 };
 
