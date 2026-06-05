@@ -94,18 +94,17 @@ const EntityModeler: React.FC = () => {
   const onConnect = useCallback((connection: Connection) => {
     const sourceNode = nodes.find(n => n.id === connection.source);
     const targetNode = nodes.find(n => n.id === connection.target);
-    // 从 Handle ID 中提取字段名
+    // 解析 Handle ID：格式 left-src-fieldKey 或 right-src-fieldKey 或 left-tgt-fieldKey 等
     let fromField = '';
     let toField = '';
     if (connection.sourceHandle) {
-      const match = connection.sourceHandle.match(/^field-(.+)-(?:left|right)$/);
-      if (match) fromField = match[1];
+      const m = connection.sourceHandle.match(/^(?:left|right)-(?:src|tgt)-(.+)$/);
+      if (m) fromField = m[1];
     }
     if (connection.targetHandle) {
-      const match = connection.targetHandle.match(/^field-(.+)-(?:left|right)(?:-target)?$/);
-      if (match) toField = match[1];
+      const m = connection.targetHandle.match(/^(?:left|right)-(?:src|tgt)-(.+)$/);
+      if (m) toField = m[1];
     }
-    // 如果没找到字段级 handle，用实体的第一个字段
     if (!fromField) fromField = sourceNode?.data.fields[0]?.key || '';
     if (!toField) toField = targetNode?.data.fields[0]?.key || '';
 
