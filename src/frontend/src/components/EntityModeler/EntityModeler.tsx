@@ -99,14 +99,23 @@ const EntityModeler: React.FC = () => {
   }, []);
 
   // 字段操作
-  const selectField = useCallback((field: EntityFieldExt) => setSelectedField(field), []);
+  const origFieldKey = useRef<string>('');
+
+  const selectField = useCallback((field: EntityFieldExt) => {
+    setSelectedField(field);
+    origFieldKey.current = field.key;
+  }, []);
+
   const updateField = useCallback((field: EntityFieldExt) => {
+    const oldKey = origFieldKey.current;
     setNodes(nds => nds.map(n => {
       const nodeData = n.data as EntityNodeData;
-      return { ...n, data: { ...nodeData, fields: nodeData.fields.map((f: EntityFieldExt) => f.key === field.key ? field : f) } };
+      if (n.id !== selectedNodeId) return n;
+      return { ...n, data: { ...nodeData, fields: nodeData.fields.map((f: EntityFieldExt) => f.key === oldKey ? field : f) } };
     }));
     setSelectedField(field);
-  }, [setNodes]);
+    origFieldKey.current = field.key;
+  }, [setNodes, selectedNodeId]);
 
   const addField = useCallback((nodeId: string, field: EntityFieldExt) => {
     setNodes(nds => nds.map(n => {
