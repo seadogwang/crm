@@ -10,7 +10,7 @@ import { DownloadOutlined } from '@ant-design/icons';
 import EntityNodeComponent from './EntityNode';
 import CustomEdgeComponent from './CustomEdge';
 import EntityPanel from './EntityPanel';
-import PropertyPanel from './PropertyPanel';
+import EntityEditPanel from './EntityEditPanel';
 import ConfigModal from './ConfigModal';
 import NewEntityModal from './NewEntityModal';
 import Toolbar from './Toolbar';
@@ -32,7 +32,6 @@ const EntityModeler: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<EntityFlowNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EntityFlowEdge>(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedField, setSelectedField] = useState<EntityFieldExt | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [configEntity, setConfigEntity] = useState<EntityNodeData | null>(null);
@@ -79,12 +78,55 @@ const EntityModeler: React.FC = () => {
 
   const selectNode = useCallback((id: string) => {
     setSelectedNodeId(id);
-    setSelectedField(null);
   }, []);
 
-  const editEntity = useCallback((node: EntityFlowNode) => {
-    setConfigEntity(node.data as EntityNodeData);
-    setConfigOpen(true);
+  const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
+  const selectedEntity = selectedNode?.data as EntityNodeData | undefined;
+
+  // 实体编辑操作
+  const updateEntityField = useCallback((field: EntityFieldExt) => {
+    if (!selectedNodeId) return;
+    setNodes(nds => nds.map(n => {
+      if (n.id !== selectedNodeId) return n;
+      const nodeData = n.data as EntityNodeData;
+      return { ...n, data: { ...nodeData, fields: nodeData.fields.map(f => f.key === field.key ? field : f) } };
+    }));
+  }, [setNodes, selectedNodeId]);
+
+  const addEntityField = useCallback(() => {
+    if (!selectedNodeId) return;
+    const newField: EntityFieldExt = { key: `new_field_${Date.now()}`, name: '新字段', type: 'String' };
+    setNodes(nds => nds.map(n => {
+      if (n.id !== selectedNodeId) return n;
+      const nodeData = n.data as EntityNodeData;
+      return { ...n, data: { ...nodeData, fields: [...nodeData.fields, newField] } };
+    }));
+  }, [setNodes, selectedNodeId]);
+
+  const deleteEntityField = useCallback((fieldKey: string) => {
+    if (!selectedNodeId) return;
+    const node = nodes.find(n => n.id === selectedNodeId);
+    if (node) {
+      const field = (node.data as EntityNodeData).fields.find(f => f.key === fieldKey);
+      if (field?.locked) return; // locked fields can't be deleted
+    }
+    setNodes(nds => nds.map(n => {
+      if (n.id !== selectedNodeId) return n;
+      const nodeData = n.data as EntityNodeData;
+      return { ...n, data: { ...nodeData, fields: nodeData.fields.filter(f => f.key !== fieldKey) } };
+    }));
+  }, [setNodes, selectedNodeId, nodes]);
+
+  const updateEntityName = useCallback((displayName: string, name: string) => {
+    if (!selectedNodeId) return;
+    setNodes(nds => nds.map(n => {
+      if (n.id !== selectedNodeId) return n;
+      return { ...n, data: { ...(n.data as EntityNodeData), displayName, name } };
+    }));
+  }, [setNodes, selectedNodeId]);
+
+  const saveEntity = useCallback(() => {
+    message.success('已保存');
   }, []);
 
   const focusNode = useCallback((nodeId: string) => {
@@ -97,32 +139,6 @@ const EntityModeler: React.FC = () => {
   const handleFitView = useCallback(() => {
     rfInstance.current?.fitView({ padding: 0.2 });
   }, []);
-
-  // 字段操作
-  const origFieldKey = useRef<string>('');
-
-  const selectField = useCallback((field: EntityFieldExt) => {
-    setSelectedField(field);
-    origFieldKey.current = field.key;
-  }, []);
-
-  const updateField = useCallback((field: EntityFieldExt) => {
-    const oldKey = origFieldKey.current;
-    setNodes(nds => nds.map(n => {
-      const nodeData = n.data as EntityNodeData;
-      if (n.id !== selectedNodeId) return n;
-      return { ...n, data: { ...nodeData, fields: nodeData.fields.map((f: EntityFieldExt) => f.key === oldKey ? field : f) } };
-    }));
-    setSelectedField(field);
-    origFieldKey.current = field.key;
-  }, [setNodes, selectedNodeId]);
-
-  const addField = useCallback((nodeId: string, field: EntityFieldExt) => {
-    setNodes(nds => nds.map(n => {
-      const nodeData = n.data as EntityNodeData;
-      return n.id === nodeId ? { ...n, data: { ...nodeData, fields: [...nodeData.fields, field] } } : n;
-    }));
-  }, [setNodes]);
 
   // 连线
   const onConnect = useCallback((connection: Connection) => {
@@ -176,11 +192,11 @@ const EntityModeler: React.FC = () => {
 
   // Context
   const contextValue = useMemo(() => ({
-    selectedNodeId, selectNode, selectField, deleteNode: (id: string) => {
+    selectedNodeId, selectNode, selectField: () => {}, deleteNode: (id: string) => {
       setNodes(nds => nds.filter(n => n.id !== id));
       setEdges(eds => eds.filter(e => e.source !== id && e.target !== id));
-    }, openConfig, addField,
-  }), [selectedNodeId, selectNode, selectField, openConfig, addField, setNodes, setEdges]);
+    }, openConfig: () => {}, addField: () => {},
+  }), [selectedNodeId, selectNode, setNodes, setEdges]);
 
   const hasSelection = nodes.some(n => n.selected) || edges.some(e => e.selected);
 
@@ -195,7 +211,12 @@ const EntityModeler: React.FC = () => {
             onConnect={onConnect}
             onInit={(instance) => { rfInstance.current = instance; }}
             onNodeClick={(_e, node) => selectNode(node.id)}
-            onPaneClick={() => { setSelectedNodeId(null); setSelectedField(null); }}
+            onNodeDoubleClick={(_e, node) => {
+              selectNode(node.id);
+              const n = nodes.find(x => x.id === node.id);
+              if (n) { setConfigEntity(n.data as EntityNodeData); setConfigOpen(true); }
+            }}
+            onPaneClick={() => { setSelectedNodeId(null); }}
             nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             fitView fitViewOptions={{ padding: 0.2 }}
             connectionMode={ConnectionMode.Loose}
@@ -225,16 +246,25 @@ const EntityModeler: React.FC = () => {
           />
         </div>
 
-        {/* 右侧实体面板 */}
-        <EntityPanel
-          nodes={nodes}
-          onAddEntity={addEntity}
-          onEditEntity={editEntity}
-          onFocusNode={focusNode}
-        />
-
-        {/* 属性面板 */}
-        <PropertyPanel field={selectedField} onChange={updateField} onClose={() => setSelectedField(null)} />
+        {/* 右侧编辑/实体面板 */}
+        {selectedEntity ? (
+          <EntityEditPanel
+            entity={selectedEntity}
+            onUpdateField={updateEntityField}
+            onAddField={addEntityField}
+            onDeleteField={deleteEntityField}
+            onUpdateName={updateEntityName}
+            onSave={saveEntity}
+            onClose={() => setSelectedNodeId(null)}
+          />
+        ) : (
+          <EntityPanel
+            nodes={nodes}
+            onAddEntity={addEntity}
+            onEditEntity={(node) => selectNode(node.id)}
+            onFocusNode={focusNode}
+          />
+        )}
 
         {/* 配置弹窗 */}
         <ConfigModal open={configOpen} entity={configEntity}

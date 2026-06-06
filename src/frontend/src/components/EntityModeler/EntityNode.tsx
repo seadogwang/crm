@@ -25,7 +25,7 @@ const EntityNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       boxShadow: selected ? '0 2px 8px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
     }}>
       {/* 头部 */}
-      <div onClick={handleHeaderClick} style={{
+      <div onMouseDown={e => { e.stopPropagation(); handleHeaderClick(); }} style={{
         background: c, color: '#fff', padding: '4px 8px', borderRadius: '6px 6px 0 0',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         fontSize: 12, fontWeight: 600, cursor: 'pointer', height: 28,
@@ -42,7 +42,7 @@ const EntityNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       {/* 字段列表 - 每个字段左右各有 source+target Handle */}
       <div style={{ padding: '2px 0' }}>
         {fields.map((f, idx) => (
-          <div key={f.key} onClick={() => selectField(f)} style={{
+          <div key={f.key} style={{
             display: 'flex', alignItems: 'center', padding: '3px 8px', cursor: 'pointer',
             borderTop: '1px solid #f5f5f5', fontSize: 11, position: 'relative',
             background: f.locked ? BG_COLORS.system : '#fff', height: 23,
