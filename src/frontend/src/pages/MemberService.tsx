@@ -18,7 +18,7 @@ interface MemberVO {
 }
 
 interface AccountVO { accountType: string; balance: number; totalAccrued?: number; totalRedeemed?: number; creditLimit?: number; creditUsed?: number; }
-interface TxVO { id: number; transactionType: string; amount: number; remainingAmount?: number; description: string; createdAt: string; }
+interface TxVO { id: number; transactionType: string; amount: number; remainingAmount?: number; description: string; orderId?: string; createdAt: string; }
 interface TierLogVO { id: number; fromTier?: string; toTier: string; changeReason: string; changedAt: string; }
 interface ChannelVO { keyCombination: string; keyValue: string; }
 interface TierDefVO { tierCode: string; tierName: string; minPoints: number; maxPoints: number; sequence: number; }
@@ -254,18 +254,17 @@ const MemberService: React.FC = () => {
   }
 
   const txColumns = [
-    { title: '时间', dataIndex: 'createdAt', width: 170, render: (v: string) => v?.substring(0, 19) },
+    { title: '时间', dataIndex: 'createdAt', width: 160, render: (v: string) => v?.substring(0, 19) },
+    { title: '订单号', dataIndex: 'orderId', width: 180, ellipsis: true,
+      render: (v: string) => v ? <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{v}</span> : '-' },
     { title: '类型', dataIndex: 'description', width: 90 },
-    { title: '交易说明', dataIndex: 'transactionType', width: 120,
-      render: (v: string) => txTypeDesc(v) },
-    { title: '变动积分', dataIndex: 'amount', width: 120,
+    { title: '变动积分', dataIndex: 'amount', width: 100,
       render: (v: number) => <span style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#999', fontWeight: 500 }}>
-        {v > 0 ? '+' : ''}{v?.toLocaleString()}</span>,
+        {v > 0 ? '+' : ''}{(v || 0).toLocaleString()}</span>,
     },
     {
-      title: '操作', width: 70,
-      render: (_: any, r: TxVO) => <Button size="small" type="link" style={{ fontSize: 11 }}
-        onClick={() => fetchAllocation(r.id)}>溯源</Button>,
+      title: '操作', width: 60,
+      render: (_: any, r: TxVO) => <Button size="small" type="link" style={{ fontSize: 11 }} onClick={() => fetchAllocation(r.id)}>溯源</Button>,
     },
   ];
 

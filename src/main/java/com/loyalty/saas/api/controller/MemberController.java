@@ -372,6 +372,9 @@ public class MemberController {
         vo.put("amount", tx.getAmount());
         vo.put("remainingAmount", tx.getRemainingAmount());
         vo.put("description", desc(tx.getTransactionType()));
+        // 从operationKey提取订单号
+        String opKey = tx.getOperationKey();
+        vo.put("orderId", opKey);
         vo.put("createdAt", tx.getCreatedAt());
         return vo;
     }
