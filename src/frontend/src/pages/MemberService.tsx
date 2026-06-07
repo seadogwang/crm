@@ -403,29 +403,27 @@ const MemberService: React.FC = () => {
                       expandable={{
                         expandedRowRender: (r: OrderVO) => r.orderDetail ? (
                           <div style={{ padding: '8px 16px', background: '#fafafa' }}>
-                            <Text strong style={{ fontSize: 12 }}>订单明细</Text>
-                            {r.orderDetail.items && (
-                              <table style={{ width: '100%', marginTop: 8, fontSize: 11, borderCollapse: 'collapse' }}>
-                                <thead><tr style={{ borderBottom: '1px solid #e0e0e0' }}>
-                                  <th style={{ padding: '4px 8px', textAlign: 'left' }}>商品</th>
-                                  <th style={{ padding: '4px 8px', textAlign: 'right' }}>单价</th>
-                                  <th style={{ padding: '4px 8px', textAlign: 'right' }}>数量</th>
-                                  <th style={{ padding: '4px 8px', textAlign: 'right' }}>小计</th>
-                                </tr></thead>
-                                <tbody>
-                                  {(r.orderDetail.items || []).map((item: any, i: number) => (
-                                    <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                      <td style={{ padding: '4px 8px' }}>{item.title || item.sku_id || '-'}</td>
-                                      <td style={{ padding: '4px 8px', textAlign: 'right' }}>{(item.price || 0).toLocaleString()}</td>
-                                      <td style={{ padding: '4px 8px', textAlign: 'right' }}>{item.qty || item.quantity || 1}</td>
-                                      <td style={{ padding: '4px 8px', textAlign: 'right' }}>{((item.price || 0) * (item.qty || item.quantity || 1)).toLocaleString()}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                            {r.orderDetail.total_amount && <div style={{ marginTop: 8 }}><Text style={{ fontSize: 11 }}>总金额: <Text strong>{r.orderDetail.total_amount.toLocaleString()}</Text></Text></div>}
-                            {r.orderDetail.status && <div><Text style={{ fontSize: 11 }}>订单状态: {r.orderDetail.status}</Text></div>}
+                            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                              <thead><tr style={{ borderBottom: '2px solid #e0e0e0' }}>
+                                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#666' }}>商品编号</th>
+                                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#666' }}>商品名称</th>
+                                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#666' }}>单价</th>
+                                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#666' }}>数量</th>
+                                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#666' }}>小计</th>
+                              </tr></thead>
+                              <tbody>
+                                {(r.orderDetail.items || []).map((item: any, i: number) => (
+                                  <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{item.sku_id || '-'}</td>
+                                    <td style={{ padding: '6px 8px' }}>{item.title || '-'}</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>{(item.price || 0).toLocaleString()}</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>{item.qty || item.quantity || 1}</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 500 }}>{((item.price || 0) * (item.qty || 1)).toLocaleString()}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {r.orderDetail.total_amount && <div style={{ marginTop: 8, textAlign: 'right' }}><Text style={{ fontSize: 11 }}>合计: <Text strong style={{ fontSize: 13 }}>{r.orderDetail.total_amount.toLocaleString()}</Text></Text></div>}
                           </div>
                         ) : <Text type="secondary" style={{ fontSize: 11 }}>暂无明细</Text>,
                       }}
