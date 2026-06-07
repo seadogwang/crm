@@ -29,7 +29,7 @@ const STATUS_LABEL: Record<string, string> = { ENROLLED: '正常', FROZEN_REDEMP
 
 // ==================== 子组件 ====================
 
-const AccountCard: React.FC<{ acc: AccountVO; memberId: number; tiers?: TierDefVO[]; onViewDetail: (type: string) => void }> = ({ acc, memberId, tiers, onViewDetail }) => {
+const AccountCard: React.FC<{ acc: AccountVO; memberId: string; tiers?: TierDefVO[]; onViewDetail: (type: string) => void }> = ({ acc, memberId, tiers, onViewDetail }) => {
   const isCredit = acc.accountType === 'CREDIT';
   const isTier = acc.accountType === 'TIER';
   const currentTier = tiers?.find(t => {
@@ -73,7 +73,7 @@ const AccountCard: React.FC<{ acc: AccountVO; memberId: number; tiers?: TierDefV
   );
 };
 
-const AdjustPointsModal: React.FC<{ open: boolean; memberId: number; onClose: () => void; onDone: () => void }> = ({ open, memberId, onClose, onDone }) => {
+const AdjustPointsModal: React.FC<{ open: boolean; memberId: string; onClose: () => void; onDone: () => void }> = ({ open, memberId, onClose, onDone }) => {
   const [type, setType] = useState('REWARD');
   const [amount, setAmount] = useState(0);
   const [incr, setIncr] = useState(true);
@@ -110,7 +110,7 @@ const AdjustPointsModal: React.FC<{ open: boolean; memberId: number; onClose: ()
   );
 };
 
-const AdjustTierModal: React.FC<{ open: boolean; memberId: number; currentTier: string; tiers: TierDefVO[]; onClose: () => void; onDone: () => void }> = ({ open, memberId, currentTier, tiers, onClose, onDone }) => {
+const AdjustTierModal: React.FC<{ open: boolean; memberId: string; currentTier: string; tiers: TierDefVO[]; onClose: () => void; onDone: () => void }> = ({ open, memberId, currentTier, tiers, onClose, onDone }) => {
   const [newTier, setNewTier] = useState('');
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -184,17 +184,17 @@ const MemberService: React.FC = () => {
   }, [keyword]);
 
   const fetchTransactions = async (page: number, memberDataOrType?: MemberVO | string, type?: string) => {
-    const memberData = typeof memberDataOrType === 'object' ? memberDataOrType : member;
-    console.log('[fetchTransactions] memberData:', memberData?.memberId, 'type:', typeof memberDataOrType);
-    if (!memberData) { console.log('[fetchTransactions] no memberData, return'); return; }
+    // 明确获取 memberData：从参数或从 state
+    const memberData = typeof memberDataOrType === 'object' && memberDataOrType !== null
+      ? memberDataOrType : member;
+    if (!memberData) return;
+    const filterType = typeof memberDataOrType === 'string' ? memberDataOrType : (type || txTypeFilter);
     setTxLoading(true);
     try {
       const url = `/members/${memberData.memberId}/transactions`;
-      console.log('[fetchTransactions] calling:', url);
       const { data } = await api.get(url, {
-        params: { page, size: 20, typeFilter: type || txTypeFilter },
+        params: { page, size: 20, typeFilter: filterType || undefined },
       });
-      console.log('[fetchTransactions] response:', data?.code, 'count:', data?.data?.data?.length);
       if (data?.code === 'SUCCESS') {
         setTxData(data.data.data || []);
         setTxTotal(data.data.total || 0);
@@ -237,15 +237,26 @@ const MemberService: React.FC = () => {
 
   const refresh = () => search();
 
+  function txTypeDesc(type: string): string {
+    const map: Record<string, string> = {
+      ACCRUAL: '订单奖励积分', REDEMPTION: '积分兑换', EXPIRATION: '积分过期',
+      REPAYMENT: '透支还款', CREDIT_REPAY: '信用还款', CREDIT_DRAWDOWN: '信用提取',
+      OVERDRAFT: '透支', MANUAL_ADJUST: '人工调整',
+    };
+    return map[type] || type;
+  }
+
   const txColumns = [
     { title: '时间', dataIndex: 'createdAt', width: 170, render: (v: string) => v?.substring(0, 19) },
-    { title: '类型', dataIndex: 'description', width: 100 },
+    { title: '类型', dataIndex: 'description', width: 90 },
+    { title: '交易说明', dataIndex: 'transactionType', width: 120,
+      render: (v: string) => txTypeDesc(v) },
     { title: '变动积分', dataIndex: 'amount', width: 120,
       render: (v: number) => <span style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#999', fontWeight: 500 }}>
         {v > 0 ? '+' : ''}{v?.toLocaleString()}</span>,
     },
     {
-      title: '操作', width: 80,
+      title: '操作', width: 70,
       render: (_: any, r: TxVO) => <Button size="small" type="link" style={{ fontSize: 11 }}
         onClick={() => fetchAllocation(r.id)}>溯源</Button>,
     },
@@ -339,7 +350,7 @@ const MemberService: React.FC = () => {
                     <Table dataSource={txData} columns={txColumns} rowKey="id" size="small"
                       loading={txLoading} pagination={{
                         total: txTotal, current: txPage + 1, pageSize: 20,
-                        onChange: (p) => fetchTransactions(p - 1),
+                        onChange: (p) => fetchTransactions(p - 1, member),
                       }} scroll={{ x: 600 }}
                       locale={{ emptyText: '暂无交易记录' }} />
                   ),
