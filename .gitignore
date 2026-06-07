@@ -33,3 +33,5 @@ src/frontend/dist/
 
 # 设计文档 (不提交)
 LoyaltyDesign*.md
+FRONTEND_DESIGN_SPEC.md
+prompt.md
