@@ -86,8 +86,8 @@ public class TransactionEvent {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "order_time")
-    private LocalDateTime orderTime;
+    @Column(name = "trade_time")
+    private LocalDateTime tradeTime;
 
     @Column(name = "pay_time")
     private LocalDateTime payTime;

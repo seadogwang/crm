@@ -107,7 +107,7 @@ public class MemberController {
         var list = q.setFirstResult(page * size).setMaxResults(size).getResultList().stream().map(t -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("orderId", t.getIdempotencyKey());
-            m.put("orderTime", t.getOrderTime());
+            m.put("orderTime", t.getTradeTime());
             m.put("payTime", t.getPayTime());
             m.put("orderAmount", t.getOrderAmount());
             m.put("eventType", t.getEventType());
