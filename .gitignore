@@ -30,3 +30,6 @@ drawdb/
 # Frontend
 src/frontend/node_modules/
 src/frontend/dist/
+
+# 设计文档 (不提交)
+LoyaltyDesign*.md
