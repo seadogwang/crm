@@ -21,7 +21,7 @@ interface AccountVO { accountType: string; balance: number; totalAccrued?: numbe
 interface TxVO { id: number; transactionType: string; amount: number; remainingAmount?: number; description: string; orderId?: string; orderTime?: string; payTime?: string; createdAt: string; }
 interface TierLogVO { id: number; fromTier?: string; toTier: string; changeReason: string; changedAt: string; }
 interface ChannelVO { keyCombination: string; keyValue: string; }
-interface OrderVO { orderId: string; orderTime: string; payTime: string; orderAmount: number; eventType: string; channel: string; eventTime: string; createdAt: string; }
+interface OrderVO { orderId: string; orderTime: string; payTime: string; orderAmount: number; tradeStatus: string; eventType: string; channel: string; eventTime: string; createdAt: string; }
 interface TierDefVO { tierCode: string; tierName: string; minPoints: number; maxPoints: number; sequence: number; }
 
 const TYPE_LABELS: Record<string, string> = { REWARD: '消费积分', TIER: '等级成长值', CREDIT: '授信积分' };
@@ -273,14 +273,28 @@ const MemberService: React.FC = () => {
     return map[type] || type;
   }
 
+  const STATUS_MAP: Record<string, { label: string; color: string }> = {
+    TRADE_FINISHED: { label: '交易成功', color: 'green' },
+    WAIT_BUYER_PAY: { label: '待付款', color: 'orange' },
+    WAIT_SELLER_SEND_GOODS: { label: '待发货', color: 'blue' },
+    WAIT_BUYER_CONFIRM_GOODS: { label: '待收货', color: 'cyan' },
+    TRADE_CLOSED: { label: '已关闭', color: 'default' },
+    TRADE_CLOSED_BY_TAOBAO: { label: '已关闭', color: 'default' },
+  };
+
   const orderColumns = [
     { title: '交易号', dataIndex: 'orderId', width: 200, ellipsis: true,
       render: (v: string) => v ? <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{v}</span> : '-' },
-    { title: '下单时间', dataIndex: 'orderTime', width: 160, render: (v: string) => v?.substring(0, 19) || '-' },
-    { title: '支付时间', dataIndex: 'payTime', width: 160, render: (v: string) => v?.substring(0, 19) || '-' },
-    { title: '交易金额', dataIndex: 'amount', width: 120,
-      render: (v: number) => <span style={{ color: '#52c41a', fontWeight: 500 }}>+{(v || 0).toLocaleString()}</span> },
-    { title: '创建时间', dataIndex: 'createdAt', width: 160, render: (v: string) => v?.substring(0, 19) },
+    { title: '下单时间', dataIndex: 'orderTime', width: 150, render: (v: string) => v?.substring(0, 19) || '-' },
+    { title: '支付时间', dataIndex: 'payTime', width: 150, render: (v: string) => v?.substring(0, 19) || '-' },
+    { title: '金额', dataIndex: 'orderAmount', width: 100,
+      render: (v: number) => <span style={{ color: v > 0 ? '#52c41a' : '#ff4d4f' }}>{v > 0 ? '+' : ''}{(v || 0).toLocaleString()}</span> },
+    { title: '状态', dataIndex: 'tradeStatus', width: 90,
+      render: (v: string) => {
+        const s = STATUS_MAP[v] || { label: v, color: 'default' };
+        return <Tag color={s.color} style={{ fontSize: 10 }}>{s.label}</Tag>;
+      }},
+    { title: '渠道', dataIndex: 'channel', width: 60 },
   ];
 
   const pointsColumns = [
