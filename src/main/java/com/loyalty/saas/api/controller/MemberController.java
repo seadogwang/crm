@@ -111,7 +111,6 @@ public class MemberController {
             m.put("payTime", t.getPayTime());
             m.put("orderAmount", t.getOrderAmount());
             m.put("tradeStatus", t.getTradeStatus());
-            m.put("orderDetail", t.getExtAttributes());
             m.put("eventType", t.getEventType());
             m.put("channel", t.getChannel());
             m.put("eventTime", t.getEventTime());
@@ -122,6 +121,30 @@ public class MemberController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", list); result.put("total", total);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /** 订单明细（异步加载） */
+    @GetMapping("/{memberId}/orders/detail")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> orderDetail(
+            @PathVariable Long memberId, @RequestParam String orderId) {
+        String pc = TenantContext.getRequired();
+        List<TransactionEvent> events = em.createQuery(
+            "FROM TransactionEvent t WHERE t.programCode=:pc AND t.memberId=:mid AND t.idempotencyKey=:oid",
+            TransactionEvent.class)
+            .setParameter("pc", pc).setParameter("mid", memberId).setParameter("oid", orderId)
+            .getResultList();
+
+        if (events.isEmpty()) return ResponseEntity.ok(ApiResponse.success(null));
+
+        TransactionEvent t = events.get(0);
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("orderId", t.getIdempotencyKey());
+        detail.put("orderTime", t.getTradeTime());
+        detail.put("payTime", t.getPayTime());
+        detail.put("orderAmount", t.getOrderAmount());
+        detail.put("tradeStatus", t.getTradeStatus());
+        detail.put("extAttributes", t.getExtAttributes());
+        return ResponseEntity.ok(ApiResponse.success(detail));
     }
 
     // ==================== 交易流水 (account_transaction) ====================

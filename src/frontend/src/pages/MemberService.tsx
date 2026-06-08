@@ -21,7 +21,7 @@ interface AccountVO { accountType: string; typeName?: string; balance: number; t
 interface TxVO { id: number; transactionType: string; amount: number; remainingAmount?: number; description: string; orderId?: string; orderTime?: string; payTime?: string; createdAt: string; }
 interface TierLogVO { id: number; fromTier?: string; toTier: string; changeReason: string; changedAt: string; }
 interface ChannelVO { keyCombination: string; keyValue: string; }
-interface OrderVO { orderId: string; orderTime: string; payTime: string; orderAmount: number; tradeStatus: string; orderDetail?: any; eventType: string; channel: string; eventTime: string; createdAt: string; }
+interface OrderVO { orderId: string; orderTime: string; payTime: string; orderAmount: number; tradeStatus: string; eventType: string; channel: string; eventTime: string; createdAt: string; }
 interface TierDefVO { tierCode: string; tierName: string; minPoints: number; maxPoints: number; sequence: number; }
 
 const TYPE_LABELS: Record<string, string> = { REWARD: '消费积分', TIER: '等级成长值', CREDIT: '授信积分' };
@@ -141,6 +141,50 @@ const AdjustTierModal: React.FC<{ open: boolean; memberId: string; currentTier: 
 };
 
 // ==================== 主组件 ====================
+
+const OrderDetail: React.FC<{ memberId: string; orderId: string }> = ({ memberId, orderId }) => {
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/members/${memberId}/orders/detail`, { params: { orderId } })
+      .then(({ data }: any) => { if (data?.code === 'SUCCESS') setDetail(data.data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [memberId, orderId]);
+
+  if (loading) return <Spin size="small" style={{ margin: 16 }} />;
+  if (!detail || !detail.extAttributes?.items) return <Text type="secondary" style={{ fontSize: 11, padding: 16 }}>暂无明细</Text>;
+
+  const items = detail.extAttributes.items || [];
+  const total = detail.extAttributes.total_amount || detail.orderAmount;
+
+  return (
+    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
+      <table style={{ fontSize: 11, borderCollapse: 'collapse' }}>
+        <thead><tr style={{ borderBottom: '2px solid #e0e0e0' }}>
+          <th style={{ padding: '4px 6px', textAlign: 'left', color: '#666', width: 80 }}>商品编号</th>
+          <th style={{ padding: '4px 6px', textAlign: 'left', color: '#666' }}>商品名称</th>
+          <th style={{ padding: '4px 6px', textAlign: 'right', color: '#666', width: 60 }}>单价</th>
+          <th style={{ padding: '4px 6px', textAlign: 'right', color: '#666', width: 40 }}>数量</th>
+          <th style={{ padding: '4px 6px', textAlign: 'right', color: '#666', width: 70 }}>小计</th>
+        </tr></thead>
+        <tbody>
+          {items.map((item: any, i: number) => (
+            <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
+              <td style={{ padding: '3px 6px', fontFamily: 'monospace' }}>{item.sku_id || '-'}</td>
+              <td style={{ padding: '3px 6px' }}>{item.title || '-'}</td>
+              <td style={{ padding: '3px 6px', textAlign: 'right' }}>{(item.price || 0).toLocaleString()}</td>
+              <td style={{ padding: '3px 6px', textAlign: 'right' }}>{item.qty || 1}</td>
+              <td style={{ padding: '3px 6px', textAlign: 'right', fontWeight: 500 }}>{((item.price || 0) * (item.qty || 1)).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {total && <div style={{ marginTop: 8, textAlign: 'right' }}><Text style={{ fontSize: 11 }}>合计: <Text strong style={{ fontSize: 13 }}>{total.toLocaleString()}</Text></Text></div>}
+    </div>
+  );
+};
 
 const MemberService: React.FC = () => {
   const programCode = useAppStore(s => s.currentProgramCode);
@@ -423,31 +467,8 @@ const MemberService: React.FC = () => {
                     <Table dataSource={orderData} columns={orderColumns} rowKey="orderId" size="small"
                       loading={orderLoading} pagination={false} scroll={{ x: 800 }}
                       expandable={{
-                        expandedRowRender: (r: OrderVO) => r.orderDetail ? (
-                          <div style={{ padding: '8px 16px', background: '#fafafa' }}>
-                            <table style={{ fontSize: 11, borderCollapse: 'collapse' }}>
-                              <thead><tr style={{ borderBottom: '2px solid #e0e0e0' }}>
-                                <th style={{ padding: '4px 6px', textAlign: 'left', color: '#666', width: 80 }}>商品编号</th>
-                                <th style={{ padding: '4px 6px', textAlign: 'left', color: '#666' }}>商品名称</th>
-                                <th style={{ padding: '4px 6px', textAlign: 'right', color: '#666', width: 60 }}>单价</th>
-                                <th style={{ padding: '4px 6px', textAlign: 'right', color: '#666', width: 40 }}>数量</th>
-                                <th style={{ padding: '4px 6px', textAlign: 'right', color: '#666', width: 70 }}>小计</th>
-                              </tr></thead>
-                              <tbody>
-                                {(r.orderDetail.items || []).map((item: any, i: number) => (
-                                  <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                    <td style={{ padding: '3px 6px', fontFamily: 'monospace' }}>{item.sku_id || '-'}</td>
-                                    <td style={{ padding: '3px 6px' }}>{item.title || '-'}</td>
-                                    <td style={{ padding: '3px 6px', textAlign: 'right' }}>{(item.price || 0).toLocaleString()}</td>
-                                    <td style={{ padding: '3px 6px', textAlign: 'right' }}>{item.qty || 1}</td>
-                                    <td style={{ padding: '3px 6px', textAlign: 'right', fontWeight: 500 }}>{((item.price || 0) * (item.qty || 1)).toLocaleString()}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            {r.orderDetail.total_amount && <div style={{ marginTop: 8, textAlign: 'right' }}><Text style={{ fontSize: 11 }}>合计: <Text strong style={{ fontSize: 13 }}>{r.orderDetail.total_amount.toLocaleString()}</Text></Text></div>}
-                          </div>
-                        ) : <Text type="secondary" style={{ fontSize: 11 }}>暂无明细</Text>,
+                        rowExpandable: () => true,
+                        expandedRowRender: (r: OrderVO) => <OrderDetail memberId={member.memberId} orderId={r.orderId} />,
                       }}
                       locale={{ emptyText: '暂无交易记录' }} />
                   ),
