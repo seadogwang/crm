@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col } from 'antd';
+import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col, ConfigProvider } from 'antd';
 import { SearchOutlined, CopyOutlined, EditOutlined, DollarOutlined, CrownOutlined, LockOutlined, MergeCellsOutlined, HistoryOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import api from '../api';
@@ -457,6 +457,7 @@ const MemberService: React.FC = () => {
 
           {/* Tabs */}
           <Card bodyStyle={{ padding: 0 }}>
+            <ConfigProvider theme={{ token: { colorPrimary: '#1d39c4' } }}>
             <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ padding: '0 16px' }}
               items={[
                 {
@@ -504,6 +505,7 @@ const MemberService: React.FC = () => {
                 },
               ]}
             />
+          </ConfigProvider>
           </Card>
         </>
       )}
