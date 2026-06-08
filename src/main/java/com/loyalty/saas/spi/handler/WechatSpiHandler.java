@@ -52,13 +52,21 @@ public class WechatSpiHandler implements ChannelSpiHandler {
             String body = new String(rawBody, StandardCharsets.UTF_8);
             Map<String, Object> payload = body.startsWith("{") ? mapper.readValue(body, Map.class)
                     : Map.of("xml_data", body);
-            String idemKey = programCode + ":WECHAT:" + action + ":" + System.currentTimeMillis();
+
+            // 从请求体 JSON 中提取微信消息 MsgId 作为幂等键
+            String msgId = payload.get("MsgId") != null
+                    ? String.valueOf(payload.get("MsgId")) : null;
+            if (msgId == null || msgId.isBlank()) {
+                msgId = "WX-" + System.currentTimeMillis();
+                log.warn("[WechatSpi] 请求体中未找到 MsgId，降级使用时间戳生成 idempotencyKey");
+            }
+            String idemKey = programCode + ":WECHAT:" + action + ":" + msgId;
             if (inboxRepo.findByIdempotencyKey(programCode, idemKey).isPresent())
                 return wechatOk();
 
             inboxRepo.save(EventInbox.builder()
                     .programCode(programCode).sourceChannel("WECHAT_MINI")
-                    .sourceEventId("WX-" + System.currentTimeMillis())
+                    .sourceEventId(msgId)
                     .idempotencyKey(idemKey).payloadHash(sha1(body))
                     .payload(payload).signatureVerified(true)
                     .status("RECEIVED").retryCount(0).maxRetry(3)

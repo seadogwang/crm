@@ -99,15 +99,12 @@
             <artifactId>polyglot</artifactId>
             <version>23.1.4</version>
         </dependency>
-        <!--
-        js-community 运行时依赖需从 GraalVM 仓库获取或本地安装：
         <dependency>
             <groupId>org.graalvm.polyglot</groupId>
-            <artifactId>js-community</artifactId>
+            <artifactId>js</artifactId>
             <version>23.1.4</version>
             <scope>runtime</scope>
         </dependency>
-        -->
 
         <!-- Drools 8 规则引擎 -->
         <dependency>

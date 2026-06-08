@@ -89,6 +89,10 @@ public class AccountTransaction implements Serializable {
     @Column(name = "rule_code", length = 100)
     private String ruleCode;
 
+    /** 规则快照 ID */
+    @Column(name = "rule_snapshot_id", length = 64)
+    private String ruleSnapshotId;
+
     /** 规则版本 */
     @Column(name = "rule_version")
     private Integer ruleVersion;

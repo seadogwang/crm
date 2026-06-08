@@ -139,7 +139,7 @@ public class PointGrantService {
 
             // 生成 REPAYMENT 还款流水（正向入账，冲抵透支）
             insertTransaction(programCode, memberId, accountType, accountId, "REPAYMENT",
-                    offsetAmount, null, ruleCode, overdraft.getReferenceEventId());
+                    offsetAmount, null, ruleCode, ruleSnapshotId, overdraft.getReferenceEventId());
 
             // 减少透支额度（remainingAmount 从负数向 0 靠近）
             BigDecimal newOverdraft = overdraft.getRemainingAmount().add(offsetAmount);
@@ -166,10 +166,18 @@ public class PointGrantService {
 
                 // 在 CREDIT 账户生成 CREDIT_REPAY 流水（正向入账，偿还信用）
                 insertTransaction(programCode, memberId, "CREDIT", creditAccount.getAccountId(),
-                        "CREDIT_REPAY", offsetAmount, null, ruleCode, null);
+                        "CREDIT_REPAY", offsetAmount, null, ruleCode, ruleSnapshotId, null);
 
                 // 扣减 CREDIT 账户的信用已用额度（乐观锁 version 保护）
                 creditAccount.setCreditUsed(creditAccount.getCreditUsed().subtract(offsetAmount));
+
+                // R-PTS-08: 信用还清且冻结状态为 FROZEN_REDEMPTION 时自动解冻
+                if (creditAccount.getCreditUsed().compareTo(BigDecimal.ZERO) == 0
+                        && "FROZEN_REDEMPTION".equals(creditAccount.getFrozenStatus())) {
+                    creditAccount.setFrozenStatus("ACTIVE");
+                    log.info("[Grant] 信用已还清，自动解冻兑换权限: member={}", memberId);
+                }
+
                 accountRepo.save(creditAccount);
 
                 remainingToGrant = remainingToGrant.subtract(offsetAmount);
@@ -182,7 +190,7 @@ public class PointGrantService {
         if (remainingToGrant.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime expiry = calculateExpiryDate(programCode, accountType);
             insertTransaction(programCode, memberId, accountType, accountId, "ACCRUAL",
-                    remainingToGrant, expiry, ruleCode, null);
+                    remainingToGrant, expiry, ruleCode, ruleSnapshotId, null);
             log.debug("[Grant] ACCRUAL 入账: amount={}, expiresAt={}", remainingToGrant, expiry);
         } else if (remainingToGrant.compareTo(BigDecimal.ZERO) == 0) {
             log.info("[Grant] 发分完全用于冲抵，无正向入账: member={}, original={}",
@@ -190,11 +198,12 @@ public class PointGrantService {
         }
 
         // ==================== Step 4: 更新累计统计 ====================
-        account.setTotalAccrued(account.getTotalAccrued().add(pointsToGrant));
+        // R-PTS-06: totalAccrued 只统计实际入账部分（remainingToGrant），不含冲抵透支/信用的部分
+        account.setTotalAccrued(account.getTotalAccrued().add(remainingToGrant.compareTo(BigDecimal.ZERO) > 0 ? remainingToGrant : BigDecimal.ZERO));
         accountRepo.save(account);
 
-        log.info("[Grant] 发分完成: member={}, type={}, granted={}, totalAccrued={}",
-                memberId, accountType, pointsToGrant, account.getTotalAccrued());
+        log.info("[Grant] 发分完成: member={}, type={}, originalRequest={}, actualAccrued={}, totalAccrued={}",
+                memberId, accountType, pointsToGrant, remainingToGrant, account.getTotalAccrued());
     }
 
     // ==================== 辅助方法 ====================
@@ -209,7 +218,8 @@ public class PointGrantService {
                                                   String accountType, Long accountId,
                                                   String transactionType,
                                                   BigDecimal amount, LocalDateTime expiresAt,
-                                                  String ruleCode, String referenceEventId) {
+                                                  String ruleCode, String ruleSnapshotId,
+                                                  String referenceEventId) {
         AccountTransaction tx = AccountTransaction.builder()
                 .accountId(accountId)
                 .programCode(programCode)
@@ -220,6 +230,7 @@ public class PointGrantService {
                 .remainingAmount(amount.setScale(SCALE, RoundingMode.HALF_UP))
                 .expiresAt(expiresAt)
                 .ruleCode(ruleCode)
+                .ruleSnapshotId(ruleSnapshotId)
                 .referenceEventId(referenceEventId)
                 .operationKey(programCode + ":" + transactionType + ":" + memberId + ":" + System.currentTimeMillis())
                 .status("ACTIVE")

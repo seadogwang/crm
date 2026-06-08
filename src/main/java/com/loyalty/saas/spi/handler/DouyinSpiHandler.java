@@ -44,12 +44,20 @@ public class DouyinSpiHandler implements ChannelSpiHandler {
         try {
             String body = new String(rawBody, StandardCharsets.UTF_8);
             Map<String, Object> payload = mapper.readValue(body, Map.class);
-            String idemKey = programCode + ":DOUYIN:" + action + ":" + System.currentTimeMillis();
+
+            // 从请求体 JSON 中提取抖音 request_id 作为幂等键
+            String requestId = payload.get("request_id") != null
+                    ? String.valueOf(payload.get("request_id")) : null;
+            if (requestId == null || requestId.isBlank()) {
+                requestId = "DY-" + System.currentTimeMillis();
+                log.warn("[DouyinSpi] 请求体中未找到 request_id，降级使用时间戳生成 idempotencyKey");
+            }
+            String idemKey = programCode + ":DOUYIN:" + action + ":" + requestId;
             if (inboxRepo.findByIdempotencyKey(programCode, idemKey).isPresent())
                 return Map.of("err_no", 0, "message", "ok");
             inboxRepo.save(EventInbox.builder()
                     .programCode(programCode).sourceChannel("DOUYIN")
-                    .sourceEventId("DY-" + System.currentTimeMillis())
+                    .sourceEventId(requestId)
                     .idempotencyKey(idemKey).payloadHash(sha256(body))
                     .payload(payload).signatureVerified(true)
                     .status("RECEIVED").retryCount(0).maxRetry(3)

@@ -11,6 +11,9 @@ import com.loyalty.saas.domain.repository.TierDefinitionRepository;
 import com.loyalty.saas.rules.AiRuleGenerationService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -367,6 +370,155 @@ public class AdminController {
 
         log.warn("[Admin] 规则强制放行: rule={}, reason={}", ruleId, reason);
         return ResponseEntity.ok(ApiResponse.success(Map.of("rule_code", ruleId, "status", "ACTIVE", "overridden", true)));
+    }
+
+    // ==================== 渠道映射测试 ====================
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    @PostMapping("/channels/test-transform")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> testChannelTransform(
+            @RequestBody Map<String, Object> body) {
+        String sourceJson = (String) body.get("sourceJson");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> mappings = (List<Map<String, Object>>) body.get("mappings");
+        String script = (String) body.get("script");
+
+        if (sourceJson == null || sourceJson.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.error("ERR_INVALID", "sourceJson 不能为空"));
+        }
+
+        // 1. 解析源JSON
+        Map<String, Object> source;
+        try {
+            source = objectMapper.readValue(sourceJson, Map.class);
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error("ERR_PARSE", "JSON解析失败: " + e.getMessage()));
+        }
+
+        // 2. 构建基本事件对象
+        Map<String, Object> base = new LinkedHashMap<>();
+        base.put("event_id", "evt_" + System.currentTimeMillis());
+        base.put("member_id", source.getOrDefault("memberId",
+                source.getOrDefault("openId", "")));
+        base.put("event_type", "CUSTOM");
+        base.put("channel", source.getOrDefault("channelType",
+                source.getOrDefault("channel", "")));
+        base.put("event_time", source.getOrDefault("tradeTime",
+                java.time.Instant.now().toString()));
+        base.put("idempotent_key", source.getOrDefault("tradeNo",
+                source.getOrDefault("orderId", "")));
+        base.put("payload", new LinkedHashMap<>());
+
+        // 3. 应用字段路径映射
+        if (mappings != null) {
+            for (Map<String, Object> m : mappings) {
+                String src = (String) m.get("source");
+                String tgt = (String) m.get("target");
+                if (src == null || tgt == null || src.isBlank() || tgt.isBlank()) continue;
+                Object value = source.getOrDefault(src, "");
+                if (tgt.startsWith("payload.")) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> payload = (Map<String, Object>) base.get("payload");
+                    setNestedValue(payload, tgt.substring("payload.".length()), value);
+                } else {
+                    base.put(tgt, value);
+                }
+            }
+        }
+
+        // 4. 执行脚本(如果提供了且JS引擎可用)
+        Map<String, Object> result = base;
+        if (script != null && !script.isBlank()) {
+            try {
+                result = executeJsTransform(script, source, base);
+            } catch (Exception e) {
+                log.warn("[Admin] JS脚本执行失败，回退到路径映射结果: {}", e.getMessage());
+            }
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("result", result);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> executeJsTransform(String script,
+                                                    Map<String, Object> source,
+                                                    Map<String, Object> base) {
+        try (Context ctx = Context.newBuilder("js")
+                .option("engine.WarnInterpreterOnly", "false")
+                .build()) {
+            // 绑定变量和函数
+            Value bindings = ctx.getBindings("js");
+            bindings.putMember("source", source);
+            bindings.putMember("console", new JsConsole());
+
+            // applyFieldMappings 返回预处理后的base对象
+            bindings.putMember("applyFieldMappings", (java.util.function.Function<Object, Map<String, Object>>) (s) -> base);
+
+            // 执行脚本: 用户脚本定义 transform() + 调用入口
+            String fullScript = script + "\ntransform(source, { programCode: 'PROG001' });";
+            Value jsResult = ctx.eval("js", fullScript);
+
+            // 将JS返回值转换为Java Map
+            if (jsResult.isNull()) {
+                return base;
+            }
+            return (Map<String, Object>) valueToObject(jsResult);
+        }
+    }
+
+    /** 处理 GraalVM Value → Java Object 转换 */
+    private Object valueToObject(Value v) {
+        if (v.isNull()) return null;
+        if (v.isString()) return v.asString();
+        if (v.isNumber()) {
+            if (v.fitsInInt()) return v.asInt();
+            if (v.fitsInLong()) return v.asLong();
+            return v.asDouble();
+        }
+        if (v.isBoolean()) return v.asBoolean();
+        if (v.hasArrayElements()) {
+            List<Object> list = new ArrayList<>();
+            for (long i = 0; i < v.getArraySize(); i++) {
+                list.add(valueToObject(v.getArrayElement(i)));
+            }
+            return list;
+        }
+        if (v.hasMembers()) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (String key : v.getMemberKeys()) {
+                map.put(key, valueToObject(v.getMember(key)));
+            }
+            return map;
+        }
+        return v.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setNestedValue(Map<String, Object> obj, String path, Object value) {
+        String[] keys = path.split("\\.");
+        Map<String, Object> cur = obj;
+        for (int i = 0; i < keys.length - 1; i++) {
+            String key = keys[i];
+            Object child = cur.get(key);
+            if (!(child instanceof Map)) {
+                child = new LinkedHashMap<>();
+                cur.put(key, child);
+            }
+            cur = (Map<String, Object>) child;
+        }
+        cur.put(keys[keys.length - 1], value);
+    }
+
+    /** GraalVM JS console.log 桥接 */
+    public static class JsConsole {
+        public void log(Object... args) {
+            StringBuilder sb = new StringBuilder();
+            for (Object a : args) sb.append(a).append(" ");
+            log.debug("[JS] {}", sb.toString().trim());
+        }
     }
 
     // ==================== 私有方法 ====================

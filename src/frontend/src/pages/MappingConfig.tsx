@@ -2,59 +2,14 @@ import React, { useState, useCallback } from 'react';
 import { Input, Select, Button, Typography, Space, Tag, Table, message, Alert } from 'antd';
 import { PlusOutlined, DeleteOutlined, PlayCircleOutlined, SaveOutlined, CodeOutlined, TableOutlined } from '@ant-design/icons';
 import Editor from '@monaco-editor/react';
+import { testChannelTransform } from '../api';
 
 const { Text } = Typography;
 
-// ==================== 沙箱脚本执行器 ====================
+// ==================== 沙箱脚本执行(已迁移至服务端) ====================
 
-function executeTransform(input: string, mappings: FieldMapping[], script: string): { output: string; error?: string } {
-  try {
-    const source = JSON.parse(input);
-
-    // 1. 先执行路径映射表
-    const base: any = {
-      event_id: `evt_${Date.now()}`,
-      member_id: source.memberId || source.openId || '',
-      event_type: 'CUSTOM',
-      channel: source.channelType || source.channel || '',
-      event_time: source.tradeTime || source.tradeTime || new Date().toISOString(),
-      idempotent_key: source.tradeNo || source.orderId || '',
-      payload: {},
-    };
-
-    for (const m of mappings) {
-      if (!m.source || !m.target) continue;
-      const value = source[m.source] ?? '';
-      if (m.target.startsWith('payload.')) {
-        setNested(base.payload, m.target.replace('payload.', ''), value);
-      } else {
-        base[m.target] = value;
-      }
-    }
-
-    // 2. 执行脚本
-    if (script && script.trim()) {
-      const applyFieldMappings = (src: any) => ({ ...base });
-      const fn = new Function('source', 'applyFieldMappings', 'console', script + '\nreturn transform(source, { programCode: "PROG001" });');
-      const result = fn(source, applyFieldMappings, { log: () => {} });
-      return { output: JSON.stringify(result, null, 2) };
-    }
-
-    return { output: JSON.stringify(base, null, 2) };
-  } catch (e: any) {
-    return { output: '', error: e.message || String(e) };
-  }
-}
-
-function setNested(obj: any, path: string, value: any) {
-  const keys = path.split('.');
-  let cur = obj;
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (!cur[keys[i]]) cur[keys[i]] = {};
-    cur = cur[keys[i]];
-  }
-  cur[keys[keys.length - 1]] = value;
-}
+// 前端不再使用 new Function() 执行脚本，改为调用后端 API
+// 后端 AdminController.testChannelTransform 通过 GraalVM 沙箱安全执行
 
 // ==================== 数据模型 ====================
 
@@ -155,21 +110,23 @@ const MappingConfig: React.FC = () => {
     }));
   }, [selectedChannel]);
 
-  const handleTest = useCallback(() => {
+  const handleTest = useCallback(async () => {
     setPreviewLoading(true);
     setPreviewError('');
-    // 模拟异步执行
-    setTimeout(() => {
-      const result = executeTransform(currentInput, currentMappings, currentScript);
-      if (result.error) {
-        setPreviewError(result.error);
-        setPreviewOutput('');
-      } else {
+    try {
+      const result = await testChannelTransform(currentInput, currentMappings, currentScript);
+      if (result && result.result) {
         setPreviewError('');
-        setPreviewOutput(result.output);
+        setPreviewOutput(JSON.stringify(result.result, null, 2));
+      } else {
+        setPreviewError('服务端返回空结果');
+        setPreviewOutput('');
       }
-      setPreviewLoading(false);
-    }, 300);
+    } catch (e: any) {
+      setPreviewError(e.response?.data?.message || e.message || '请求失败');
+      setPreviewOutput('');
+    }
+    setPreviewLoading(false);
   }, [currentInput, currentMappings, currentScript]);
 
   const handleSave = () => message.success('映射配置已保存');

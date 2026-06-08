@@ -60,6 +60,11 @@ public class KieBaseCacheManager {
      */
     private final ConcurrentHashMap<String, AtomicReference<KieBase>> cache = new ConcurrentHashMap<>();
 
+    /**
+     * program_code → KieContainer 缓存，用于在热替换时 dispose 旧容器，防止资源泄漏。
+     */
+    private final ConcurrentHashMap<String, KieContainer> containerCache = new ConcurrentHashMap<>();
+
     private final RuleDefinitionRepository ruleRepo;
 
     public KieBaseCacheManager(RuleDefinitionRepository ruleRepo) {
@@ -108,6 +113,9 @@ public class KieBaseCacheManager {
      * @throws RuleCompileException 如果新规则编译失败（旧版本不受影响）
      */
     public void refreshKieBase(String programCode) {
+        // 0. 记录旧容器引用，构建新版本后再销毁
+        KieContainer oldContainer = containerCache.get(programCode);
+
         // 1. 构建新版本 KieBase（耗时操作，不在锁内）
         KieBase newKieBase = buildKieBase(programCode);
 
@@ -118,7 +126,18 @@ public class KieBaseCacheManager {
         // 3. 原子替换引用（纳秒级操作）
         KieBase oldKieBase = ref.getAndSet(newKieBase);
 
-        log.info("[KieBaseCache] 热更新完成: program={}, 旧版本待 GC 回收", programCode);
+        // 4. 销毁旧 KieContainer，释放 Drools 内部资源
+        if (oldContainer != null) {
+            try {
+                oldContainer.dispose();
+                log.info("[KieBaseCache] 旧 KieContainer 已销毁: program={}", programCode);
+            } catch (Exception e) {
+                log.warn("[KieBaseCache] 销毁旧 KieContainer 失败: program={}", programCode, e);
+            }
+        }
+
+        log.info("[KieBaseCache] 热更新完成: program={}, oldKieBase hash={}, newKieBase hash={}",
+                programCode, System.identityHashCode(oldKieBase), System.identityHashCode(newKieBase));
     }
 
     /**
@@ -137,7 +156,9 @@ public class KieBaseCacheManager {
         if (activeRules.isEmpty()) {
             log.debug("[KieBaseCache] Program [{}] 无活跃规则，返回空 KieBase", programCode);
             KieServices ks = KieServices.Factory.get();
-            return ks.newKieContainer(ks.getRepository().getDefaultReleaseId()).getKieBase();
+            KieContainer emptyContainer = ks.newKieContainer(ks.getRepository().getDefaultReleaseId());
+            containerCache.put(programCode, emptyContainer);
+            return emptyContainer.getKieBase();
         }
 
         KieServices kieServices = KieServices.Factory.get();
@@ -166,6 +187,13 @@ public class KieBaseCacheManager {
 
         KieContainer kieContainer = kieServices.newKieContainer(
                 kieServices.getRepository().getDefaultReleaseId());
+
+        // 将 KieContainer 放入缓存，便于后续 dispose
+        KieContainer previous = containerCache.put(programCode, kieContainer);
+        if (previous != null) {
+            log.debug("[KieBaseCache] 替换并存储新 KieContainer: program={}", programCode);
+        }
+
         return kieContainer.getKieBase();
     }
 
@@ -180,6 +208,15 @@ public class KieBaseCacheManager {
      * 移除指定 Program 的缓存（下线用）。
      */
     public void evict(String programCode) {
+        KieContainer container = containerCache.remove(programCode);
+        if (container != null) {
+            try {
+                container.dispose();
+                log.info("[KieBaseCache] KieContainer 已销毁: program={}", programCode);
+            } catch (Exception e) {
+                log.warn("[KieBaseCache] 销毁 KieContainer 失败: program={}", programCode, e);
+            }
+        }
         cache.remove(programCode);
         log.info("[KieBaseCache] 缓存已清除: program={}", programCode);
     }

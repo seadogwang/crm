@@ -133,6 +133,9 @@ public class PointRedeemService {
 
         BigDecimal remainingToRedeem = pointsToRedeem;
 
+        // R-PTS-05: 追踪实际核销金额（批次扣减 + 信用透支）
+        BigDecimal actuallyRedeemed = BigDecimal.ZERO;
+
         // ---- Step 4: 生成总负向 REDEMPTION 流水 ----
         AccountTransaction redemptionTx = insertRedemptionTransaction(
                 programCode, memberId, accountType, accountId, pointsToRedeem.negate());
@@ -177,6 +180,7 @@ public class PointRedeemService {
             allocationRepo.save(allocation);
 
             remainingToRedeem = remainingToRedeem.subtract(allocateAmount);
+            actuallyRedeemed = actuallyRedeemed.add(allocateAmount);
 
             log.debug("[Redeem] 扣减批次: batchId={}, allocated={}, batchRemaining={}, leftToRedeem={}",
                     batch.getId(), allocateAmount, newRemaining, remainingToRedeem);
@@ -184,16 +188,18 @@ public class PointRedeemService {
 
         // ---- Step 6: 自有余额不足 → 信用额度透支（CREDIT 账户） ----
         if (remainingToRedeem.compareTo(BigDecimal.ZERO) > 0 && creditAccount != null) {
-            processCreditDrawdown(programCode, memberId, creditAccount,
+            BigDecimal creditDrawn = processCreditDrawdown(programCode, memberId, creditAccount,
                     redemptionTx, remainingToRedeem);
+            actuallyRedeemed = actuallyRedeemed.add(creditDrawn);
         }
 
         // ---- Step 7: 更新累计统计 ----
-        account.setTotalRedeemed(account.getTotalRedeemed().add(pointsToRedeem));
+        // R-PTS-05: totalRedeemed 只统计实际扣减金额（批次 + 信用），非请求金额
+        account.setTotalRedeemed(account.getTotalRedeemed().add(actuallyRedeemed));
         accountRepo.save(account);
 
-        log.info("[Redeem] 核销完成: member={}, type={}, redeemed={}, totalRedeemed={}",
-                memberId, accountType, pointsToRedeem, account.getTotalRedeemed());
+        log.info("[Redeem] 核销完成: member={}, type={}, requested={}, actuallyRedeemed={}, totalRedeemed={}",
+                memberId, accountType, pointsToRedeem, actuallyRedeemed, account.getTotalRedeemed());
     }
 
     // ==================== 辅助方法 ====================
@@ -243,8 +249,10 @@ public class PointRedeemService {
     /**
      * 信用额度透支——当自有余额已全部扣完，差额从 CREDIT 账户中扣除。
      * 设计文档 4.3.1 Step 6: 在 CREDIT 账户增加 credit_used，生成 CREDIT_DRAWDOWN 流水。
+     *
+     * @return 实际从信用额度透支的金额
      */
-    private void processCreditDrawdown(String programCode, Long memberId,
+    private BigDecimal processCreditDrawdown(String programCode, Long memberId,
                                         MemberAccount creditAccount, AccountTransaction redemptionTx,
                                         BigDecimal shortfall) {
         BigDecimal creditRemaining = creditAccount.getCreditLimit().subtract(creditAccount.getCreditUsed());
@@ -284,5 +292,6 @@ public class PointRedeemService {
                             + ", 信用可用: " + creditRemaining.toPlainString()
                             + ", 缺口: " + finalShortfall.toPlainString());
         }
+        return drawdownAmount;
     }
 }

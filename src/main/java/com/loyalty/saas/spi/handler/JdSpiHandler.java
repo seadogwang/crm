@@ -64,7 +64,15 @@ public class JdSpiHandler implements ChannelSpiHandler {
         try {
             String bodyStr = new String(rawBody, StandardCharsets.UTF_8);
             Map<String, Object> payload = mapper.readValue(bodyStr, Map.class);
-            String idemKey = programCode + ":JD:" + action + ":" + System.currentTimeMillis();
+
+            // 从请求体 JSON 中提取京东订单ID作为幂等键
+            String orderId = payload.get("orderId") != null
+                    ? String.valueOf(payload.get("orderId")) : null;
+            if (orderId == null || orderId.isBlank()) {
+                orderId = "JD-" + System.currentTimeMillis();
+                log.warn("[JdSpi] 请求体中未找到 orderId，降级使用时间戳生成 idempotencyKey");
+            }
+            String idemKey = programCode + ":JD:" + action + ":" + orderId;
 
             if (inboxRepo.findByIdempotencyKey(programCode, idemKey).isPresent()) {
                 return jdResponse("SUCCESS", "ok (idempotent)");
@@ -72,7 +80,7 @@ public class JdSpiHandler implements ChannelSpiHandler {
 
             inboxRepo.save(EventInbox.builder()
                     .programCode(programCode).sourceChannel("JD")
-                    .sourceEventId("JD-" + System.currentTimeMillis())
+                    .sourceEventId(orderId)
                     .idempotencyKey(idemKey).payloadHash(md5(bodyStr))
                     .payload(payload).signatureVerified(true)
                     .status("RECEIVED").retryCount(0).maxRetry(3)

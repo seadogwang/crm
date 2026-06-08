@@ -24,7 +24,7 @@ public class RedemptionAllocation {
     @Column(name = "accrual_transaction_id", nullable = false)
     private Long accrualTransactionId;
 
-    @Column(name = "allocated_amount", nullable = false, precision = 20, scale = 2)
+    @Column(name = "allocated_amount", nullable = false, precision = 18, scale = 4)
     private BigDecimal allocatedAmount;
 
     /** FIFO 分配顺序 */

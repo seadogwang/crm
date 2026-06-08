@@ -84,10 +84,22 @@ public class TmallSpiHandler implements ChannelSpiHandler {
     @Override
     public Object handleAction(String action, String programCode, byte[] rawBody, ChannelAdapterConfig config) {
         try {
-            String requestId = "TMALL-" + System.currentTimeMillis();
-            String idempotencyKey = programCode + ":TMALL:" + action + ":" + requestId;
             String bodyStr = new String(rawBody, StandardCharsets.UTF_8);
             Map<String, Object> payload = objectMapper.readValue(bodyStr, Map.class);
+
+            // 从请求体 JSON 中提取天猫业务ID作为幂等键：trade.tid
+            Object tradeObj = payload.get("trade");
+            String tid = null;
+            if (tradeObj instanceof Map) {
+                Object tidObj = ((Map<?, ?>) tradeObj).get("tid");
+                if (tidObj != null) tid = String.valueOf(tidObj);
+            }
+            if (tid == null || tid.isBlank()) {
+                tid = "TMALL-" + System.currentTimeMillis();
+                log.warn("[TmallSpi] 请求体中未找到 trade.tid，降级使用时间戳生成 idempotencyKey");
+            }
+            String requestId = tid;
+            String idempotencyKey = programCode + ":TMALL:" + action + ":" + requestId;
 
             // 幂等检查
             if (eventInboxRepo.findByIdempotencyKey(programCode, idempotencyKey).isPresent()) {

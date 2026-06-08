@@ -126,7 +126,7 @@ const AppShell: React.FC = () => {
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#1677ff',
+          colorPrimary: '#1a1a1a',
           borderRadius: 6,
         },
       }}

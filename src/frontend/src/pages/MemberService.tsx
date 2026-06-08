@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col, ConfigProvider } from 'antd';
+import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col, ConfigProvider, AutoComplete, Popconfirm } from 'antd';
 import { SearchOutlined, CopyOutlined, EditOutlined, DollarOutlined, CrownOutlined, LockOutlined, MergeCellsOutlined, HistoryOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import api from '../api';
@@ -115,6 +115,23 @@ const AdjustTierModal: React.FC<{ open: boolean; memberId: string; currentTier: 
 
   const submit = async () => {
     if (!newTier || !reason.trim()) { message.warning('请填写完整'); return; }
+
+    // 检查是否降级
+    const currentSeq = tiers.find(t => t.tierCode === currentTier)?.sequence ?? 0;
+    const newSeq = tiers.find(t => t.tierCode === newTier)?.sequence ?? 0;
+    if (newSeq < currentSeq) {
+      Modal.confirm({
+        title: '新等级低于当前等级，是否确认降级？',
+        okText: '确认降级',
+        cancelText: '取消',
+        onOk: doSubmit,
+      });
+      return;
+    }
+    doSubmit();
+  };
+
+  const doSubmit = async () => {
     setLoading(true);
     try {
       await api.post(`/members/${memberId}/tier/adjust`, { newTier, reason });
@@ -208,6 +225,23 @@ const MemberService: React.FC = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('transactions');
 
+  // 最近查询
+  const RECENT_KEY = 'member_service_recent_searches';
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(RECENT_KEY);
+      if (stored) setRecentSearches(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  const saveRecent = (kw: string) => {
+    const updated = [kw, ...recentSearches.filter(s => s !== kw)].slice(0, 10);
+    setRecentSearches(updated);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(updated)); } catch {}
+  };
+
   // 交易流水
   const [orderData, setOrderData] = useState<OrderVO[]>([]);
   const [orderTotal, setOrderTotal] = useState(0);
@@ -230,11 +264,14 @@ const MemberService: React.FC = () => {
   const [ptsModal, setPtsModal] = useState(false);
   const [tierModal, setTierModal] = useState(false);
 
-  const search = useCallback(async () => {
-    if (!keyword.trim()) return;
+  const performSearch = async (kw: string) => {
+    const trimmed = kw.trim();
+    if (!trimmed) return;
+    setKeyword(trimmed);
+    saveRecent(trimmed);
     setLoading(true); setError(''); setMember(null);
     try {
-      const { data } = await api.get('/members/search', { params: { keyword: keyword.trim() } });
+      const { data } = await api.get('/members/search', { params: { keyword: trimmed } });
       if (data?.code === 'SUCCESS' && data.data) {
         const memberData = data.data;
         setMember(memberData);
@@ -246,7 +283,9 @@ const MemberService: React.FC = () => {
       }
     } catch (e: any) { setError(e.message || '查询失败'); }
     finally { setLoading(false); }
-  }, [keyword]);
+  };
+
+  const search = useCallback(() => performSearch(keyword), [keyword]);
 
   const fetchOrders = async (page: number, memberData: MemberVO) => {
     if (!memberData) return;
@@ -387,12 +426,22 @@ const MemberService: React.FC = () => {
       {/* 搜索栏 */}
       <Card size="small" style={{ marginBottom: 16 }} bodyStyle={{ padding: 16 }}>
         <Space>
-          <Input.Search
-            placeholder="输入手机号或会员ID"
-            value={keyword} onChange={e => setKeyword(e.target.value)}
-            onSearch={search} enterButton={<><SearchOutlined /> 查询</>}
-            style={{ width: 320 }} size="middle" loading={loading}
-          />
+          <AutoComplete
+              options={recentSearches.length > 0
+                ? [{ label: <span style={{ fontSize: 12, color: '#999' }}>最近查询</span>, options: recentSearches.map(s => ({ value: s, label: s })) }]
+                : []}
+              value={keyword}
+              onChange={setKeyword}
+              onSelect={(v) => performSearch(v)}
+              style={{ width: 320 }}
+            >
+              <Input.Search
+                placeholder="输入手机号或会员ID"
+                onSearch={(v) => performSearch(v)}
+                enterButton={<><SearchOutlined /> 查询</>}
+                loading={loading}
+              />
+            </AutoComplete>
         </Space>
       </Card>
 
@@ -441,8 +490,18 @@ const MemberService: React.FC = () => {
               <Button size="small" icon={<EditOutlined />}>信息修改</Button>
               <Button size="small" icon={<DollarOutlined />} onClick={() => setPtsModal(true)}>调整积分</Button>
               <Button size="small" icon={<CrownOutlined />} onClick={() => setTierModal(true)}>调整等级</Button>
-              <Button size="small" icon={<LockOutlined />} danger={member.status !== 'FROZEN_REDEMPTION'}
-                onClick={handleFreeze}>{member.status === 'FROZEN_REDEMPTION' ? '已冻结' : '冻结账户'}</Button>
+              {member.status !== 'FROZEN_REDEMPTION' ? (
+                <Popconfirm
+                  title="冻结后会员将无法使用积分兑换，是否继续？"
+                  onConfirm={handleFreeze}
+                  okText="确认冻结"
+                  cancelText="取消"
+                >
+                  <Button size="small" icon={<LockOutlined />} danger>冻结账户</Button>
+                </Popconfirm>
+              ) : (
+                <Button size="small" icon={<LockOutlined />} disabled>已冻结</Button>
+              )}
               <Button size="small" icon={<MergeCellsOutlined />}>合并会员</Button>
             </div>
           </Card>
@@ -457,7 +516,7 @@ const MemberService: React.FC = () => {
 
           {/* Tabs */}
           <Card bodyStyle={{ padding: 0 }}>
-            <ConfigProvider theme={{ token: { colorPrimary: '#1d39c4' } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: '#1a1a1a' } }}>
             <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ padding: '0 16px' }}
               items={[
                 {

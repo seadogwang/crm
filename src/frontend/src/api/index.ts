@@ -71,4 +71,11 @@ export async function testTransform(req: TransformTestRequest) {
   return data.data;
 }
 
+export async function testChannelTransform(sourceJson: string, mappings: any[], script: string) {
+  const { data } = await api.post<ApiResponse<{ result: any }>>('/admin/channels/test-transform', {
+    sourceJson, mappings, script,
+  });
+  return data.data;
+}
+
 export default api;
