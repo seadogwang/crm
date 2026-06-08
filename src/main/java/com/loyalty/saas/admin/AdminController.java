@@ -1,6 +1,7 @@
 package com.loyalty.saas.admin;
 
 import com.loyalty.saas.accounting.PointGrantService;
+import com.loyalty.saas.common.cache.SystemCacheService;
 import com.loyalty.saas.common.context.TenantContext;
 import com.loyalty.saas.common.dto.ApiResponse;
 import com.loyalty.saas.domain.entity.*;
@@ -37,17 +38,39 @@ public class AdminController {
     private final PointTypeDefinitionRepository pointTypeRepo;
     private final TierDefinitionRepository tierRepo;
     private final PointGrantService pointGrantService;
+    private final SystemCacheService cacheService;
 
     public AdminController(AiRuleGenerationService aiRuleGen,
                            ProgramRepository programRepo,
                            PointTypeDefinitionRepository pointTypeRepo,
                            TierDefinitionRepository tierRepo,
-                           PointGrantService pointGrantService) {
+                           PointGrantService pointGrantService,
+                           SystemCacheService cacheService) {
         this.aiRuleGen = aiRuleGen;
         this.programRepo = programRepo;
         this.pointTypeRepo = pointTypeRepo;
         this.tierRepo = tierRepo;
         this.pointGrantService = pointGrantService;
+        this.cacheService = cacheService;
+    }
+
+    @GetMapping("/cache/enums")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getEnums() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("enums", cacheService.getEnums());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/cache/program-defs")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getProgramDefs() {
+        String pc = TenantContext.get();
+        return ResponseEntity.ok(ApiResponse.success(cacheService.getProgramDef(pc != null ? pc : "PROG001")));
+    }
+
+    @PostMapping("/cache/refresh")
+    public ResponseEntity<ApiResponse<Void>> refresh() {
+        cacheService.refresh();
+        return ResponseEntity.ok(ApiResponse.success("缓存已刷新", null));
     }
 
     // ==================== Program 管理 ====================
