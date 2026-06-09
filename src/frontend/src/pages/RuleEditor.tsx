@@ -22,7 +22,7 @@ interface TierBonus { key: string; tier: string; bonus: number; }
 interface CategoryWeight { key: string; cat: string; weight: number; }
 interface QuantityTier { key: string; minQty: number; bonus: number; }
 type Option = { label: string; value: string };
-type SchemaField = Option & { type: string; format?: string };
+type SchemaField = Option & { type: string; format?: string; enumValues?: string[] };
 
 // ==================== 常量 ====================
 
@@ -268,14 +268,14 @@ const RuleEditor: React.FC = () => {
   useEffect(() => {
     api.get('/schemas/ORDER').then(({ data }) => {
       const s = data?.data?.schema || data?.data;
-      const fields = Object.entries(s?.properties || {}).map(([k, v]: any) => ({ label: `${v.title || k} (${k})`, value: k, type: v.type || 'string', format: v.format || undefined }));
+      const fields = Object.entries(s?.properties || {}).map(([k, v]: any) => ({ label: `${v.title || k} (${k})`, value: k, type: v.type || 'string', format: v.format || undefined, enumValues: v.enum || undefined }));
       setOrderSchemaFields(fields);
       if (s?.properties?.trade_status?.enum) setTradeStatusOptions(s.properties.trade_status.enum.map((e: string) => ({ label: e, value: e })));
       if (ruleCategory === 'ORDER') { setSchemaTitle(s?.title || ''); setSchemaFields(fields); }
     }).catch(() => {});
     api.get('/schemas/BEHAVIOR').then(({ data }) => {
       const s = data?.data?.schema || data?.data;
-      const fields = Object.entries(s?.properties || {}).map(([k, v]: any) => ({ label: `${v.title || k} (${k})`, value: k, type: v.type || 'string', format: v.format || undefined }));
+      const fields = Object.entries(s?.properties || {}).map(([k, v]: any) => ({ label: `${v.title || k} (${k})`, value: k, type: v.type || 'string', format: v.format || undefined, enumValues: v.enum || undefined }));
       setBehaviorSchemaFields(fields);
       if (ruleCategory === 'BEHAVIOR') { setSchemaTitle(s?.title || ''); setSchemaFields(fields); }
     }).catch(() => {});
@@ -452,9 +452,8 @@ const RuleEditor: React.FC = () => {
                   <Button size="small" type="dashed" style={{ fontSize: 11, padding: '0 8px' }}
                     onClick={() => {
                       const idx = extConditions.length;
-                      setExtConditions([...extConditions, { key: String(Date.now()), field: f.value, type: f.type, format: f.format, op: f.type === 'number' ? '>=' : '==', value: '' }]);
+                      setExtConditions([...extConditions, { key: String(Date.now()), field: f.value, type: f.type, format: f.format, op: f.type === 'number' ? '>=' : f.format === 'date-time' ? '>=' : f.value?.includes('enum') ? '==' : '==', value: '' }]);
                       setEditingCondIdx(idx);
-                      setCurrentStep(1);  // 自动跳转到步骤② 配置条件值
                     }}>
                     + {f.label}
                   </Button>
@@ -500,7 +499,23 @@ const RuleEditor: React.FC = () => {
                 {isEditing ? (
                   <>
                     <Select size="small" value={c.op} options={OPS} style={{ width: 80 }} onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], op: v }; setExtConditions(n); }} />
-                    <Input size="small" placeholder="输入值" value={c.value} autoFocus style={{ width: 120 }} onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} onPressEnter={() => setEditingCondIdx(null)} onBlur={() => c.value ? setEditingCondIdx(null) : null} />
+                    {c.type === 'number' ? (
+                      <InputNumber size="small" placeholder="数值" value={c.value ? Number(c.value) : undefined} autoFocus style={{ width: 120 }}
+                        onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: String(v ?? '') }; setExtConditions(n); }}
+                        onPressEnter={() => setEditingCondIdx(null)} />
+                    ) : fieldMeta?.enumValues?.length ? (
+                      <Select size="small" placeholder="选择值" value={c.value || undefined} autoFocus style={{ width: 140 }}
+                        options={fieldMeta.enumValues.map(e => ({ label: e, value: e }))}
+                        onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: v }; setExtConditions(n); setEditingCondIdx(null); }} />
+                    ) : c.format === 'date-time' || c.format === 'date' ? (
+                      <Input size="small" placeholder={c.format === 'date-time' ? '2025-06-01' : '2025-06-01'} value={c.value} autoFocus style={{ width: 150 }}
+                        onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }}
+                        onPressEnter={() => setEditingCondIdx(null)} onBlur={() => c.value ? setEditingCondIdx(null) : null} />
+                    ) : (
+                      <Input size="small" placeholder="输入值" value={c.value} autoFocus style={{ width: 120 }}
+                        onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }}
+                        onPressEnter={() => setEditingCondIdx(null)} onBlur={() => c.value ? setEditingCondIdx(null) : null} />
+                    )}
                     <Button size="small" type="link" onClick={() => setEditingCondIdx(null)} style={{ padding: 0 }}>确定</Button>
                   </>
                 ) : (
@@ -542,14 +557,31 @@ const RuleEditor: React.FC = () => {
         <Checkbox.Group options={TIME_CONDITIONS} value={timeConditions} onChange={v => setTimeConditions(v as string[])} />
       </Form.Item>
       <Divider orientation="left" plain style={{ fontSize: 12 }}>Schema 字段筛选</Divider>
-      {extConditions.map((c, i) => (
+      {extConditions.map((c, i) => {
+        const fm = schemaFields.find(f => f.value === c.field);
+        return (
         <Row gutter={8} key={c.key} style={{ marginBottom: 8 }}>
-          <Col span={8}><Select showSearch placeholder="选字段" value={c.field || undefined} options={schemaFields} style={{ width: '100%' }} onChange={v => { const n = [...extConditions]; const sf = schemaFields.find(f => f.value === v); n[i] = { ...n[i], field: v, type: sf?.type || 'string' }; setExtConditions(n); }} /></Col>
+          <Col span={7}><Select showSearch placeholder="选字段" value={c.field || undefined} options={schemaFields} style={{ width: '100%' }} onChange={v => { const n = [...extConditions]; const sf = schemaFields.find(f => f.value === v); n[i] = { ...n[i], field: v, type: sf?.type || 'string', format: sf?.format }; setExtConditions(n); }} /></Col>
           <Col span={5}><Select value={c.op} options={OPS} style={{ width: '100%' }} onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], op: v }; setExtConditions(n); }} /></Col>
-          <Col span={6}><Input placeholder="值" value={c.value} onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} /></Col>
+          <Col span={7}>
+            {c.type === 'number' ? (
+              <InputNumber placeholder="数值" value={c.value ? Number(c.value) : undefined} style={{ width: '100%' }}
+                onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: String(v ?? '') }; setExtConditions(n); }} />
+            ) : fm?.enumValues?.length ? (
+              <Select placeholder="选择" value={c.value || undefined} style={{ width: '100%' }}
+                options={fm.enumValues.map(e => ({ label: e, value: e }))}
+                onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: v }; setExtConditions(n); }} />
+            ) : c.format === 'date-time' ? (
+              <Input placeholder="2025-06-01 12:00" value={c.value}
+                onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} />
+            ) : (
+              <Input placeholder="值" value={c.value}
+                onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} />
+            )}
+          </Col>
           <Col span={5}>{i === extConditions.length - 1 ? <Button type="dashed" size="small" block onClick={() => setExtConditions([...extConditions, { key: String(Date.now()), field: '', op: '>', value: '' }])}>+</Button> : <Button type="text" size="small" danger onClick={() => setExtConditions(extConditions.filter((_, j) => j !== i))}>×</Button>}</Col>
         </Row>
-      ))}
+      );})}
       {extConditions.length === 0 && <Button type="dashed" size="small" onClick={() => setExtConditions([{ key: String(Date.now()), field: '', op: '>', value: '' }])}>+ 添加</Button>}
     </div>,
 
