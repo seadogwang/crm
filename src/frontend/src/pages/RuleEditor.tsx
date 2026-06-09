@@ -64,6 +64,7 @@ function generateDrl(data: Record<string, any>): string {
     lines.push(`// @frequency: ${data.frequencyLimit}`);
   }
   lines.push(`rule "${safeName}"`);
+  lines.push(`  salience ${data.salience || 100}`);
   lines.push(`  agenda-group "${agendaGroup}"`);
   lines.push('  when');
 
@@ -227,11 +228,11 @@ const RuleEditor: React.FC = () => {
   }, [selectedEntity]);
 
   const formData = useMemo(() => ({
-    ruleName, agendaGroup, selectedEntity, frequencyLimit, pointType,
+    ruleName, agendaGroup, salience, selectedEntity, frequencyLimit, pointType,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
     calcMode, ratioPercent, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
     rewardPoints, tierBonuses, aiGeneratedDrl,
-  }), [ruleName, agendaGroup, selectedEntity, frequencyLimit, pointType,
+  }), [ruleName, agendaGroup, salience, selectedEntity, frequencyLimit, pointType,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
     calcMode, ratioPercent, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
     rewardPoints, tierBonuses, aiGeneratedDrl]);
