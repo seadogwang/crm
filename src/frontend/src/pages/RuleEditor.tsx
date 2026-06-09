@@ -18,7 +18,7 @@ const { Panel } = Collapse;
 
 // ==================== 类型 ====================
 
-interface ExtCondition { key: string; field: string; type?: string; format?: string; op: string; value: string; }
+interface ExtCondition { key: string; field: string; type?: string; format?: string; op: string; value: string; valueEnd?: string; }
 interface TierBonus { key: string; tier: string; bonus: number; }
 interface CategoryWeight { key: string; cat: string; weight: number; }
 interface QuantityTier { key: string; minQty: number; bonus: number; }
@@ -31,8 +31,20 @@ const OPS = [
   { label: '>', value: '>' }, { label: '>=', value: '>=' },
   { label: '<', value: '<' }, { label: '<=', value: '<=' },
   { label: '=', value: '==' }, { label: '!=', value: '!=' },
-  { label: '包含', value: 'contains' },
 ];
+
+const RANGE_OPS = [
+  { label: '区间(含边界)', value: 'BETWEEN_EQ' },
+  { label: '区间(不含边界)', value: 'BETWEEN' },
+];
+
+const STRING_OPS = [{ label: '包含文本', value: 'contains' }];
+
+function getOpsForField(type?: string, format?: string): Array<{ label: string; value: string }> {
+  if (type === 'number' || format === 'date-time' || format === 'date') return [...OPS, ...RANGE_OPS];
+  if (type === 'string') return [...OPS, ...STRING_OPS];
+  return OPS;
+}
 
 const ALL_CHANNELS = [
   { label: '天猫', value: 'TMALL' }, { label: '京东', value: 'JD' },
@@ -109,9 +121,18 @@ function generateDrl(data: Record<string, any>): string {
   const extConds: ExtCondition[] = data.extConditions || [];
   for (const c of extConds) {
     if (!c.field || !c.op) continue;
-    const v = isNaN(Number(c.value)) ? `"${c.value}"` : c.value;
     const fn = c.type === 'number' ? 'getPayloadNumber' : 'getPayloadString';
-    conds.push(`    eval($event.${fn}("${c.field}") ${c.op} ${v})`);
+    if (c.op === 'BETWEEN' || c.op === 'BETWEEN_EQ') {
+      // Range operator: start < field < end (exclusive) or start <= field <= end (inclusive)
+      const v1 = isNaN(Number(c.value)) ? `"${c.value}"` : c.value;
+      const v2 = isNaN(Number(c.valueEnd)) ? `"${c.valueEnd}"` : c.valueEnd;
+      const op1 = c.op === 'BETWEEN_EQ' ? '>=' : '>';
+      const op2 = c.op === 'BETWEEN_EQ' ? '<=' : '<';
+      conds.push(`    eval($event.${fn}("${c.field}") ${op1} ${v1} && $event.${fn}("${c.field}") ${op2} ${v2})`);
+    } else {
+      const v = isNaN(Number(c.value)) ? `"${c.value}"` : c.value;
+      conds.push(`    eval($event.${fn}("${c.field}") ${c.op} ${v})`);
+    }
   }
 
   lines.push(conds.join(',\n'));
@@ -499,8 +520,31 @@ const RuleEditor: React.FC = () => {
                 <Tag color="blue" style={{ fontSize: 11, margin: 0, flexShrink: 0 }}>{fieldMeta?.label || c.field}</Tag>
                 {isEditing ? (
                   <>
-                    <Select size="small" value={c.op} options={OPS} style={{ width: 80 }} onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], op: v }; setExtConditions(n); }} />
-                    {c.type === 'number' ? (
+                    <Select size="small" value={c.op} options={getOpsForField(c.type, c.format)} style={{ width: c.op?.startsWith('BETWEEN') ? 120 : 80 }} onChange={v => {
+                      const n = [...extConditions]; n[i] = { ...n[i], op: v, value: '', valueEnd: '' }; setExtConditions(n);
+                    }} />
+                    {c.op?.startsWith('BETWEEN') ? (
+                      // Range: two inputs
+                      <Space size={4}>
+                        {c.format === 'date-time' ? (
+                          <DatePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss" placeholder="起始"
+                            value={c.value ? dayjs(c.value) : null} style={{ width: 160 }}
+                            onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], value: d ? d.format('YYYY-MM-DD HH:mm:ss') : '' }; setExtConditions(n); }} />
+                        ) : (
+                          <InputNumber size="small" placeholder="起始" value={c.value ? Number(c.value) : undefined} style={{ width: 80 }}
+                            onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: String(v ?? '') }; setExtConditions(n); }} />
+                        )}
+                        <Text type="secondary">~</Text>
+                        {c.format === 'date-time' ? (
+                          <DatePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss" placeholder="结束"
+                            value={c.valueEnd ? dayjs(c.valueEnd) : null} style={{ width: 160 }}
+                            onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], valueEnd: d ? d.format('YYYY-MM-DD HH:mm:ss') : '' }; setExtConditions(n); }} />
+                        ) : (
+                          <InputNumber size="small" placeholder="结束" value={c.valueEnd ? Number(c.valueEnd) : undefined} style={{ width: 80 }}
+                            onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], valueEnd: String(v ?? '') }; setExtConditions(n); }} />
+                        )}
+                      </Space>
+                    ) : c.type === 'number' ? (
                       <InputNumber size="small" placeholder="数值" value={c.value ? Number(c.value) : undefined} autoFocus style={{ width: 120 }}
                         onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: String(v ?? '') }; setExtConditions(n); }}
                         onPressEnter={() => setEditingCondIdx(null)} />
@@ -525,7 +569,11 @@ const RuleEditor: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Tag style={{ fontSize: 11, margin: 0 }}>{c.op} {c.value || <Text type="secondary">点击编辑</Text>}</Tag>
+                    <Tag style={{ fontSize: 11, margin: 0 }}>
+                      {c.op?.startsWith('BETWEEN')
+                        ? `${c.op === 'BETWEEN_EQ' ? '区间[含边界]' : '区间(不含)'} ${c.value || '?'} ~ ${c.valueEnd || '?'}`
+                        : `${c.op} ${c.value || <Text type="secondary">点击编辑</Text>}`}
+                    </Tag>
                     <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => setEditingCondIdx(i)}>编辑</Button>
                     <Button size="small" type="link" danger style={{ padding: 0, fontSize: 11 }} onClick={() => setExtConditions(extConditions.filter((_, j) => j !== i))}>删除</Button>
                   </>
@@ -567,9 +615,33 @@ const RuleEditor: React.FC = () => {
         return (
         <Row gutter={8} key={c.key} style={{ marginBottom: 8 }}>
           <Col span={7}><Select showSearch placeholder="选字段" value={c.field || undefined} options={schemaFields} style={{ width: '100%' }} onChange={v => { const n = [...extConditions]; const sf = schemaFields.find(f => f.value === v); n[i] = { ...n[i], field: v, type: sf?.type || 'string', format: sf?.format }; setExtConditions(n); }} /></Col>
-          <Col span={5}><Select value={c.op} options={OPS} style={{ width: '100%' }} onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], op: v }; setExtConditions(n); }} /></Col>
+          <Col span={5}><Select value={c.op} options={getOpsForField(c.type, c.format)} style={{ width: '100%' }} onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], op: v }; setExtConditions(n); }} /></Col>
           <Col span={7}>
-            {c.type === 'number' ? (
+            {c.op?.startsWith('BETWEEN') ? (
+              <Space size={3} style={{ width: '100%' }}>
+                {c.format === 'date-time' ? (
+                  <>
+                    <DatePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss" placeholder="起始" style={{ width: 130 }}
+                      value={c.value ? dayjs(c.value) : null}
+                      onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], value: d ? d.format('YYYY-MM-DD HH:mm:ss') : '' }; setExtConditions(n); }} />
+                    <Text type="secondary">~</Text>
+                    <DatePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss" placeholder="结束" style={{ width: 130 }}
+                      value={c.valueEnd ? dayjs(c.valueEnd) : null}
+                      onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], valueEnd: d ? d.format('YYYY-MM-DD HH:mm:ss') : '' }; setExtConditions(n); }} />
+                  </>
+                ) : (
+                  <>
+                    <InputNumber size="small" placeholder="起始" style={{ width: '45%' }}
+                      value={c.value ? Number(c.value) : undefined}
+                      onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: String(v ?? '') }; setExtConditions(n); }} />
+                    <Text type="secondary">~</Text>
+                    <InputNumber size="small" placeholder="结束" style={{ width: '45%' }}
+                      value={c.valueEnd ? Number(c.valueEnd) : undefined}
+                      onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], valueEnd: String(v ?? '') }; setExtConditions(n); }} />
+                  </>
+                )}
+              </Space>
+            ) : c.type === 'number' ? (
               <InputNumber placeholder="数值" value={c.value ? Number(c.value) : undefined} style={{ width: '100%' }}
                 onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: String(v ?? '') }; setExtConditions(n); }} />
             ) : fm?.enumValues?.length ? (
