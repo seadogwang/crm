@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import {
-  Card, Form, Input, InputNumber, Select, Button, message, Space, Modal, Tag,
+  Card, Form, Input, InputNumber, Select, Button, message, Space, Modal, Tag, DatePicker,
   Typography, Alert, Descriptions, Divider, Steps, Collapse, Checkbox, Radio, Row, Col,
 } from 'antd';
 import {
@@ -507,10 +508,14 @@ const RuleEditor: React.FC = () => {
                       <Select size="small" placeholder="选择值" value={c.value || undefined} autoFocus style={{ width: 140 }}
                         options={fieldMeta.enumValues.map(e => ({ label: e, value: e }))}
                         onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: v }; setExtConditions(n); setEditingCondIdx(null); }} />
-                    ) : c.format === 'date-time' || c.format === 'date' ? (
-                      <Input size="small" placeholder={c.format === 'date-time' ? '2025-06-01' : '2025-06-01'} value={c.value} autoFocus style={{ width: 150 }}
-                        onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }}
-                        onPressEnter={() => setEditingCondIdx(null)} onBlur={() => c.value ? setEditingCondIdx(null) : null} />
+                    ) : c.format === 'date-time' ? (
+                      <DatePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss" placeholder="选择日期时间"
+                        value={c.value ? dayjs(c.value) : null} style={{ width: 180 }}
+                        onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], value: d ? d.format('YYYY-MM-DD HH:mm:ss') : '' }; setExtConditions(n); setEditingCondIdx(null); }} />
+                    ) : c.format === 'date' ? (
+                      <DatePicker size="small" placeholder="选择日期"
+                        value={c.value ? dayjs(c.value) : null} style={{ width: 150 }}
+                        onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], value: d ? d.format('YYYY-MM-DD') : '' }; setExtConditions(n); setEditingCondIdx(null); }} />
                     ) : (
                       <Input size="small" placeholder="输入值" value={c.value} autoFocus style={{ width: 120 }}
                         onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }}
@@ -572,8 +577,13 @@ const RuleEditor: React.FC = () => {
                 options={fm.enumValues.map(e => ({ label: e, value: e }))}
                 onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], value: v }; setExtConditions(n); }} />
             ) : c.format === 'date-time' ? (
-              <Input placeholder="2025-06-01 12:00" value={c.value}
-                onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} />
+              <DatePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss" placeholder="选择日期时间"
+                value={c.value ? dayjs(c.value) : null} style={{ width: '100%' }}
+                onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], value: d ? d.format('YYYY-MM-DD HH:mm:ss') : '' }; setExtConditions(n); }} />
+            ) : c.format === 'date' ? (
+              <DatePicker size="small" placeholder="选择日期"
+                value={c.value ? dayjs(c.value) : null} style={{ width: '100%' }}
+                onChange={(d) => { const n = [...extConditions]; n[i] = { ...n[i], value: d ? d.format('YYYY-MM-DD') : '' }; setExtConditions(n); }} />
             ) : (
               <Input placeholder="值" value={c.value}
                 onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} />
