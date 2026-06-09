@@ -454,6 +454,7 @@ const RuleEditor: React.FC = () => {
                       const idx = extConditions.length;
                       setExtConditions([...extConditions, { key: String(Date.now()), field: f.value, type: f.type, op: f.type === 'number' ? '>=' : '==', value: '' }]);
                       setEditingCondIdx(idx);
+                      setCurrentStep(1);  // 自动跳转到步骤② 配置条件值
                     }}>
                     + {f.label}
                   </Button>
