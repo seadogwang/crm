@@ -426,23 +426,7 @@ const RuleEditor: React.FC = () => {
         )}
       </Card>
 
-      {/* 会员条件 */}
-      <Card size="small" title="会员条件" extra={<Text type="secondary" style={{ fontSize: 11 }}>可选</Text>}>
-        <Form.Item label="等级" style={{ marginBottom: 4 }}>
-          <Checkbox.Group options={tierOptions} value={memberTiers} onChange={v => setMemberTiers(v as string[])} />
-        </Form.Item>
-        {selectedEntity === 'ORDER' && (
-          <Form.Item label="金额门槛" style={{ marginBottom: 4 }}>
-            <InputNumber size="small" min={0} max={999999} value={minAmount} onChange={v => setMinAmount(v || 0)} addonAfter="元" />
-          </Form.Item>
-        )}
-        {tradeStatusOptions.length > 0 && (
-          <Form.Item label="交易状态" style={{ marginBottom: 0 }}>
-            <Checkbox.Group options={tradeStatusOptions} value={tradeStatus} onChange={v => setTradeStatus(v as string[])} />
-          </Form.Item>
-        )}
-      </Card>
-    </div>,
+      </div>,
 
     // ② 等级加成
     <div key="s1">
