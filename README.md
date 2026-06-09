@@ -129,6 +129,12 @@ src/main/java/com/loyalty/platform/
 - **Event Time Extraction** — Multi-format business event time parsing
 - **KieBase Draft Compilation** — `buildKieBaseWithDraft()` for shadow sandbox
 
+### Screenshots
+
+| Rule Configuration | Member Service |
+|-------------------|----------------|
+| ![Rule Editor](规则配置.png) | ![Member Service](会员服务.png) |
+
 ---
 
 ## 中文
