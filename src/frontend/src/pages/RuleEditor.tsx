@@ -366,20 +366,21 @@ const RuleEditor: React.FC = () => {
   ];
 
   const stepContent = [
-    // ① 规则类型
+    // ① 规则类型 + 快速配置
     <div key="s0">
+      {/* 规则分类卡片 */}
       <Row gutter={24}>
         <Col span={12}>
           <Card size="small" hoverable onClick={() => setRuleCategory('ORDER')}
             style={{ cursor: 'pointer', border: ruleCategory === 'ORDER' ? '2px solid #1677ff' : '1px solid #d9d9d9', background: ruleCategory === 'ORDER' ? '#f0f5ff' : '#fff' }}>
-            <Text strong style={{ fontSize: 15 }}>📦 订单类规则</Text>
-            <br /><Text type="secondary" style={{ fontSize: 12 }}>按交易金额比例或订单明细计算积分</Text>
+            <Text strong style={{ fontSize: 15 }}>📦 订单类</Text>
+            <br /><Text type="secondary" style={{ fontSize: 12 }}>按订单金额比例或商品明细计算积分</Text>
           </Card>
         </Col>
         <Col span={12}>
           <Card size="small" hoverable onClick={() => setRuleCategory('BEHAVIOR')}
             style={{ cursor: 'pointer', border: ruleCategory === 'BEHAVIOR' ? '2px solid #1677ff' : '1px solid #d9d9d9', background: ruleCategory === 'BEHAVIOR' ? '#f0f5ff' : '#fff' }}>
-            <Text strong style={{ fontSize: 15 }}>🏃 行为类规则</Text>
+            <Text strong style={{ fontSize: 15 }}>🏃 行为类</Text>
             <br /><Text type="secondary" style={{ fontSize: 12 }}>按行为次数奖励固定积分，支持频次控制</Text>
           </Card>
         </Col>
@@ -387,20 +388,21 @@ const RuleEditor: React.FC = () => {
 
       <Divider style={{ margin: '16px 0' }} />
 
+      {/* 核心配置: 积分类型 + 议程组 + 频次 */}
       <Row gutter={16}>
-        <Col span={8}>
+        <Col span={6}>
           <Form.Item label="积分类型" tooltip="选择此规则发放的积分种类">
             <Select value={pointType} onChange={setPointType} options={pointTypeOptions} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Form.Item label="议程组" tooltip="决定规则在哪个阶段执行">
             <Select value={agendaGroup} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
         {ruleCategory === 'BEHAVIOR' && (
-          <Col span={8}>
-            <Form.Item label="频次限制" tooltip="控制行为重复奖励策略">
+          <Col span={12}>
+            <Form.Item label="频次限制">
               <Radio.Group value={frequencyLimit} onChange={e => setFrequencyLimit(e.target.value)} size="small">
                 <Radio.Button value="once">仅首次</Radio.Button>
                 <Radio.Button value="once_per_day">每天一次</Radio.Button>
@@ -411,21 +413,87 @@ const RuleEditor: React.FC = () => {
         )}
       </Row>
 
-      {/* Schema 字段预览 + 快速配置 */}
-      <Card size="small" title={<Space><Tag color="blue">{ruleCategory}</Tag>Schema 字段预览</Space>}
-        style={{ marginTop: 12 }} bodyStyle={{ padding: '8px 16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 4 }}>
-          {schemaFields.map(f => (
-            <div key={f.value} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
-              <Tag color={f.type === 'number' ? 'blue' : f.type === 'string' ? 'green' : f.type === 'array' ? 'orange' : 'default'}
-                style={{ fontSize: 11, margin: 0, flexShrink: 0 }}>
-                {f.type}
-              </Tag>
-              <Text style={{ fontSize: 12 }}>{f.label}</Text>
-            </div>
-          ))}
-        </div>
+      {/* 快速配置: 直接从 Schema 字段构建规则骨架 */}
+      <Card size="small" title="快速配置" style={{ marginTop: 12 }}
+        extra={<Text type="secondary" style={{ fontSize: 11 }}>基于 {ruleCategory} Schema ({schemaFields.length} 字段)</Text>}>
+        {ruleCategory === 'ORDER' ? (
+          <div>
+            <Row gutter={16} align="middle">
+              <Col><Text>当订单</Text></Col>
+              <Col>
+                <Select size="small" placeholder="选计算字段" style={{ width: 160 }}
+                  value={calcMode === 'total' ? 'total_amount' : 'per_item'}
+                  onChange={v => { setCalcMode(v === 'total_amount' ? 'total' : 'per_item'); }}
+                  options={orderSchemaFields.filter(f => f.type === 'number').map(f => ({ label: f.label, value: f.value }))} />
+              </Col>
+              <Col><Text>满足时，按</Text></Col>
+              <Col>
+                {calcMode === 'total' ? (
+                  <Space size={4}>
+                    <InputNumber size="small" min={0.1} max={100} step={0.1} value={ratioPercent} onChange={v => setRatioPercent(v || 0)} style={{ width: 70 }} />
+                    <Text>% 比例发放</Text>
+                    {pointTypeOptions.find(p => p.value === pointType)?.label || pointType}
+                  </Space>
+                ) : (
+                  <Space size={4}>
+                    <Text>每件商品</Text>
+                    <InputNumber size="small" min={0} max={9999} value={perItemPoints} onChange={v => setPerItemPoints(v || 0)} style={{ width: 70 }} />
+                    <Text>分</Text>
+                  </Space>
+                )}
+              </Col>
+            </Row>
+            <Divider style={{ margin: '8px 0' }} />
+            <Row gutter={8}>
+              <Col><Text type="secondary" style={{ fontSize: 12 }}>可用筛选字段:</Text></Col>
+              {orderSchemaFields.filter(f => !['items', 'eventType', 'member_id', 'total_amount', 'order_amount'].includes(f.value)).map(f => (
+                <Col key={f.value}>
+                  <Button size="small" type="dashed" style={{ fontSize: 11, padding: '0 8px' }}
+                    onClick={() => setExtConditions([...extConditions, { key: String(Date.now()), field: f.value, type: f.type, op: f.type === 'number' ? '>=' : '==', value: '' }])}>
+                    + {f.label}
+                  </Button>
+                </Col>
+              ))}
+            </Row>
+          </div>
+        ) : (
+          <div>
+            <Row gutter={16} align="middle">
+              <Col><Text>当用户完成</Text></Col>
+              <Col>
+                <Select size="small" style={{ width: 140 }}
+                  value={extConditions.find(c => c.field === 'behavior_code')?.value || undefined}
+                  onChange={v => {
+                    const existing = extConditions.findIndex(c => c.field === 'behavior_code');
+                    if (existing >= 0) { const n = [...extConditions]; n[existing] = { ...n[existing], value: v }; setExtConditions(n); }
+                    else setExtConditions([...extConditions, { key: String(Date.now()), field: 'behavior_code', type: 'string', op: '==', value: v }]);
+                  }}
+                  options={behaviorSchemaFields.filter(f => f.value === 'eventType' || f.value === 'behavior_code').map(f => ({ label: f.value, value: f.value }))}
+                  placeholder="选择行为" />
+              </Col>
+              <Col><Text>时，奖励</Text></Col>
+              <Col>
+                <InputNumber size="small" min={1} max={10000} value={rewardPoints} onChange={v => setRewardPoints(v || 0)} style={{ width: 70 }} />
+              </Col>
+              <Col><Text>分</Text></Col>
+            </Row>
+          </div>
+        )}
       </Card>
+
+      {/* 已添加的筛选条件预览 */}
+      {extConditions.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <Text type="secondary" style={{ fontSize: 11 }}>已添加 {extConditions.length} 个筛选:</Text>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+            {extConditions.filter(c => c.field).map((c, i) => (
+              <Tag key={c.key} closable onClose={() => setExtConditions(extConditions.filter((_, j) => j !== i))} style={{ fontSize: 11 }}>
+                {schemaFields.find(f => f.value === c.field)?.label || c.field} {c.op} {c.value || '?'}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
     </div>,
 
     // ② 筛选条件 (all optional)
