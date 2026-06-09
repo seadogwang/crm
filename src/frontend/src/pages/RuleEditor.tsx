@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import {
   SaveOutlined, ThunderboltOutlined, SendOutlined, SettingOutlined,
-  GiftOutlined, LeftOutlined, RightOutlined, CheckOutlined, CopyOutlined, EditOutlined, EyeOutlined,
+  GiftOutlined, LeftOutlined, RightOutlined, CheckOutlined, CopyOutlined, EditOutlined, DeleteOutlined, EyeOutlined,
 } from '@ant-design/icons';
 import PageWrapper from '../components/PageWrapper';
 import api from '../api';
@@ -318,7 +318,7 @@ const RuleEditor: React.FC = () => {
         {c ? (
           <>
             <Tag style={{ fontSize: 11, margin: 0 }}>{c.op?.startsWith('BETWEEN') ? `${c.op === 'BETWEEN_EQ' ? '区间[含]' : '区间'} ${c.value || '?'}~${c.valueEnd || '?'}` : `${c.op} ${c.value}`}</Tag>
-            <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => setEditingCondIdx(idx)}>编辑</Button>
+            <Button size="small" type="link" style={{ padding: 0 }} icon={<EditOutlined style={{ fontSize: 13 }} />} onClick={() => setEditingCondIdx(idx)} />
             <Button size="small" type="link" danger style={{ padding: 0, fontSize: 11 }} onClick={() => setExtConditions(extConditions.filter((_, i) => i !== idx))}>×</Button>
           </>
         ) : f.type === 'array' ? (
@@ -463,8 +463,8 @@ const RuleEditor: React.FC = () => {
                 ) : (
                   <>
                     <Text style={{ fontSize: 12 }}>{c.op?.startsWith('BETWEEN') ? `${c.op === 'BETWEEN_EQ' ? '区间[含]' : '区间'} ${c.value || '?'} ~ ${c.valueEnd || '?'}` : `${c.op} ${c.value || '(未设置)'}`}</Text>
-                    <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => setEditingCondIdx(globalIdx)}>编辑</Button>
-                    <Button size="small" type="link" danger style={{ padding: 0, fontSize: 11 }} onClick={() => setExtConditions(extConditions.filter((_, j) => j !== globalIdx))}>删除</Button>
+                    <Button size="small" type="link" style={{ padding: 0 }} icon={<EditOutlined style={{ fontSize: 13 }} />} onClick={() => setEditingCondIdx(globalIdx)}>编辑</Button>
+                    <Button size="small" type="link" danger style={{ padding: 0 }} icon={<DeleteOutlined style={{ fontSize: 13 }} />} onClick={() => setExtConditions(extConditions.filter((_, j) => j !== globalIdx))} />
                   </>
                 )}
               </div>
