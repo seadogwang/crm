@@ -153,6 +153,7 @@ const RuleEditor: React.FC = () => {
   const [ruleName, setRuleName] = useState('');
   const [ruleCode, setRuleCode] = useState('');
   const [agendaGroup, setAgendaGroup] = useState('purchase');
+  const [salience, setSalience] = useState(100);
 
   // ① 业务实体配置
   const [selectedEntity, setSelectedEntity] = useState('ORDER');
@@ -340,27 +341,25 @@ const RuleEditor: React.FC = () => {
   const stepContent = [
     // ① 业务实体配置
     <div key="s0">
-      <Row gutter={16} style={{ marginBottom: 12 }}>
-        <Col span={8}>
-          <Form.Item label="业务实体" tooltip="选择此规则对应的业务实体类型" style={{ marginBottom: 0 }}>
-            <Select value={selectedEntity} onChange={v => { setSelectedEntity(v); setExtConditions([]); }} options={entityOptions} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item label="积分类型" tooltip="选择此规则发放的积分种类" style={{ marginBottom: 0 }}>
-            <Select value={pointType} onChange={setPointType} options={pointTypeOptions} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item label="议程组" tooltip="决定规则在哪个阶段执行" style={{ marginBottom: 0 }}>
+      {/* 第一行: 规则组 + 积分类型 + 优先级 */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={6}>
+          <Form.Item label="规则组" tooltip="同一规则组内的规则按优先级排序执行" style={{ marginBottom: 0 }}>
             <Select value={agendaGroup} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
-      </Row>
-
-      {selectedEntity === 'BEHAVIOR' && (
-        <Row gutter={16} style={{ marginBottom: 12 }}>
-          <Col span={8}>
+        <Col span={6}>
+          <Form.Item label="积分类型" tooltip="此规则计算出的积分将计入哪个积分账户" style={{ marginBottom: 0 }}>
+            <Select value={pointType} onChange={setPointType} options={pointTypeOptions} style={{ width: '100%' }} />
+          </Form.Item>
+        </Col>
+        <Col span={6}>
+          <Form.Item label="优先级" tooltip="同规则组内数字越大越先执行" style={{ marginBottom: 0 }}>
+            <InputNumber min={0} max={1000} value={salience} onChange={v => setSalience(v || 0)} style={{ width: '100%' }} />
+          </Form.Item>
+        </Col>
+        {selectedEntity === 'BEHAVIOR' && (
+          <Col span={6}>
             <Form.Item label="频次限制" style={{ marginBottom: 0 }}>
               <Radio.Group value={frequencyLimit} onChange={e => setFrequencyLimit(e.target.value)} size="small">
                 <Radio.Button value="once">仅首次</Radio.Button>
@@ -369,17 +368,36 @@ const RuleEditor: React.FC = () => {
               </Radio.Group>
             </Form.Item>
           </Col>
-        </Row>
-      )}
+        )}
+      </Row>
 
-      <Card size="small" title={<Space><Tag color="blue">{selectedEntity}</Tag>可用字段 ({schemaFields.length})</Space>} style={{ marginBottom: 12 }}>
+      {/* 第二行: 业务实体选择 — 全部展示，点击选中 */}
+      <div style={{ marginBottom: 12 }}>
+        <Text type="secondary" style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>业务实体</Text>
+        <Space wrap>
+          {entityOptions.map(e => (
+            <Button key={e.value}
+              type={selectedEntity === e.value ? 'primary' : 'default'}
+              size="small"
+              onClick={() => { setSelectedEntity(e.value); setExtConditions([]); }}
+            >
+              {e.label}
+            </Button>
+          ))}
+        </Space>
+      </div>
+
+      {/* 第三行: 选中实体属性 — 全部展开，点击配置 */}
+      <Card size="small" title={<Space><Tag color="blue">{selectedEntity}</Tag>可用属性 ({schemaFields.length})</Space>}>
         <div style={{ maxHeight: 320, overflow: 'auto' }}>
           {schemaFields.map(f => renderFieldRow(f))}
         </div>
       </Card>
 
+      <Divider style={{ margin: '12px 0' }} />
+
       {/* 积分计算 */}
-      <Card size="small" title="积分计算" style={{ marginBottom: 12 }}>
+      <Card size="small" title="积分计算">
         {selectedEntity === 'ORDER' ? (
           <>
             <Form.Item label="计算方式" style={{ marginBottom: 8 }}>
