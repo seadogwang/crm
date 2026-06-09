@@ -222,6 +222,7 @@ const RuleEditor: React.FC = () => {
   const [tradeStatus, setTradeStatus] = useState<string[]>([]);
   const [timeConditions, setTimeConditions] = useState<string[]>([]);
   const [extConditions, setExtConditions] = useState<ExtCondition[]>([]);
+  const [editingCondIdx, setEditingCondIdx] = useState<number | null>(null);
 
   // ③ 积分计算
   const [calcMode, setCalcMode] = useState<'total' | 'per_item'>('total');
@@ -445,11 +446,15 @@ const RuleEditor: React.FC = () => {
             </Row>
             <Divider style={{ margin: '8px 0' }} />
             <Row gutter={8}>
-              <Col><Text type="secondary" style={{ fontSize: 12 }}>可用筛选字段:</Text></Col>
+              <Col><Text type="secondary" style={{ fontSize: 12 }}>筛选:</Text></Col>
               {orderSchemaFields.filter(f => !['items', 'eventType', 'member_id', 'total_amount', 'order_amount'].includes(f.value)).map(f => (
                 <Col key={f.value}>
                   <Button size="small" type="dashed" style={{ fontSize: 11, padding: '0 8px' }}
-                    onClick={() => setExtConditions([...extConditions, { key: String(Date.now()), field: f.value, type: f.type, op: f.type === 'number' ? '>=' : '==', value: '' }])}>
+                    onClick={() => {
+                      const idx = extConditions.length;
+                      setExtConditions([...extConditions, { key: String(Date.now()), field: f.value, type: f.type, op: f.type === 'number' ? '>=' : '==', value: '' }]);
+                      setEditingCondIdx(idx);
+                    }}>
                     + {f.label}
                   </Button>
                 </Col>
@@ -481,17 +486,32 @@ const RuleEditor: React.FC = () => {
         )}
       </Card>
 
-      {/* 已添加的筛选条件预览 */}
+      {/* 已添加的筛选条件 — 可内联编辑 */}
       {extConditions.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>已添加 {extConditions.length} 个筛选:</Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-            {extConditions.filter(c => c.field).map((c, i) => (
-              <Tag key={c.key} closable onClose={() => setExtConditions(extConditions.filter((_, j) => j !== i))} style={{ fontSize: 11 }}>
-                {schemaFields.find(f => f.value === c.field)?.label || c.field} {c.op} {c.value || '?'}
-              </Tag>
-            ))}
-          </div>
+        <div style={{ marginTop: 12 }}>
+          <Text type="secondary" style={{ fontSize: 11 }}>筛选条件 ({extConditions.length}):</Text>
+          {extConditions.filter(c => c.field).map((c, i) => {
+            const fieldMeta = schemaFields.find(f => f.value === c.field);
+            const isEditing = editingCondIdx === i;
+            return (
+              <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, padding: '4px 8px', background: isEditing ? '#fffbe6' : '#fafafa', borderRadius: 4, border: '1px solid #f0f0f0' }}>
+                <Tag color="blue" style={{ fontSize: 11, margin: 0, flexShrink: 0 }}>{fieldMeta?.label || c.field}</Tag>
+                {isEditing ? (
+                  <>
+                    <Select size="small" value={c.op} options={OPS} style={{ width: 80 }} onChange={v => { const n = [...extConditions]; n[i] = { ...n[i], op: v }; setExtConditions(n); }} />
+                    <Input size="small" placeholder="输入值" value={c.value} autoFocus style={{ width: 120 }} onChange={e => { const n = [...extConditions]; n[i] = { ...n[i], value: e.target.value }; setExtConditions(n); }} onPressEnter={() => setEditingCondIdx(null)} onBlur={() => c.value ? setEditingCondIdx(null) : null} />
+                    <Button size="small" type="link" onClick={() => setEditingCondIdx(null)} style={{ padding: 0 }}>确定</Button>
+                  </>
+                ) : (
+                  <>
+                    <Tag style={{ fontSize: 11, margin: 0 }}>{c.op} {c.value || <Text type="secondary">点击编辑</Text>}</Tag>
+                    <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => setEditingCondIdx(i)}>编辑</Button>
+                    <Button size="small" type="link" danger style={{ padding: 0, fontSize: 11 }} onClick={() => setExtConditions(extConditions.filter((_, j) => j !== i))}>删除</Button>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>,
