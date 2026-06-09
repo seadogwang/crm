@@ -224,6 +224,8 @@ const RuleEditor: React.FC = () => {
   const [tierOptions, setTierOptions] = useState<Option[]>(DEFAULT_tierOptions);
   const [pointTypeOptions, setPointTypeOptions] = useState<Option[]>(DEFAULT_pointTypeOptions);
   const [transactionSchemaFields, setTransactionSchemaFields] = useState<Array<Option & { type: string }>>([]);
+  const [orderSchemaFields, setOrderSchemaFields] = useState<Array<Option & { type: string }>>([]);
+  const [behaviorSchemaFields, setBehaviorSchemaFields] = useState<Array<Option & { type: string }>>([]);
   const [memberSchemaFields, setMemberSchemaFields] = useState<Array<Option & { type: string }>>([]);
 
   useEffect(() => {
@@ -258,10 +260,18 @@ const RuleEditor: React.FC = () => {
     }).catch(() => {});
 
     // 从 Schema 获取业务实体字段定义
-    api.get('/schemas/TRANSACTION_EVENT').then(({ data }) => {
+    api.get('/schemas/ORDER').then(({ data }) => {
       const schema = data?.data?.schema || data?.data;
       if (schema?.properties) {
-        setTransactionSchemaFields(Object.entries(schema.properties).map(([key, val]: any) => ({
+        setOrderSchemaFields(Object.entries(schema.properties).map(([key, val]: any) => ({
+          label: `${val.title || key} (${key})`, value: key, type: val.type || 'string',
+        })));
+      }
+    }).catch(() => {});
+    api.get('/schemas/BEHAVIOR').then(({ data }) => {
+      const schema = data?.data?.schema || data?.data;
+      if (schema?.properties) {
+        setBehaviorSchemaFields(Object.entries(schema.properties).map(([key, val]: any) => ({
           label: `${val.title || key} (${key})`, value: key, type: val.type || 'string',
         })));
       }
@@ -532,10 +542,10 @@ const RuleEditor: React.FC = () => {
         <Checkbox.Group options={TIME_CONDITIONS} value={timeConditions} onChange={v => setTimeConditions(v as string[])} />
       </Form.Item>
       <Divider orientation="left" plain style={{ fontSize: 12 }}>
-        触发字段条件 (来自 {ruleCategory === 'ORDER' ? 'TRANSACTION' : 'MEMBER'} Schema)
+        触发字段条件 (来自 {ruleCategory === 'ORDER' ? 'ORDER' : 'BEHAVIOR'} Schema)
       </Divider>
       {extConditions.map((cond, idx) => {
-        const schemaFields = ruleCategory === 'ORDER' ? transactionSchemaFields : memberSchemaFields;
+        const schemaFields = ruleCategory === 'ORDER' ? orderSchemaFields : behaviorSchemaFields;
         return (
         <Row gutter={8} key={cond.key} style={{ marginBottom: 8 }}>
           <Col span={8}>
