@@ -118,13 +118,17 @@ public class AdminController {
         // 只返回当前租户的Program
         if (q != null && !q.isBlank()) {
             programs = em.createQuery(
-                    "SELECT p FROM Program p WHERE p.code LIKE :q OR p.name LIKE :q",
+                    "SELECT p FROM Program p WHERE p.code = :pc AND (p.code LIKE :q OR p.name LIKE :q)",
                     Program.class)
+                    .setParameter("pc", pc)
                     .setParameter("q", "%" + q + "%")
                     .getResultList();
         } else {
-            programs = em.createQuery("SELECT p FROM Program p ORDER BY p.createdAt DESC",
-                    Program.class).getResultList();
+            programs = em.createQuery(
+                    "SELECT p FROM Program p WHERE p.code = :pc ORDER BY p.createdAt DESC",
+                    Program.class)
+                    .setParameter("pc", pc)
+                    .getResultList();
         }
         List<Map<String, Object>> result = programs.stream().map(p -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -328,6 +332,7 @@ public class AdminController {
     // ==================== 死信重放 ====================
 
     @PostMapping("/events/{id}/replay")
+    @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> replayDeadEvent(@PathVariable Long id) {
         String pc = TenantContext.getRequired();
         EventInbox event = em.find(EventInbox.class, id);
@@ -531,11 +536,19 @@ public class AdminController {
 
             // 记录强制放行
             if (forceOverride && reason != null) {
+                String detailJson;
+                try {
+                    detailJson = objectMapper.writeValueAsString(
+                            Map.of("rule_id", id, "reason", reason));
+                } catch (Exception e) {
+                    log.error("[Admin] JSON序列化失败", e);
+                    detailJson = "{}";
+                }
                 em.createNativeQuery(
                         "INSERT INTO audit_log (program_code, action, detail, created_at) "
                                 + "VALUES (?, ?, ?::jsonb, ?)")
                         .setParameter(1, pc).setParameter(2, "FORCE_OVERRIDE")
-                        .setParameter(3, "{\"rule_id\":" + id + ",\"reason\":\"" + reason + "\"}")
+                        .setParameter(3, detailJson)
                         .setParameter(4, LocalDateTime.now()).executeUpdate();
             }
 
@@ -873,6 +886,7 @@ public class AdminController {
     // ==================== 强制放行 ====================
 
     @PostMapping("/rules/{ruleId}/force-publish")
+    @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> forcePublishRule(
             @PathVariable String ruleId, @RequestBody Map<String, String> body) {
         String pc = TenantContext.getRequired();
@@ -886,12 +900,27 @@ public class AdminController {
                         + "WHERE program_code = ? AND rule_code = ?")
                 .setParameter(1, pc).setParameter(2, ruleId).executeUpdate();
 
+        String detailJson;
+        try {
+            detailJson = objectMapper.writeValueAsString(
+                    Map.of("rule_code", ruleId, "reason", reason));
+        } catch (Exception e) {
+            log.error("[Admin] JSON序列化失败", e);
+            detailJson = "{}";
+        }
         em.createNativeQuery(
                 "INSERT INTO audit_log (program_code, action, detail, created_at) VALUES (?,?,?::jsonb,?)")
                 .setParameter(1, pc).setParameter(2, "FORCE_OVERRIDE")
-                .setParameter(3, "{\"rule_code\":\"" + ruleId + "\",\"reason\":\"" + reason + "\"}")
+                .setParameter(3, detailJson)
                 .setParameter(4, LocalDateTime.now())
                 .executeUpdate();
+
+        // 刷新 KieBase 使强制放行的规则立即生效
+        try {
+            kieBaseCacheManager.refreshKieBase(pc);
+        } catch (Exception e) {
+            log.warn("[Admin] KieBase 刷新失败（无 ACTIVE 规则）: {}", e.getMessage());
+        }
 
         log.warn("[Admin] 规则强制放行: rule={}, reason={}", ruleId, reason);
         return ResponseEntity.ok(ApiResponse.success(Map.of("rule_code", ruleId, "status", "ACTIVE", "overridden", true)));
@@ -971,8 +1000,13 @@ public class AdminController {
     private Map<String, Object> executeJsTransform(String script,
                                                     Map<String, Object> source,
                                                     Map<String, Object> base) {
+        String pc = TenantContext.get();
         try (Context ctx = Context.newBuilder("js")
                 .option("engine.WarnInterpreterOnly", "false")
+                .allowHostAccess(org.graalvm.polyglot.HostAccess.NONE)
+                .allowIO(org.graalvm.polyglot.io.IOAccess.NONE)
+                .allowCreateThread(false)
+                .allowNativeAccess(false)
                 .build()) {
             // 绑定变量和函数
             Value bindings = ctx.getBindings("js");
@@ -982,8 +1016,8 @@ public class AdminController {
             // applyFieldMappings 返回预处理后的base对象
             bindings.putMember("applyFieldMappings", (java.util.function.Function<Object, Map<String, Object>>) (s) -> base);
 
-            // 执行脚本: 用户脚本定义 transform() + 调用入口
-            String fullScript = script + "\ntransform(source, { programCode: 'PROG001' });";
+            // 执行脚本: 用户脚本定义 transform() + 调用入口（使用当前租户 code）
+            String fullScript = script + "\ntransform(source, { programCode: '" + pc + "' });";
             Value jsResult = ctx.eval("js", fullScript);
 
             // 将JS返回值转换为Java Map

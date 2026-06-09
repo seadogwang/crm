@@ -1,6 +1,5 @@
 package com.loyalty.platform.common.repository;
 
-import com.loyalty.platform.common.context.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -14,11 +13,18 @@ import java.util.Optional;
  * 安全查询哨兵 —— 四层防御体系的第四层：查询校验哨兵。
  *
  * <p>所有业务 Repository 接口必须继承此接口而非直接继承 {@link JpaRepository}。
- * 此接口强制禁用无租户感知的默认查询方法（findById, findAll, deleteAll），
- * 从代码层面杜绝跨租户数据访问（IDOR 漏洞）。
+ * 此接口通过 {@link Deprecated} 标记提醒开发者优先使用租户感知的查询方法
+ * （如 {@link #findByIdWithTenant(Object)}、{@link #findAllByProgramCode(String)}）。
+ *
+ * <p><b>设计说明</b>：此前曾使用 {@code default} 方法抛出
+ * {@link UnsupportedOperationException} 来阻止无租户参数的方法调用，
+ * 但 Java JDK 动态代理在遇到 {@code default} 方法时会直接调用而绕过
+ * Spring Data 的代理拦截器，导致 {@link SimpleJpaRepository} 的实现
+ * 被屏蔽——所有 {@code findById()}、{@code findAll()} 调用均抛出异常。
+ * 因此改为仅通过 {@code @Deprecated} 标记 + 文档提醒，不做运行时阻断。
  *
  * <p><b>注意</b>：实际的多租户隔离由 PostgreSQL RLS Policy 保证，
- * 本接口作为代码层面的辅助防线。
+ * 本接口作为代码层面的辅助防线（编译期 IDE 警告）。
  *
  * @param <T>  实体类型
  * @param <ID> 主键类型
@@ -29,44 +35,44 @@ import java.util.Optional;
 public interface BaseRepository<T, ID> extends JpaRepository<T, ID> {
 
     /**
-     * <b>【安全哨兵】禁止使用无租户参数的 findById！</b>
-     * 请使用 {@link #findByIdWithTenant(Object)}。
+     * <b>【安全哨兵】优先使用 {@link #findByIdWithTenant(Object)}。</b>
+     * 跨租户隔离由 PostgreSQL RLS Policy 保证。
      */
     @Override
     @Deprecated
-    default Optional<T> findById(ID id) {
-        throw new UnsupportedOperationException(
-                "[Query Sentinel] findById(id) 已被禁用！请使用 findByIdWithTenant(id)。"
-                        + " 当前租户: " + TenantContext.get());
-    }
+    Optional<T> findById(ID id);
 
-    /** <b>【安全哨兵】禁止跨租户查询全表。</b> */
+    /**
+     * <b>【安全哨兵】优先使用 {@link #findAllByProgramCode(String)}。</b>
+     * 跨租户隔离由 PostgreSQL RLS Policy 保证。
+     */
     @Override
     @Deprecated
-    default List<T> findAll() {
-        throw new UnsupportedOperationException("[Query Sentinel] findAll() 已被禁用！");
-    }
+    List<T> findAll();
 
-    /** <b>【安全哨兵】禁止跨租户批量查询。</b> */
+    /**
+     * <b>【安全哨兵】优先使用租户感知的查询方法。</b>
+     * 跨租户隔离由 PostgreSQL RLS Policy 保证。
+     */
     @Override
     @Deprecated
-    default List<T> findAllById(Iterable<ID> ids) {
-        throw new UnsupportedOperationException("[Query Sentinel] findAllById(ids) 已被禁用！");
-    }
+    List<T> findAllById(Iterable<ID> ids);
 
-    /** <b>【安全哨兵】禁止跨租户全表删除。</b> */
+    /**
+     * <b>【安全哨兵】禁止跨租户全表删除。</b>
+     * 跨租户隔离由 PostgreSQL RLS Policy 保证。
+     */
     @Override
     @Deprecated
-    default void deleteAll() {
-        throw new UnsupportedOperationException("[Query Sentinel] deleteAll() 已被禁用！");
-    }
+    void deleteAll();
 
-    /** <b>【安全哨兵】禁止跨租户全表删除。</b> */
+    /**
+     * <b>【安全哨兵】禁止跨租户全表删除。</b>
+     * 跨租户隔离由 PostgreSQL RLS Policy 保证。
+     */
     @Override
     @Deprecated
-    default void deleteAll(Iterable<? extends T> entities) {
-        throw new UnsupportedOperationException("[Query Sentinel] deleteAll(entities) 已被禁用！");
-    }
+    void deleteAll(Iterable<? extends T> entities);
 
     // ---- 安全查询方法 ----
 

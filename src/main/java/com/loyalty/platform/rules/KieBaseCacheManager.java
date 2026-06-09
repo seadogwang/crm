@@ -65,6 +65,12 @@ public class KieBaseCacheManager {
      */
     private final ConcurrentHashMap<String, KieContainer> containerCache = new ConcurrentHashMap<>();
 
+    /**
+     * program_code → 草稿 KieContainer 缓存（用于 buildKieBaseWithDraft）。
+     * 每次构建新草稿时，dispose 旧容器，限制每个 Program 最多泄漏一个容器。
+     */
+    private final ConcurrentHashMap<String, KieContainer> draftContainerCache = new ConcurrentHashMap<>();
+
     private final RuleDefinitionRepository ruleRepo;
 
     public KieBaseCacheManager(RuleDefinitionRepository ruleRepo) {
@@ -185,6 +191,18 @@ public class KieBaseCacheManager {
 
         KieContainer kieContainer = kieServices.newKieContainer(
                 kieServices.getRepository().getDefaultReleaseId());
+
+        // 销毁旧的草稿容器，防止内存泄漏
+        KieContainer previousDraft = draftContainerCache.put(programCode, kieContainer);
+        if (previousDraft != null) {
+            try {
+                previousDraft.dispose();
+                log.debug("[KieBaseCache] 旧草稿 KieContainer 已销毁: program={}", programCode);
+            } catch (Exception e) {
+                log.warn("[KieBaseCache] 销毁旧草稿 KieContainer 失败: program={}", programCode, e);
+            }
+        }
+
         return kieContainer.getKieBase();
     }
 
@@ -263,6 +281,15 @@ public class KieBaseCacheManager {
                 log.info("[KieBaseCache] KieContainer 已销毁: program={}", programCode);
             } catch (Exception e) {
                 log.warn("[KieBaseCache] 销毁 KieContainer 失败: program={}", programCode, e);
+            }
+        }
+        KieContainer draftContainer = draftContainerCache.remove(programCode);
+        if (draftContainer != null) {
+            try {
+                draftContainer.dispose();
+                log.info("[KieBaseCache] 草稿 KieContainer 已销毁: program={}", programCode);
+            } catch (Exception e) {
+                log.warn("[KieBaseCache] 销毁草稿 KieContainer 失败: program={}", programCode, e);
             }
         }
         cache.remove(programCode);
