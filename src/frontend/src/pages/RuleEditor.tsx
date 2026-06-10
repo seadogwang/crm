@@ -595,8 +595,13 @@ const RuleEditor: React.FC = () => {
           <Col span={3}><Form.Item label="规则代码" style={{ marginBottom: 0 }}><Input size="small" placeholder="自动生成" value={ruleCode} onChange={e => setRuleCode(e.target.value)} /></Form.Item></Col>
           <Col span={3}><Form.Item label="规则组" style={{ marginBottom: 0 }}><Select size="small" value={agendaGroup} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={2}><Form.Item label="优先级" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={1000} value={salience} onChange={v => setSalience(v || 0)} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={5}><Form.Item label="启用时间" style={{ marginBottom: 0 }}><DatePicker size="small" placeholder="立即生效" value={effectiveFrom ? dayjs(effectiveFrom) : null} onChange={d => setEffectiveFrom(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={5}><Form.Item label="停用时间" style={{ marginBottom: 0 }}><DatePicker size="small" placeholder="不填=永久" value={effectiveTo ? dayjs(effectiveTo) : null} onChange={d => setEffectiveTo(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={5}><Form.Item label="生效周期" style={{ marginBottom: 0 }}>
+            <DatePicker.RangePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss"
+              placeholder={['开始时间', '结束时间(留空=永久)']}
+              value={[effectiveFrom ? dayjs(effectiveFrom) : null, effectiveTo ? dayjs(effectiveTo) : null] as any}
+              onChange={(dates) => { setEffectiveFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD HH:mm:ss') : ''); setEffectiveTo(dates?.[1] ? dates[1].format('YYYY-MM-DD HH:mm:ss') : ''); }}
+              style={{ width: '100%' }} />
+          </Form.Item></Col>
         </Row>
       </Card>
 
