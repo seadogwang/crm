@@ -24,6 +24,7 @@ interface ExtCondition {
 
 interface RewardStep {
   key: string; lower: number; upper?: number; multiplier: number; isCycleThreshold: boolean;
+  lowerInclusive: boolean; upperInclusive: boolean;
 }
 
 const ENTITY_OPTIONS: Option[] = [
@@ -77,7 +78,7 @@ const PromoEditor: React.FC = () => {
 
   // 奖励规则
   const [steps, setSteps] = useState<RewardStep[]>([
-    { key: '1', lower: 0, upper: undefined, multiplier: 1.0, isCycleThreshold: false },
+    { key: '1', lower: 0, upper: undefined, multiplier: 1.0, isCycleThreshold: false, lowerInclusive: true, upperInclusive: false },
   ]);
   const [cycleMode, setCycleMode] = useState<string>('SINGLE_MATCH');
   const [remainderMode, setRemainderMode] = useState<string>('USE_STEP_MULTIPLIER');
@@ -153,7 +154,7 @@ const PromoEditor: React.FC = () => {
   
   const addStep = () => {
     const lastStep = steps[steps.length - 1];
-    setSteps([...steps, { key: String(Date.now()), lower: lastStep.upper || 0, upper: undefined, multiplier: 1.0, isCycleThreshold: false }]);
+    setSteps([...steps, { key: String(Date.now()), lower: lastStep.upper || 0, upper: undefined, multiplier: 1.0, isCycleThreshold: false, lowerInclusive: true, upperInclusive: false }]);
   };
 
   const removeStep = (key: string) => {
@@ -240,8 +241,24 @@ const PromoEditor: React.FC = () => {
   };
 
   const stepColumns = [
-    { title: '下限', dataIndex: 'lower', width: 80, render: (v: number, _: any, i: number) => <InputNumber size="small" min={0} value={v} style={{ width: 70 }} onChange={val => { const n = [...steps]; n[i] = { ...n[i], lower: val || 0 }; setSteps(n); }} /> },
-    { title: '上限', dataIndex: 'upper', width: 80, render: (v: number | undefined, _: any, i: number) => <InputNumber size="small" min={0} value={v} placeholder="不限" style={{ width: 70 }} onChange={val => { const n = [...steps]; n[i] = { ...n[i], upper: val || undefined }; setSteps(n); }} /> },
+    { title: '区间范围', dataIndex: 'lower', width: 240, render: (_: number, _2: any, i: number) => {
+      const s = steps[i];
+      return (
+        <Space size={2}>
+          <Tag color={s.lowerInclusive ? 'green' : 'orange'} style={{ fontSize: 10, margin: 0, cursor: 'pointer', padding: '0 4px' }}
+            onClick={() => { const n = [...steps]; n[i] = { ...n[i], lowerInclusive: !s.lowerInclusive }; setSteps(n); }}>
+            {s.lowerInclusive ? '[' : '('}
+          </Tag>
+          <InputNumber size="small" min={0} value={s.lower} style={{ width: 80 }} onChange={val => { const n = [...steps]; n[i] = { ...n[i], lower: val || 0 }; setSteps(n); }} />
+          <Text type="secondary">~</Text>
+          <InputNumber size="small" min={0} value={s.upper} placeholder="不限" style={{ width: 80 }} onChange={val => { const n = [...steps]; n[i] = { ...n[i], upper: val || undefined }; setSteps(n); }} />
+          <Tag color={s.upperInclusive ? 'green' : 'orange'} style={{ fontSize: 10, margin: 0, cursor: 'pointer', padding: '0 4px' }}
+            onClick={() => { const n = [...steps]; n[i] = { ...n[i], upperInclusive: !s.upperInclusive }; setSteps(n); }}>
+            {s.upperInclusive ? ']' : ')'}
+          </Tag>
+        </Space>
+      );
+    }},
     { title: '倍数', dataIndex: 'multiplier', width: 80, render: (v: number, _: any, i: number) => <InputNumber size="small" min={0.1} step={0.1} value={v} style={{ width: 70 }} onChange={val => { const n = [...steps]; n[i] = { ...n[i], multiplier: val || 0.1 }; setSteps(n); }} /> },
     { title: '循环点', dataIndex: 'isCycleThreshold', width: 60, render: (v: boolean, _: any, i: number) => <Checkbox checked={v} onChange={e => { const n = [...steps]; n[i] = { ...n[i], isCycleThreshold: e.target.checked }; setSteps(n); }} /> },
     { title: '操作', key: 'act', width: 60, render: (_: any, __: any, i: number) => <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeStep(steps[i].key)} /> },
