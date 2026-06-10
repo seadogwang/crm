@@ -76,7 +76,7 @@ const RuleList: React.FC = () => {
             <Text type="secondary" style={{ fontSize: 12 }}>俱乐部长期有效的基础积分规则，通常每年调整一次</Text>
             {!baseRule ? (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/rules/new?type=base')}>
-                基础规则配置
+                配置基础规则
               </Button>
             ) : (
               <Button icon={<EditOutlined />} onClick={() => navigate(`/rules/${baseRule.id}/edit?type=base`)}>
@@ -109,7 +109,7 @@ const RuleList: React.FC = () => {
               <Text type="secondary">尚未配置俱乐部基础规则</Text>
               <br />
               <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/rules/new?type=base')} style={{ marginTop: 12 }}>
-                基础规则配置
+                配置基础规则
               </Button>
             </Card>
           )}
