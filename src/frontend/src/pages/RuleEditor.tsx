@@ -172,6 +172,7 @@ const RuleEditor: React.FC = () => {
   const [salience, setSalience] = useState(100);
 
   // ① 业务实体配置
+  const [ruleMode, setRuleMode] = useState<'base' | 'campaign'>('base');
   const [selectedEntity, setSelectedEntity] = useState('ORDER');
   const [pointFormulas, setPointFormulas] = useState<PointFormula[]>([
     { key: '1', pointType: 'REWARD', field: 'order_amount', multiplier: 1 },
@@ -585,28 +586,34 @@ const RuleEditor: React.FC = () => {
         </Row>
       </Card>
 
-      <Card size="small" style={{ marginBottom: 16 }}>
-        {stepContent[0]}
-      </Card>
+      <div style={{ marginBottom: 16, textAlign: 'center' }}>
+        <Radio.Group value={ruleMode} onChange={e => setRuleMode(e.target.value)} size="large" buttonStyle="solid">
+          <Radio.Button value="base">俱乐部基础规则</Radio.Button>
+          <Radio.Button value="campaign">积分活动</Radio.Button>
+        </Radio.Group>
+      </div>
 
-      {/* 积分活动 — 独立配置，常变更 */}
-      <Card size="small" title={<Space><Tag color="orange">积分活动</Tag>额外奖励配置</Space>}
-        extra={<Text type="secondary" style={{ fontSize: 11 }}>独立于基础规则，可随时调整</Text>} style={{ marginBottom: 16 }}>
-        <Form.Item label="活动积分类型" style={{ marginBottom: 8 }}>
-          <Select size="small" value={campaignPointType} onChange={setCampaignPointType} options={pointTypeOptions} style={{ width: 200 }} />
-        </Form.Item>
-        <Form.Item label="额外奖励" tooltip="基础积分基础上额外增加的积分" style={{ marginBottom: 8 }}>
-          <InputNumber size="small" min={1} max={999999} value={campaignReward} onChange={v => setCampaignReward(v || 0)} addonAfter="分/单" />
-        </Form.Item>
-        <Form.Item label="活动上限" tooltip="活动奖励部分的单笔积分上限" style={{ marginBottom: 8 }}>
-          <InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分/单" />
-        </Form.Item>
-        <Text type="secondary" style={{ fontSize: 11 }}>活动条件通过下方 AI 活动规则配置</Text>
-      </Card>
-
-      <Card size="small" title={<Space><ThunderboltOutlined />AI 活动规则</Space>} style={{ marginBottom: 16 }}>
-        {stepContent[1]}
-      </Card>
+      {ruleMode === 'base' ? (
+        <Card size="small" style={{ marginBottom: 16 }}>
+          {stepContent[0]}
+        </Card>
+      ) : (
+        <Card size="small" title={<Space><ThunderboltOutlined />积分活动配置</Space>}
+          extra={<Text type="secondary" style={{ fontSize: 11 }}>独立于基础规则</Text>} style={{ marginBottom: 16 }}>
+          <Form.Item label="活动积分类型">
+            <Select size="small" value={campaignPointType} onChange={setCampaignPointType} options={pointTypeOptions} style={{ width: 200 }} />
+          </Form.Item>
+          <Form.Item label="额外奖励积分" tooltip="满足活动条件时额外赠送的积分">
+            <InputNumber size="small" min={1} max={999999} value={campaignReward} onChange={v => setCampaignReward(v || 0)} addonAfter="分/单" />
+          </Form.Item>
+          <Form.Item label="活动上限" tooltip="活动奖励部分的单笔积分上限">
+            <InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分/单" />
+          </Form.Item>
+          <Divider />
+          <Text type="secondary" style={{ fontSize: 12 }}>活动条件通过 AI 配置:</Text>
+          {stepContent[1]}
+        </Card>
+      )}
 
       <Collapse activeKey={scriptExpanded ? ['s'] : []} onChange={ks => setScriptExpanded(ks.includes('s'))} style={{ background: '#fafafa' }}>
         <Panel header={<Space><EyeOutlined /><Text>查看脚本</Text><Tag color="blue">Drools DRL</Tag></Space>} key="s" extra={
