@@ -51,7 +51,7 @@ const AGENDA_GROUPS: Option[] = [
 function generateDrl(data: Record<string, any>): string {
   const ruleName = data.ruleName || 'custom_rule';
   const safeName = ruleName.replace(/[^a-zA-Z0-9_]/g, '_');
-  const agendaGroup = data.agendaGroup || 'purchase';
+  const ruleCategory = data.ruleCategory || 'purchase';
   const entity = data.selectedEntity || 'ORDER';
   const calcMode = data.calcMode || 'total';
   const defaultPointType = (data.pointFormulas?.[0]?.pointType) || 'REWARD';
@@ -67,7 +67,7 @@ function generateDrl(data: Record<string, any>): string {
   }
   lines.push(`rule "${safeName}"`);
   lines.push(`  salience ${data.salience || 100}`);
-  lines.push(`  agenda-group "${agendaGroup}"`);
+  lines.push(`  agenda-group "${ruleCategory}"`);
   lines.push('  when');
 
   const conds: string[] = ['    $event: EventFact()', '    $member: MemberFact(memberId == $event.memberId)'];
@@ -173,7 +173,7 @@ const RuleEditor: React.FC = () => {
   // 基本信息
   const [ruleName, setRuleName] = useState('');
   const [ruleCode, setRuleCode] = useState('');
-  const [agendaGroup, setAgendaGroup] = useState(defaultAgenda);
+  const [ruleCategory, setAgendaGroup] = useState(defaultAgenda);
   const [salience, setSalience] = useState(100);
   const [effectiveFrom, setEffectiveFrom] = useState<string>('');
   const [effectiveTo, setEffectiveTo] = useState<string>('');
@@ -246,7 +246,7 @@ const RuleEditor: React.FC = () => {
       if (!r) return;
       setRuleName(r.rule_name || '');
       setRuleCode(r.rule_code || '');
-      setAgendaGroup(r.agenda_group || r.activation_group || 'purchase');
+      setAgendaGroup(r.rule_category || r.activation_group || 'purchase');
       // 从 metadata 恢复表单状态
       try {
         const meta = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null;
@@ -290,11 +290,11 @@ const RuleEditor: React.FC = () => {
   }, [selectedEntity]);
 
   const formData = useMemo(() => ({
-    ruleName, agendaGroup, salience, effectiveFrom, effectiveTo, selectedEntity, frequencyLimit,
+    ruleName, ruleCategory, salience, effectiveFrom, effectiveTo, selectedEntity, frequencyLimit,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
     calcMode, pointFormulas, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
     rewardPoints, tierFormulas, campaignPointType, campaignReward, aiGeneratedDrl,
-  }), [ruleName, agendaGroup, salience, effectiveFrom, effectiveTo, selectedEntity, frequencyLimit,
+  }), [ruleName, ruleCategory, salience, effectiveFrom, effectiveTo, selectedEntity, frequencyLimit,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
     calcMode, pointFormulas, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
     rewardPoints, tierFormulas, campaignPointType, campaignReward, aiGeneratedDrl]);
@@ -316,7 +316,7 @@ const RuleEditor: React.FC = () => {
     setSaving(true);
     try {
       const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience, effectiveFrom, effectiveTo };
-      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, status: 'DRAFT', metadata: meta };
+      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', rule_category: ruleCategory, rule_type: 'DRL', drl_content: drlCode, status: 'DRAFT', metadata: meta };
       if (isEdit) await api.put(`/admin/rules/${id}`, payload); else await api.post('/admin/rules', payload);
       message.success('已保存草稿');
     } catch (e: any) { message.error(e?.message || '保存失败'); } finally { setSaving(false); }
@@ -326,7 +326,7 @@ const RuleEditor: React.FC = () => {
     try {
       let ruleId = id ? Number(id) : null;
       const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience, effectiveFrom, effectiveTo };
-      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, metadata: meta };
+      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', rule_category: ruleCategory, rule_type: 'DRL', drl_content: drlCode, metadata: meta };
       if (isEdit) await api.put(`/admin/rules/${id}`, payload); else { const { data } = await api.post('/admin/rules', payload); ruleId = data?.data?.id; }
       try {
         const { data: td } = await api.post(`/admin/rules/${ruleId}/validate`); const r = td?.data;
@@ -598,7 +598,7 @@ const RuleEditor: React.FC = () => {
         <Row gutter={8}>
           <Col span={4}><Form.Item label="规则名称" style={{ marginBottom: 0 }}><Input size="small" placeholder="例如：618手机品类奖励" value={ruleName} onChange={e => setRuleName(e.target.value)} /></Form.Item></Col>
           <Col span={4}><Form.Item label="规则代码" style={{ marginBottom: 0 }}><Input size="small" placeholder="自动生成" value={ruleCode} onChange={e => setRuleCode(e.target.value)} /></Form.Item></Col>
-          <Col span={4}><Form.Item label="规则组" style={{ marginBottom: 0 }}><Select size="small" value={agendaGroup} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={4}><Form.Item label="规则组" style={{ marginBottom: 0 }}><Select size="small" value={ruleCategory} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={2}><Form.Item label="优先级" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={1000} value={salience} onChange={v => setSalience(v || 0)} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={6}><Form.Item label="生效周期" style={{ marginBottom: 0 }}>
             <DatePicker.RangePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss"

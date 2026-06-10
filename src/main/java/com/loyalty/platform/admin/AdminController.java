@@ -429,7 +429,7 @@ public class AdminController {
                 .ruleCode(ruleCode)
                 .ruleName((String) body.getOrDefault("rule_name", ruleCode))
                 .ruleType((String) body.getOrDefault("rule_type", "DRL"))
-                .agendaGroup((String) body.getOrDefault("agenda_group", "default"))
+                .ruleCategory((String) body.getOrDefault("rule_category", "default"))
                 .drlContent(drlContent)
                 .metadata(metadata)
                 .version(1)
@@ -455,7 +455,7 @@ public class AdminController {
 
         if (body.containsKey("rule_name")) rule.setRuleName((String) body.get("rule_name"));
         if (body.containsKey("rule_type")) rule.setRuleType((String) body.get("rule_type"));
-        if (body.containsKey("agenda_group")) rule.setAgendaGroup((String) body.get("agenda_group"));
+        if (body.containsKey("rule_category")) rule.setRuleCategory((String) body.get("rule_category"));
         if (body.containsKey("drl_content")) rule.setDrlContent((String) body.get("drl_content"));
         if (body.containsKey("status")) rule.setStatus((String) body.get("status"));
         if (body.containsKey("metadata")) {
@@ -1097,8 +1097,8 @@ public class AdminController {
         m.put("rule_code", r.getRuleCode());
         m.put("rule_name", r.getRuleName());
         m.put("rule_type", r.getRuleType());
-        m.put("agenda_group", r.getAgendaGroup());
-        m.put("activation_group", r.getAgendaGroup()); // 前端兼容别名
+        m.put("rule_category", r.getRuleCategory());
+        m.put("activation_group", r.getRuleCategory()); // 前端兼容别名
         m.put("drl_content", r.getDrlContent());
         m.put("version", r.getVersion());
         m.put("status", r.getStatus());

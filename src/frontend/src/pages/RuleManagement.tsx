@@ -46,7 +46,7 @@ const RuleManagement: React.FC = () => {
   const columns = [
     { title: '代码', dataIndex: 'rule_code', width: 100 }, { title: '名称', dataIndex: 'rule_name', width: 120 },
     { title: '类型', dataIndex: 'rule_type', width: 80, render: (v: string) => <Tag>{v}</Tag> },
-    { title: '议程组', dataIndex: 'agenda_group', width: 80 },
+    { title: '议程组', dataIndex: 'rule_category', width: 80 },
     { title: '版本', dataIndex: 'version', width: 50 },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'ACTIVE' ? 'green' : 'default'}>{v}</Tag> },
     { title: 'DRL 内容', dataIndex: 'drl_content', width: 200, ellipsis: true, render: (v: string) => <span style={{ fontSize: 11, color: '#666' }}>{v?.substring(0, 80)}</span> },

@@ -61,7 +61,7 @@ public class AiRuleGenerationService {
         int maxSalience = activeRules.stream().mapToInt(r -> r.getVersion() != null ? r.getVersion() * 10 : 100).max().orElse(100);
 
         String groups = activeRules.stream()
-                .map(RuleDefinition::getAgendaGroup)
+                .map(RuleDefinition::getRuleCategory)
                 .filter(g -> g != null && !g.isBlank())
                 .distinct().collect(Collectors.joining(", "));
 
@@ -171,7 +171,7 @@ public class AiRuleGenerationService {
         return rules.stream()
                 .limit(10)
                 .map(r -> "- Rule-Code: " + r.getRuleCode() + ", Name: " + r.getRuleName()
-                        + ", Type: " + r.getRuleType() + ", Group: " + r.getAgendaGroup())
+                        + ", Type: " + r.getRuleType() + ", Group: " + r.getRuleCategory())
                 .collect(Collectors.joining("\n"));
     }
 }

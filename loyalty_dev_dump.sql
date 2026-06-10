@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict PimPgQvnSlyrTwY4lq5sDxubelwAfnZAquiuHMbNXmXLMEeFdEOj1y07Xw5qA2m
+\restrict Kt8UIDbwxcPipCVJLg367YObgLDkPvBbODR3YfVRrEBqgg5IbmTT9b2QfdTeoEn
 
 -- Dumped from database version 16.11
 -- Dumped by pg_dump version 16.11
@@ -1332,7 +1332,7 @@ CREATE TABLE public.rule_definition (
     rule_code character varying(100) NOT NULL,
     rule_name character varying(200),
     rule_type character varying(50),
-    agenda_group character varying(50) DEFAULT 'forward'::character varying,
+    rule_category character varying(50) DEFAULT 'forward'::character varying,
     drl_content text NOT NULL,
     version integer DEFAULT 1,
     status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
@@ -2242,7 +2242,7 @@ COPY public.reverse_event (id, program_code, reverse_event_id, original_event_id
 -- Data for Name: rule_definition; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.rule_definition (id, program_code, rule_code, rule_name, rule_type, agenda_group, drl_content, version, status, metadata, created_at, updated_at) FROM stdin;
+COPY public.rule_definition (id, program_code, rule_code, rule_name, rule_type, rule_category, drl_content, version, status, metadata, created_at, updated_at) FROM stdin;
 1	PROG001	E2E_TEST_RULE	未命名规则	DRL	purchase	package com.loyalty.platform.rules;\nimport com.loyalty.platform.rules.drl.MemberFact;\nimport com.loyalty.platform.rules.drl.EventFact;\nimport com.loyalty.platform.rules.action.ActionCollector;\n\nrule "custom_rule"\n  salience 100\n  agenda-group "purchase"\n  when\n    $event: EventFact(),\n    $member: MemberFact(memberId == $event.memberId),\n    eval(Arrays.asList("GOLD").contains($member.getTierCode())),\n    eval($event.getPayloadNumber("total_amount") >= ),\n    eval($event.getPayloadString("item_category") == ),\n    eval($event.getPayloadString("buyer_nick") == ),\n    eval($event.getPayloadString("source") == ),\n    eval($event.getPayloadString("channel") == ),\n    eval($member.getExtString("tier_code") == )\n  then\n    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "REWARD", new java.math.BigDecimal("10"), "custom_rule", null);\n    if ("GOLD".equals($member.getTierCode())) { collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "REWARD", _base.multiply(new java.math.BigDecimal("0.2")).setScale(0, java.math.RoundingMode.DOWN), "custom_rule_TIER", null); }\n    if ("PLATINUM".equals($member.getTierCode())) { collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "REWARD", _base.multiply(new java.math.BigDecimal("0.3")).setScale(0, java.math.RoundingMode.DOWN), "custom_rule_TIER", null); }\nend	\N	DRAFT	{"salience": 100, "effectiveTo": "", "tierFormulas": [{"key": "1", "tier": "GOLD", "pointType": "REWARD", "multiplier": 0.2}, {"key": "2", "tier": "PLATINUM", "pointType": "REWARD", "multiplier": 0.3}], "effectiveFrom": "", "extConditions": [{"op": "==", "key": "1781066594491", "type": "string", "field": "remark", "value": "", "entity": "ORDER"}, {"op": ">=", "key": "1781066595378", "type": "string", "field": "trade_time", "value": "", "entity": "ORDER", "format": "date-time"}, {"op": "==", "key": "1781066612267", "type": "string", "field": "source", "value": "", "entity": "BEHAVIOR"}, {"op": "==", "key": "1781066613850", "type": "string", "field": "channel", "value": "", "entity": "BEHAVIOR"}], "pointFormulas": [{"key": "1", "field": "order_amount", "pointType": "REWARD", "multiplier": 1}, {"key": "2", "field": "order_amount", "pointType": "TIER", "multiplier": 1}], "selectedEntity": "BEHAVIOR"}	2026-05-30 12:48:26.981437+08	2026-06-10 13:09:38.143247+08
 4	PROG001	TEST_META	Metadata Test	DRL	purchase	rule test when eval(true) then System.out.println("ok"); end	1	DRAFT	\N	2026-06-10 12:30:27.407124+08	2026-06-10 12:30:27.407124+08
 5	PROG001	TESTMETA	MetaTest	DRL	purchase	rule t when eval(true) then end	1	DRAFT	{"extConditions": [{"op": ">=", "field": "order_amount", "value": "200"}], "selectedEntity": "ORDER"}	2026-06-10 12:32:39.02522+08	2026-06-10 12:32:39.02522+08
@@ -3832,5 +3832,5 @@ ALTER TABLE public.transaction_event ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict PimPgQvnSlyrTwY4lq5sDxubelwAfnZAquiuHMbNXmXLMEeFdEOj1y07Xw5qA2m
+\unrestrict Kt8UIDbwxcPipCVJLg367YObgLDkPvBbODR3YfVRrEBqgg5IbmTT9b2QfdTeoEn
 

@@ -32,9 +32,9 @@ public class RuleDefinition {
     private String ruleType;
 
     /** 议程组: forward / backward */
-    @Column(name = "agenda_group", length = 50)
+    @Column(name = "rule_category", length = 50)
     @Builder.Default
-    private String agendaGroup = "forward";
+    private String ruleCategory = "purchase";
 
     /** DRL 脚本内容 */
     @Column(name = "drl_content", nullable = false, columnDefinition = "TEXT")
