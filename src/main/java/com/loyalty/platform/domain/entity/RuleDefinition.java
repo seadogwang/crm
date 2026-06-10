@@ -31,13 +31,30 @@ public class RuleDefinition {
     @Column(name = "rule_type", length = 50)
     private String ruleType;
 
-    /** 议程组: forward / backward */
+    /** 规则分类: base=基础规则, promo=促销活动 */
     @Column(name = "rule_category", length = 50)
     @Builder.Default
-    private String ruleCategory = "purchase";
+    private String ruleCategory = "base";
+
+    /** 规则组，同组内按 priority 排序执行 */
+    @Column(name = "rule_group", length = 50)
+    private String ruleGroup;
+
+    /** 组内优先级，数字越小越先执行 */
+    @Column(name = "priority")
+    @Builder.Default
+    private Integer priority = 0;
+
+    /** 生效开始时间 */
+    @Column(name = "effective_start")
+    private LocalDateTime effectiveStart;
+
+    /** 生效结束时间（null=永久有效） */
+    @Column(name = "effective_end")
+    private LocalDateTime effectiveEnd;
 
     /** DRL 脚本内容 */
-    @Column(name = "drl_content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "drl_content", columnDefinition = "TEXT")
     private String drlContent;
 
     /** 版本号 */
@@ -45,7 +62,7 @@ public class RuleDefinition {
     @Builder.Default
     private Integer version = 1;
 
-    /** 状态: DRAFT / TESTED / ACTIVE / ARCHIVED */
+    /** 状态: DRAFT / ACTIVE / INACTIVE */
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private String status = "DRAFT";

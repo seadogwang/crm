@@ -424,12 +424,27 @@ public class AdminController {
         @SuppressWarnings("unchecked")
         Map<String, Object> metadata = (Map<String, Object>) body.get("metadata");
 
+        String ruleGroup = (String) body.get("rule_group");
+        Integer priority = body.get("priority") instanceof Number n ? n.intValue() : 0;
+        String effectiveStartStr = (String) body.get("effective_start");
+        String effectiveEndStr = (String) body.get("effective_end");
+        LocalDateTime effectiveStart = effectiveStartStr != null && !effectiveStartStr.isBlank()
+                ? LocalDateTime.parse(effectiveStartStr.replace("T", " ").substring(0, 19), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                : null;
+        LocalDateTime effectiveEnd = effectiveEndStr != null && !effectiveEndStr.isBlank()
+                ? LocalDateTime.parse(effectiveEndStr.replace("T", " ").substring(0, 19), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                : null;
+
         RuleDefinition rule = RuleDefinition.builder()
                 .programCode(pc)
                 .ruleCode(ruleCode)
                 .ruleName((String) body.getOrDefault("rule_name", ruleCode))
                 .ruleType((String) body.getOrDefault("rule_type", "DRL"))
-                .ruleCategory((String) body.getOrDefault("rule_category", "default"))
+                .ruleCategory((String) body.getOrDefault("rule_category", "base"))
+                .ruleGroup(ruleGroup)
+                .priority(priority)
+                .effectiveStart(effectiveStart)
+                .effectiveEnd(effectiveEnd)
                 .drlContent(drlContent)
                 .metadata(metadata)
                 .version(1)
@@ -458,6 +473,11 @@ public class AdminController {
         if (body.containsKey("rule_category")) rule.setRuleCategory((String) body.get("rule_category"));
         if (body.containsKey("drl_content")) rule.setDrlContent((String) body.get("drl_content"));
         if (body.containsKey("status")) rule.setStatus((String) body.get("status"));
+        if (body.containsKey("rule_group")) rule.setRuleGroup((String) body.get("rule_group"));
+        if (body.containsKey("priority")) {
+            Object p = body.get("priority");
+            if (p instanceof Number n) rule.setPriority(n.intValue());
+        }
         if (body.containsKey("metadata")) {
             @SuppressWarnings("unchecked")
             Map<String, Object> meta = (Map<String, Object>) body.get("metadata");
@@ -1098,7 +1118,10 @@ public class AdminController {
         m.put("rule_name", r.getRuleName());
         m.put("rule_type", r.getRuleType());
         m.put("rule_category", r.getRuleCategory());
-        m.put("activation_group", r.getRuleCategory()); // 前端兼容别名
+        m.put("rule_group", r.getRuleGroup());
+        m.put("priority", r.getPriority());
+        m.put("effective_start", r.getEffectiveStart() != null ? r.getEffectiveStart().toString() : null);
+        m.put("effective_end", r.getEffectiveEnd() != null ? r.getEffectiveEnd().toString() : null);
         m.put("drl_content", r.getDrlContent());
         m.put("version", r.getVersion());
         m.put("status", r.getStatus());

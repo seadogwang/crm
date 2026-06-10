@@ -41,8 +41,8 @@ const RuleList: React.FC = () => {
   };
 
   // 按 rule_category 分类: base vs campaign
-  const baseRules = rules.filter((r: any) => r.rule_category !== 'campaign');
-  const campaignRules = rules.filter((r: any) => r.rule_category === 'campaign');
+  const baseRules = rules.filter((r: any) => r.rule_category !== 'promo');
+  const campaignRules = rules.filter((r: any) => r.rule_category === 'promo');
 
   const columns = [
     { title: '名称', dataIndex: 'rule_name', width: 180 },

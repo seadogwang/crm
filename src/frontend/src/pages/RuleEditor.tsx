@@ -41,9 +41,9 @@ function getOpsForField(type?: string, format?: string): Option[] {
   return OPS;
 }
 
-const AGENDA_GROUPS: Option[] = [
-  { label: 'purchase (购买)', value: 'purchase' }, { label: 'behavior (行为)', value: 'behavior' },
-  { label: 'campaign (活动)', value: 'campaign' }, { label: 'refund (退款)', value: 'refund' },
+const RULE_CATEGORIES: Option[] = [
+  { label: 'base (基础规则)', value: 'base' },
+  { label: 'promo (促销活动)', value: 'promo' },
 ];
 
 // ==================== DRL ====================
@@ -168,12 +168,12 @@ const RuleEditor: React.FC = () => {
 
   // 从URL参数判断类型: /rules/new?type=base → purchase, /rules/new?type=campaign → campaign
   const ruleType = searchParams.get('type') || 'base';
-  const defaultAgenda = ruleType === 'campaign' ? 'campaign' : 'purchase';
+  const defaultCategory = ruleType === 'campaign' ? 'promo' : 'base';
 
   // 基本信息
   const [ruleName, setRuleName] = useState('');
   const [ruleCode, setRuleCode] = useState('');
-  const [ruleCategory, setAgendaGroup] = useState(defaultAgenda);
+  const [ruleCategory, setRuleCategory] = useState(defaultCategory);
   const [salience, setSalience] = useState(100);
   const [effectiveFrom, setEffectiveFrom] = useState<string>('');
   const [effectiveTo, setEffectiveTo] = useState<string>('');
@@ -246,7 +246,7 @@ const RuleEditor: React.FC = () => {
       if (!r) return;
       setRuleName(r.rule_name || '');
       setRuleCode(r.rule_code || '');
-      setAgendaGroup(r.rule_category || r.activation_group || 'purchase');
+      setRuleCategory(r.rule_category || 'base');
       // 从 metadata 恢复表单状态
       try {
         const meta = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null;
@@ -598,7 +598,7 @@ const RuleEditor: React.FC = () => {
         <Row gutter={8}>
           <Col span={4}><Form.Item label="规则名称" style={{ marginBottom: 0 }}><Input size="small" placeholder="例如：618手机品类奖励" value={ruleName} onChange={e => setRuleName(e.target.value)} /></Form.Item></Col>
           <Col span={4}><Form.Item label="规则代码" style={{ marginBottom: 0 }}><Input size="small" placeholder="自动生成" value={ruleCode} onChange={e => setRuleCode(e.target.value)} /></Form.Item></Col>
-          <Col span={4}><Form.Item label="规则组" style={{ marginBottom: 0 }}><Select size="small" value={ruleCategory} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={4}><Form.Item label="规则组" style={{ marginBottom: 0 }}><Select size="small" value={ruleCategory} onChange={setRuleCategory} options={RULE_CATEGORIES} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={2}><Form.Item label="优先级" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={1000} value={salience} onChange={v => setSalience(v || 0)} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={6}><Form.Item label="生效周期" style={{ marginBottom: 0 }}>
             <DatePicker.RangePicker size="small" showTime format="YYYY-MM-DD HH:mm:ss"
