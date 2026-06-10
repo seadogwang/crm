@@ -80,7 +80,7 @@ const RuleList: React.FC = () => {
           <Table dataSource={baseRules} columns={[
             { title: '名称', dataIndex: 'rule_name', width: 180 },
             { title: '代码', dataIndex: 'rule_code', width: 120 },
-            { title: '议程组', dataIndex: 'agenda_group', width: 100, render: (v: string) => <Tag color="blue">{v || 'default'}</Tag> },
+            { title: '规则组', dataIndex: 'agenda_group', width: 100, render: (v: string) => <Tag color="blue">{v || 'default'}</Tag> },
             { title: '状态', dataIndex: 'status', width: 90, render: (v: string) => <Tag color={v === 'ACTIVE' ? 'green' : v === 'DRAFT' ? 'orange' : 'default'}>{v}</Tag> },
             { title: '更新时间', dataIndex: 'updated_at', width: 150 },
             {
