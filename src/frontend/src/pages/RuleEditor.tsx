@@ -109,14 +109,14 @@ function generateDrl(data: Record<string, any>): string {
       if (pfs.length > 0) {
         // Declare base value once
         actions.push(`    java.math.BigDecimal _base = $event.getPayloadNumber("${pfs[0].field || 'total_amount'}");`);
-        // Generate one awardPoints per formula
+        // Generate one awardPoints per formula (基础积分 — 无上限)
         for (const pf of pfs) {
           if (!pf.pointType || !pf.multiplier) continue;
           actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${pf.pointType}", _base.multiply(new java.math.BigDecimal("${pf.multiplier}")).setScale(0, java.math.RoundingMode.DOWN), "${safeName}", null);`);
         }
       }
-      if (data.floorPoints > 0) actions.push(`    if (_base.compareTo(new java.math.BigDecimal("${data.floorPoints}")) < 0) _base = new java.math.BigDecimal("${data.floorPoints}");`);
-      if (data.maxPoints > 0) actions.push(`    if (_base.compareTo(new java.math.BigDecimal("${data.maxPoints}")) > 0) _base = new java.math.BigDecimal("${data.maxPoints}");`);
+      // 额外奖励上限 (campaign cap)
+      if (data.maxPoints > 0) actions.push(`    // campaign cap: ${data.maxPoints}`);
     } else {
       const perItem = data.perItemPoints || 0;
       if (perItem > 0) {
@@ -485,54 +485,47 @@ const RuleEditor: React.FC = () => {
 
       <Divider style={{ margin: '12px 0' }} />
 
-      {/* 积分计算 */}
-      <Card size="small" title="积分计算">
+      {/* 俱乐部基础积分 — 稳定，不常变 */}
+      <Card size="small" title={<Space><Tag color="blue">基础积分</Tag>俱乐部基础规则</Space>}
+        extra={<Text type="secondary" style={{ fontSize: 11 }}>设置后不常变更</Text>}>
         {selectedEntity === 'ORDER' ? (
           <>
-            {/* 基础积分公式 */}
-            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>基础积分公式</Text>
-                {pointFormulas.map((pf, i) => (
-                  <Row gutter={6} key={pf.key} style={{ marginBottom: 4 }} align="middle">
-                    <Col span={8}>
-                      <Select size="small" value={pf.pointType} options={pointTypeOptions} style={{ width: '100%' }}
-                        onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], pointType: v }; setPointFormulas(n); }} />
-                    </Col>
-                    <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>=</Text></Col>
-                    <Col span={6}>
-                      <Select size="small" value={pf.field} options={schemaFields.filter(f => f.type === 'number').map(f => ({ label: f.value, value: f.value }))} style={{ width: '100%' }}
-                        onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], field: v }; setPointFormulas(n); }} />
-                    </Col>
-                    <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>×</Text></Col>
-                    <Col span={4}>
-                      <InputNumber size="small" min={0.1} step={0.1} value={pf.multiplier} style={{ width: '100%' }}
-                        onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], multiplier: v || 0 }; setPointFormulas(n); }} />
-                    </Col>
-                    <Col span={2}>
-                      {pointFormulas.length > 1 && (
-                        <Button size="small" type="link" style={{ padding: 0 }} icon={<DeleteOutlined style={{ fontSize: 13, color: '#8c8c8c' }} />}
-                          onClick={() => setPointFormulas(pointFormulas.filter((_, j) => j !== i))} />
-                      )}
-                    </Col>
-                  </Row>
-                ))}
-                <Button size="small" type="dashed" onClick={() => setPointFormulas([...pointFormulas, { key: String(Date.now()), pointType: 'REWARD', field: 'order_amount', multiplier: 1 }])}
-                  style={{ marginBottom: 12 }}>+ 添加积分类型</Button>
-
-                <Row gutter={16} style={{ marginTop: 8 }}>
-                  <Col span={8}><Form.Item label="保底" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={99999} value={floorPoints} onChange={v => setFloorPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
-                  <Col span={8}><Form.Item label="上限(0=不限)" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
-                </Row>
+            {pointFormulas.map((pf, i) => (
+              <Row gutter={6} key={pf.key} style={{ marginBottom: 4 }} align="middle">
+                <Col span={8}>
+                  <Select size="small" value={pf.pointType} options={pointTypeOptions} style={{ width: '100%' }}
+                    onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], pointType: v }; setPointFormulas(n); }} />
+                </Col>
+                <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>=</Text></Col>
+                <Col span={6}>
+                  <Select size="small" value={pf.field} options={schemaFields.filter(f => f.type === 'number').map(f => ({ label: f.value, value: f.value }))} style={{ width: '100%' }}
+                    onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], field: v }; setPointFormulas(n); }} />
+                </Col>
+                <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>×</Text></Col>
+                <Col span={4}>
+                  <InputNumber size="small" min={0.1} step={0.1} value={pf.multiplier} style={{ width: '100%' }}
+                    onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], multiplier: v || 0 }; setPointFormulas(n); }} />
+                </Col>
+                <Col span={2}>
+                  {pointFormulas.length > 1 && (
+                    <Button size="small" type="link" style={{ padding: 0 }} icon={<DeleteOutlined style={{ fontSize: 13, color: '#8c8c8c' }} />}
+                      onClick={() => setPointFormulas(pointFormulas.filter((_, j) => j !== i))} />
+                  )}
+                </Col>
+              </Row>
+            ))}
+            <Button size="small" type="dashed" onClick={() => setPointFormulas([...pointFormulas, { key: String(Date.now()), pointType: 'REWARD', field: 'order_amount', multiplier: 1 }])}>
+              + 添加积分类型</Button>
           </>
         ) : (
           <Form.Item label="每次奖励积分" style={{ marginBottom: 0 }}>
             <InputNumber size="small" min={1} max={10000} value={rewardPoints} onChange={v => setRewardPoints(v || 0)} addonAfter="分/次" />
           </Form.Item>
         )}
+      </Card>
 
-        <Divider style={{ margin: '12px 0' }} />
-
-        {/* 等级额外奖励 */}
-        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>等级额外奖励</Text>
+      {/* 等级奖励 */}
+      <Card size="small" title={<Space><Tag color="green">等级奖励</Tag>会员等级额外奖励</Space>} style={{ marginTop: 12 }}>
         {tierFormulas.map((tf, i) => (
           <Row gutter={6} key={tf.key} style={{ marginBottom: 4 }} align="middle">
             <Col span={5}>
@@ -556,8 +549,16 @@ const RuleEditor: React.FC = () => {
           </Row>
         ))}
         <Button size="small" type="dashed" onClick={() => setTierFormulas([...tierFormulas, { key: String(Date.now()), tier: 'SILVER', pointType: pointFormulas[0]?.pointType || 'REWARD', multiplier: 0.1 }])}>
-          + 添加等级奖励
-        </Button>
+          + 添加等级奖励</Button>
+      </Card>
+
+      {/* 额外奖励 — 积分活动，常变更 */}
+      <Card size="small" title={<Space><Tag color="orange">额外奖励</Tag>积分活动</Space>}
+        extra={<Text type="secondary" style={{ fontSize: 11 }}>可随时调整</Text>} style={{ marginTop: 12 }}>
+        <Form.Item label="活动上限" tooltip="活动期间额外奖励部分的单笔积分上限" style={{ marginBottom: 8 }}>
+          <InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分/单" />
+        </Form.Item>
+        <Text type="secondary" style={{ fontSize: 11 }}>活动规则通过下方 AI 步骤添加</Text>
       </Card>
 
       </div>,
