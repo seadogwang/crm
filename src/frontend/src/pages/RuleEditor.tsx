@@ -231,6 +231,24 @@ const RuleEditor: React.FC = () => {
   const [tierOptions, setTierOptions] = useState<Option[]>([]);
   const [tradeStatusOptions, setTradeStatusOptions] = useState<Option[]>([]);
 
+  // 编辑模式: 加载已有规则数据
+  useEffect(() => {
+    if (!id) return;
+    api.get(`/admin/rules/${id}`).then(({ data }) => {
+      const r = data?.data;
+      if (!r) return;
+      setRuleName(r.rule_name || '');
+      setRuleCode(r.rule_code || '');
+      setAgendaGroup(r.agenda_group || r.activation_group || 'purchase');
+      // 加载 DRL 到脚本区(手动模式)
+      if (r.drl_content) {
+        setManualDrl(r.drl_content);
+        setManualEdit(true);
+        setScriptExpanded(true);
+      }
+    }).catch(() => {});
+  }, [id]);
+
   // 加载 Schema + 选项
   useEffect(() => {
     api.get(`/schemas/${selectedEntity}`).then(({ data }) => {
