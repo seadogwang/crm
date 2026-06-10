@@ -19,6 +19,8 @@ type Option = { label: string; value: string };
 type SchemaField = Option & { type: string; format?: string; enumValues?: string[] };
 interface ExtCondition { key: string; field: string; type?: string; format?: string; op: string; value: string; valueEnd?: string; entity?: string; }
 interface TierBonus { key: string; tier: string; bonus: number; }
+interface PointFormula { key: string; pointType: string; field: string; multiplier: number; }
+interface TierFormula { key: string; tier: string; pointType: string; multiplier: number; }
 interface CategoryWeight { key: string; cat: string; weight: number; }
 interface QuantityTier { key: string; minQty: number; bonus: number; }
 
@@ -52,7 +54,7 @@ function generateDrl(data: Record<string, any>): string {
   const agendaGroup = data.agendaGroup || 'purchase';
   const entity = data.selectedEntity || 'ORDER';
   const calcMode = data.calcMode || 'total';
-  const pointType = data.pointType || 'REWARD_POINTS';
+  const defaultPointType = (data.pointFormulas?.[0]?.pointType) || 'REWARD';
   const lines: string[] = [];
 
   lines.push('package com.loyalty.platform.rules;');
@@ -102,14 +104,19 @@ function generateDrl(data: Record<string, any>): string {
 
   if (entity === 'ORDER') {
     if (calcMode === 'total') {
-      const ratio = (data.ratioPercent || 0) / 100;
-      if (ratio > 0) {
-        actions.push('    java.math.BigDecimal _total = $event.getPayloadNumber("total_amount");');
-        actions.push(`    java.math.BigDecimal _pts = _total.multiply(new java.math.BigDecimal("${ratio}")).setScale(0, java.math.RoundingMode.DOWN);`);
+      // Multi point-type formulas
+      const pfs: PointFormula[] = data.pointFormulas || [];
+      if (pfs.length > 0) {
+        // Declare base value once
+        actions.push(`    java.math.BigDecimal _base = $event.getPayloadNumber("${pfs[0].field || 'total_amount'}");`);
+        // Generate one awardPoints per formula
+        for (const pf of pfs) {
+          if (!pf.pointType || !pf.multiplier) continue;
+          actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${pf.pointType}", _base.multiply(new java.math.BigDecimal("${pf.multiplier}")).setScale(0, java.math.RoundingMode.DOWN), "${safeName}", null);`);
+        }
       }
-      if (data.floorPoints > 0) actions.push(`    if (_pts.compareTo(new java.math.BigDecimal("${data.floorPoints}")) < 0) _pts = new java.math.BigDecimal("${data.floorPoints}");`);
-      if (data.maxPoints > 0) actions.push(`    if (_pts.compareTo(new java.math.BigDecimal("${data.maxPoints}")) > 0) _pts = new java.math.BigDecimal("${data.maxPoints}");`);
-      if (ratio > 0 || data.floorPoints > 0) actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${pointType}", _pts, "${safeName}", null);`);
+      if (data.floorPoints > 0) actions.push(`    if (_base.compareTo(new java.math.BigDecimal("${data.floorPoints}")) < 0) _base = new java.math.BigDecimal("${data.floorPoints}");`);
+      if (data.maxPoints > 0) actions.push(`    if (_base.compareTo(new java.math.BigDecimal("${data.maxPoints}")) > 0) _base = new java.math.BigDecimal("${data.maxPoints}");`);
     } else {
       const perItem = data.perItemPoints || 0;
       if (perItem > 0) {
@@ -126,16 +133,17 @@ function generateDrl(data: Record<string, any>): string {
         if (!q.minQty || !q.bonus) continue;
         actions.push(`    if (_cnt >= ${q.minQty}) { _pts = _pts.add(new java.math.BigDecimal("${q.bonus}")); }`);
       }
-      if (perItem > 0) actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${pointType}", _pts, "${safeName}", null);`);
+      if (perItem > 0) actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${defaultPointType}", _pts, "${safeName}", null);`);
     }
   } else if (data.rewardPoints > 0) {
-    actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${pointType}", new java.math.BigDecimal("${data.rewardPoints}"), "${safeName}", null);`);
+    actions.push(`    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${defaultPointType}", new java.math.BigDecimal("${data.rewardPoints}"), "${safeName}", null);`);
   }
 
-  const tierBonuses: TierBonus[] = data.tierBonuses || [];
-  for (const tb of tierBonuses) {
-    if (!tb.tier || !tb.bonus) continue;
-    actions.push(`    if ("${tb.tier}".equals($member.getTierCode())) { collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${pointType}", new java.math.BigDecimal("${tb.bonus}"), "${safeName}_TIER", null); }`);
+  // Tier formulas: extra multiplier on specific point types
+  const tfs: TierFormula[] = data.tierFormulas || [];
+  for (const tf of tfs) {
+    if (!tf.tier || !tf.pointType || !tf.multiplier) continue;
+    actions.push(`    if ("${tf.tier}".equals($member.getTierCode())) { collector.awardPoints($event.getProgramCode(), $event.getMemberId(), "${tf.pointType}", _base.multiply(new java.math.BigDecimal("${tf.multiplier}")).setScale(0, java.math.RoundingMode.DOWN), "${safeName}_TIER", null); }`);
   }
   if (actions.length === 0) actions.push('    System.out.println("rule fired: " + $event.getEventId());');
   lines.push(actions.join('\n'));
@@ -160,7 +168,14 @@ const RuleEditor: React.FC = () => {
 
   // ① 业务实体配置
   const [selectedEntity, setSelectedEntity] = useState('ORDER');
-  const [pointType, setPointType] = useState('REWARD_POINTS');
+  const [pointFormulas, setPointFormulas] = useState<PointFormula[]>([
+    { key: '1', pointType: 'REWARD', field: 'order_amount', multiplier: 1 },
+    { key: '2', pointType: 'TIER', field: 'order_amount', multiplier: 1 },
+  ]);
+  const [tierFormulas, setTierFormulas] = useState<TierFormula[]>([
+    { key: '1', tier: 'GOLD', pointType: 'REWARD', multiplier: 0.2 },
+    { key: '2', tier: 'PLATINUM', pointType: 'REWARD', multiplier: 0.3 },
+  ]);
   const [schemaFields, setSchemaFields] = useState<SchemaField[]>([]);
   const [editingCondIdx, setEditingCondIdx] = useState<number | null>(null);
 
@@ -230,14 +245,14 @@ const RuleEditor: React.FC = () => {
   }, [selectedEntity]);
 
   const formData = useMemo(() => ({
-    ruleName, agendaGroup, salience, selectedEntity, frequencyLimit, pointType,
+    ruleName, agendaGroup, salience, selectedEntity, frequencyLimit,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
-    calcMode, ratioPercent, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
-    rewardPoints, tierBonuses, aiGeneratedDrl,
-  }), [ruleName, agendaGroup, salience, selectedEntity, frequencyLimit, pointType,
+    calcMode, pointFormulas, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
+    rewardPoints, tierFormulas, aiGeneratedDrl,
+  }), [ruleName, agendaGroup, salience, selectedEntity, frequencyLimit,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
-    calcMode, ratioPercent, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
-    rewardPoints, tierBonuses, aiGeneratedDrl]);
+    calcMode, pointFormulas, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
+    rewardPoints, tierFormulas, aiGeneratedDrl]);
 
   const drlCode = useMemo(() => manualEdit ? manualDrl : generateDrl(formData), [formData, manualEdit, manualDrl]);
 
@@ -337,32 +352,26 @@ const RuleEditor: React.FC = () => {
 
   const steps = [
     { title: '实体配置', icon: <SettingOutlined /> },
-    { title: '等级加成', icon: <GiftOutlined /> },
     { title: 'AI 活动', icon: <ThunderboltOutlined /> },
   ];
 
   const stepContent = [
     // ① 业务实体配置
     <div key="s0">
-      {/* 第一行: 规则组 + 积分类型 + 优先级 */}
+      {/* 第一行: 规则组 + 优先级 */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
+        <Col span={8}>
           <Form.Item label="规则组" tooltip="同一规则组内的规则按优先级排序执行" style={{ marginBottom: 0 }}>
             <Select value={agendaGroup} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
-        <Col span={6}>
-          <Form.Item label="积分类型" tooltip="此规则计算出的积分将计入哪个积分账户" style={{ marginBottom: 0 }}>
-            <Select value={pointType} onChange={setPointType} options={pointTypeOptions} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Form.Item label="优先级" tooltip="同规则组内数字越大越先执行" style={{ marginBottom: 0 }}>
             <InputNumber min={0} max={1000} value={salience} onChange={v => setSalience(v || 0)} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
         {selectedEntity === 'BEHAVIOR' && (
-          <Col span={6}>
+          <Col span={8}>
             <Form.Item label="频次限制" style={{ marginBottom: 0 }}>
               <Radio.Group value={frequencyLimit} onChange={e => setFrequencyLimit(e.target.value)} size="small">
                 <Radio.Button value="once">仅首次</Radio.Button>
@@ -486,12 +495,43 @@ const RuleEditor: React.FC = () => {
                 <Radio.Button value="per_item">按订单明细</Radio.Button>
               </Radio.Group>
             </Form.Item>
+
             {calcMode === 'total' ? (
-              <Row gutter={16}>
-                <Col span={8}><Form.Item label="比例" style={{ marginBottom: 0 }}><InputNumber size="small" min={0.1} max={100} step={0.1} value={ratioPercent} onChange={v => setRatioPercent(v || 0)} addonAfter="%" style={{ width: '100%' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item label="保底" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={99999} value={floorPoints} onChange={v => setFloorPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item label="上限(0=不限)" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
-              </Row>
+              <>
+                {/* 基础积分公式 */}
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>基础积分公式</Text>
+                {pointFormulas.map((pf, i) => (
+                  <Row gutter={6} key={pf.key} style={{ marginBottom: 4 }} align="middle">
+                    <Col span={8}>
+                      <Select size="small" value={pf.pointType} options={pointTypeOptions} style={{ width: '100%' }}
+                        onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], pointType: v }; setPointFormulas(n); }} />
+                    </Col>
+                    <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>=</Text></Col>
+                    <Col span={6}>
+                      <Select size="small" value={pf.field} options={schemaFields.filter(f => f.type === 'number').map(f => ({ label: f.value, value: f.value }))} style={{ width: '100%' }}
+                        onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], field: v }; setPointFormulas(n); }} />
+                    </Col>
+                    <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>×</Text></Col>
+                    <Col span={4}>
+                      <InputNumber size="small" min={0.1} step={0.1} value={pf.multiplier} style={{ width: '100%' }}
+                        onChange={v => { const n = [...pointFormulas]; n[i] = { ...n[i], multiplier: v || 0 }; setPointFormulas(n); }} />
+                    </Col>
+                    <Col span={2}>
+                      {pointFormulas.length > 1 && (
+                        <Button size="small" type="link" style={{ padding: 0 }} icon={<DeleteOutlined style={{ fontSize: 13, color: '#8c8c8c' }} />}
+                          onClick={() => setPointFormulas(pointFormulas.filter((_, j) => j !== i))} />
+                      )}
+                    </Col>
+                  </Row>
+                ))}
+                <Button size="small" type="dashed" onClick={() => setPointFormulas([...pointFormulas, { key: String(Date.now()), pointType: 'REWARD', field: 'order_amount', multiplier: 1 }])}
+                  style={{ marginBottom: 12 }}>+ 添加积分类型</Button>
+
+                <Row gutter={16} style={{ marginTop: 8 }}>
+                  <Col span={8}><Form.Item label="保底" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={99999} value={floorPoints} onChange={v => setFloorPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
+                  <Col span={8}><Form.Item label="上限(0=不限)" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
+                </Row>
+              </>
             ) : (
               <>
                 <Form.Item label="每件基础分" style={{ marginBottom: 8 }}><InputNumber size="small" min={0} max={9999} value={perItemPoints} onChange={v => setPerItemPoints(v || 0)} addonAfter="分/件" /></Form.Item>
@@ -522,23 +562,42 @@ const RuleEditor: React.FC = () => {
             <InputNumber size="small" min={1} max={10000} value={rewardPoints} onChange={v => setRewardPoints(v || 0)} addonAfter="分/次" />
           </Form.Item>
         )}
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        {/* 等级额外奖励 */}
+        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>等级额外奖励</Text>
+        {tierFormulas.map((tf, i) => (
+          <Row gutter={6} key={tf.key} style={{ marginBottom: 4 }} align="middle">
+            <Col span={5}>
+              <Select size="small" value={tf.tier} options={tierOptions} style={{ width: '100%' }}
+                onChange={v => { const n = [...tierFormulas]; n[i] = { ...n[i], tier: v }; setTierFormulas(n); }} />
+            </Col>
+            <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>→</Text></Col>
+            <Col span={7}>
+              <Select size="small" value={tf.pointType} options={pointTypeOptions} style={{ width: '100%' }}
+                onChange={v => { const n = [...tierFormulas]; n[i] = { ...n[i], pointType: v }; setTierFormulas(n); }} />
+            </Col>
+            <Col span={2}><Text type="secondary" style={{ fontSize: 12 }}>×</Text></Col>
+            <Col span={5}>
+              <InputNumber size="small" min={0.1} step={0.1} value={tf.multiplier} style={{ width: '100%' }}
+                onChange={v => { const n = [...tierFormulas]; n[i] = { ...n[i], multiplier: v || 0 }; setTierFormulas(n); }} />
+            </Col>
+            <Col span={3}>
+              <Button size="small" type="link" style={{ padding: 0 }} icon={<DeleteOutlined style={{ fontSize: 13, color: '#8c8c8c' }} />}
+                onClick={() => setTierFormulas(tierFormulas.filter((_, j) => j !== i))} />
+            </Col>
+          </Row>
+        ))}
+        <Button size="small" type="dashed" onClick={() => setTierFormulas([...tierFormulas, { key: String(Date.now()), tier: 'SILVER', pointType: pointFormulas[0]?.pointType || 'REWARD', multiplier: 0.1 }])}>
+          + 添加等级奖励
+        </Button>
       </Card>
 
       </div>,
 
-    // ② 等级加成
+    // ② AI 活动
     <div key="s1">
-      {tierBonuses.map((tb, i) => (
-        <Row gutter={8} key={tb.key} style={{ marginBottom: 8 }}>
-          <Col span={10}><Select value={tb.tier} options={tierOptions} style={{ width: '100%' }} onChange={v => { const n = [...tierBonuses]; n[i] = { ...n[i], tier: v }; setTierBonuses(n); }} /></Col>
-          <Col span={9}><InputNumber value={tb.bonus} min={1} style={{ width: '100%' }} onChange={v => { const n = [...tierBonuses]; n[i] = { ...n[i], bonus: v || 0 }; setTierBonuses(n); }} addonAfter="分" /></Col>
-          <Col span={5}>{i === tierBonuses.length - 1 ? <Button size="small" type="dashed" block onClick={() => setTierBonuses([...tierBonuses, { key: String(Date.now()), tier: 'SILVER', bonus: 0 }])}>+</Button> : <Button size="small" type="link" danger onClick={() => setTierBonuses(tierBonuses.filter((_, j) => j !== i))}>×</Button>}</Col>
-        </Row>
-      ))}
-    </div>,
-
-    // ③ AI
-    <div key="s2">
       <Alert type="info" message="🤖 AI 活动规则助手" description="用自然语言描述营销活动，AI 生成 DRL 脚本附加到规则末尾。" style={{ marginBottom: 16 }} />
       <Input.TextArea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="如: 618大促期间，手机品类满3件额外赠200积分" rows={3} />
       <Button icon={<ThunderboltOutlined />} onClick={handleAiGenerate} loading={aiLoading} type="primary" style={{ marginTop: 8 }}>生成</Button>
