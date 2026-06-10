@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Tag, Button, Space, Tabs, Typography, message, Popconfirm, Tooltip } from 'antd';
 import {
-  PlusOutlined, EditOutlined, ExperimentOutlined, ThunderboltOutlined,
+  PlusOutlined, EditOutlined, FilterOutlined, ThunderboltOutlined,
   PauseCircleOutlined, PlayCircleOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -88,7 +88,7 @@ const RuleList: React.FC = () => {
               render: (_: any, record: any) => (
                 <Space>
                   <Tooltip title="编辑"><Button size="small" icon={<EditOutlined style={{ color: '#595959' }} />} onClick={() => navigate(`/rules/${record.id}/edit?type=base`)} /></Tooltip>
-                  <Tooltip title="沙箱测试"><Button size="small" icon={<ExperimentOutlined style={{ color: '#1677ff' }} />} onClick={() => navigate(`/rules/${record.id}/test`)} /></Tooltip>
+                  <Tooltip title="沙箱测试"><Button size="small" icon={<FilterOutlined style={{ color: '#52c41a' }} />} onClick={() => navigate(`/rules/${record.id}/test`)} /></Tooltip>
                   <Popconfirm title={`确定${record.status === 'ACTIVE' ? '停用' : '启用'}?`} onConfirm={() => handleToggleStatus(record.id, record.status)}>
                     <Button size="small" icon={record.status === 'ACTIVE' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
                       danger={record.status === 'ACTIVE'}>{record.status === 'ACTIVE' ? '停用' : '启用'}</Button>
