@@ -55,7 +55,7 @@ const RuleList: React.FC = () => {
       render: (_: any, record: any) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/rules/${record.id}/edit?type=campaign`)} />
-                  <Button size="small" icon={<ExperimentOutlined />} onClick={() => navigate(`/rules/${record.id}/test`)} />
+                  <Button size="small" icon={<FilterOutlined style={{ color: '#52c41a' }} />} onClick={() => navigate(`/rules/${record.id}/test`)} />
           <Popconfirm title={`确定${record.status === 'ACTIVE' ? '停用' : '启用'}?`} onConfirm={() => handleToggleStatus(record.id, record.status)}>
             <Button size="small" icon={record.status === 'ACTIVE' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
               danger={record.status === 'ACTIVE'}>{record.status === 'ACTIVE' ? '停用' : '启用'}</Button>
