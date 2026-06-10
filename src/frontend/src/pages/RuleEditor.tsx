@@ -489,17 +489,8 @@ const RuleEditor: React.FC = () => {
       <Card size="small" title="积分计算">
         {selectedEntity === 'ORDER' ? (
           <>
-            <Form.Item label="计算方式" style={{ marginBottom: 8 }}>
-              <Radio.Group value={calcMode} onChange={e => setCalcMode(e.target.value)} size="small">
-                <Radio.Button value="total">按订单总额</Radio.Button>
-                <Radio.Button value="per_item">按订单明细</Radio.Button>
-              </Radio.Group>
-            </Form.Item>
-
-            {calcMode === 'total' ? (
-              <>
-                {/* 基础积分公式 */}
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>基础积分公式</Text>
+            {/* 基础积分公式 */}
+            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>基础积分公式</Text>
                 {pointFormulas.map((pf, i) => (
                   <Row gutter={6} key={pf.key} style={{ marginBottom: 4 }} align="middle">
                     <Col span={8}>
@@ -531,31 +522,6 @@ const RuleEditor: React.FC = () => {
                   <Col span={8}><Form.Item label="保底" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={99999} value={floorPoints} onChange={v => setFloorPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
                   <Col span={8}><Form.Item label="上限(0=不限)" style={{ marginBottom: 0 }}><InputNumber size="small" min={0} max={999999} value={maxPoints} onChange={v => setMaxPoints(v || 0)} addonAfter="分" style={{ width: '100%' }} /></Form.Item></Col>
                 </Row>
-              </>
-            ) : (
-              <>
-                <Form.Item label="每件基础分" style={{ marginBottom: 8 }}><InputNumber size="small" min={0} max={9999} value={perItemPoints} onChange={v => setPerItemPoints(v || 0)} addonAfter="分/件" /></Form.Item>
-                <Text type="secondary" style={{ fontSize: 11 }}>品类加权:</Text>
-                {categoryWeights.map((cw, i) => (
-                  <Row gutter={4} key={cw.key} style={{ marginTop: 4 }}>
-                    <Col span={10}><Input size="small" placeholder="品类" value={cw.cat} onChange={e => { const n = [...categoryWeights]; n[i] = { ...n[i], cat: e.target.value }; setCategoryWeights(n); }} /></Col>
-                    <Col span={9}><InputNumber size="small" placeholder="倍率" value={cw.weight} min={0.1} step={0.1} style={{ width: '100%' }} onChange={v => { const n = [...categoryWeights]; n[i] = { ...n[i], weight: v || 0 }; setCategoryWeights(n); }} addonAfter="×" /></Col>
-                    <Col span={5}>{i === categoryWeights.length - 1 ? <Button size="small" type="dashed" block onClick={() => setCategoryWeights([...categoryWeights, { key: String(Date.now()), cat: '', weight: 1 }])}>+</Button> : <Button size="small" type="link" danger onClick={() => setCategoryWeights(categoryWeights.filter((_, j) => j !== i))}>×</Button>}</Col>
-                  </Row>
-                ))}
-                {categoryWeights.length === 0 && <Button size="small" type="dashed" onClick={() => setCategoryWeights([{ key: String(Date.now()), cat: '', weight: 1 }])} style={{ marginTop: 4 }}>+ 添加品类加权</Button>}
-                <Divider style={{ margin: '8px 0' }} />
-                <Text type="secondary" style={{ fontSize: 11 }}>数量阶梯:</Text>
-                {quantityTiers.map((qt, i) => (
-                  <Row gutter={4} key={qt.key} style={{ marginTop: 4 }}>
-                    <Col span={10}><InputNumber size="small" placeholder="满N件" value={qt.minQty} min={1} style={{ width: '100%' }} onChange={v => { const n = [...quantityTiers]; n[i] = { ...n[i], minQty: v || 0 }; setQuantityTiers(n); }} addonBefore="≥" /></Col>
-                    <Col span={9}><InputNumber size="small" placeholder="额外加分" value={qt.bonus} min={1} style={{ width: '100%' }} onChange={v => { const n = [...quantityTiers]; n[i] = { ...n[i], bonus: v || 0 }; setQuantityTiers(n); }} addonAfter="分" /></Col>
-                    <Col span={5}>{i === quantityTiers.length - 1 ? <Button size="small" type="dashed" block onClick={() => setQuantityTiers([...quantityTiers, { key: String(Date.now()), minQty: 3, bonus: 50 }])}>+</Button> : <Button size="small" type="link" danger onClick={() => setQuantityTiers(quantityTiers.filter((_, j) => j !== i))}>×</Button>}</Col>
-                  </Row>
-                ))}
-                {quantityTiers.length === 0 && <Button size="small" type="dashed" onClick={() => setQuantityTiers([{ key: String(Date.now()), minQty: 3, bonus: 50 }])} style={{ marginTop: 4 }}>+ 添加数量阶梯</Button>}
-              </>
-            )}
           </>
         ) : (
           <Form.Item label="每次奖励积分" style={{ marginBottom: 0 }}>
