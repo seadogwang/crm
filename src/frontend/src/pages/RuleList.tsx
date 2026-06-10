@@ -54,7 +54,8 @@ const RuleList: React.FC = () => {
       title: '操作', key: 'actions', width: 200,
       render: (_: any, record: any) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/rules/${record.id}/edit?type=campaign`)}>编辑</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/rules/${record.id}/edit?type=campaign`)} />
+                  <Button size="small" icon={<ExperimentOutlined />} onClick={() => navigate(`/rules/${record.id}/test`)} />
           <Popconfirm title={`确定${record.status === 'ACTIVE' ? '停用' : '启用'}?`} onConfirm={() => handleToggleStatus(record.id, record.status)}>
             <Button size="small" icon={record.status === 'ACTIVE' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
               danger={record.status === 'ACTIVE'}>{record.status === 'ACTIVE' ? '停用' : '启用'}</Button>
@@ -87,6 +88,7 @@ const RuleList: React.FC = () => {
               render: (_: any, record: any) => (
                 <Space>
                   <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/rules/${record.id}/edit?type=base`)} />
+                  <Button size="small" icon={<ExperimentOutlined />} onClick={() => navigate(`/rules/${record.id}/test`)} />
                   <Popconfirm title={`确定${record.status === 'ACTIVE' ? '停用' : '启用'}?`} onConfirm={() => handleToggleStatus(record.id, record.status)}>
                     <Button size="small" icon={record.status === 'ACTIVE' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
                       danger={record.status === 'ACTIVE'}>{record.status === 'ACTIVE' ? '停用' : '启用'}</Button>
