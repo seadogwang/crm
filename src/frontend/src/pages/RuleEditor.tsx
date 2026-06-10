@@ -170,6 +170,8 @@ const RuleEditor: React.FC = () => {
   const [ruleCode, setRuleCode] = useState('');
   const [agendaGroup, setAgendaGroup] = useState('purchase');
   const [salience, setSalience] = useState(100);
+  const [effectiveFrom, setEffectiveFrom] = useState<string>('');
+  const [effectiveTo, setEffectiveTo] = useState<string>('');
 
   // ① 业务实体配置
   const [selectedEntity, setSelectedEntity] = useState('ORDER');
@@ -249,6 +251,8 @@ const RuleEditor: React.FC = () => {
           if (meta.tierFormulas) setTierFormulas(meta.tierFormulas);
           if (meta.extConditions) setExtConditions(meta.extConditions);
           if (meta.salience) setSalience(meta.salience);
+          if (meta.effectiveFrom) setEffectiveFrom(meta.effectiveFrom);
+          if (meta.effectiveTo) setEffectiveTo(meta.effectiveTo);
         }
       } catch (e) {}
       // 加载 DRL 到脚本区
@@ -281,11 +285,11 @@ const RuleEditor: React.FC = () => {
   }, [selectedEntity]);
 
   const formData = useMemo(() => ({
-    ruleName, agendaGroup, salience, selectedEntity, frequencyLimit,
+    ruleName, agendaGroup, salience, effectiveFrom, effectiveTo, selectedEntity, frequencyLimit,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
     calcMode, pointFormulas, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
     rewardPoints, tierFormulas, campaignPointType, campaignReward, aiGeneratedDrl,
-  }), [ruleName, agendaGroup, salience, selectedEntity, frequencyLimit,
+  }), [ruleName, agendaGroup, salience, effectiveFrom, effectiveTo, selectedEntity, frequencyLimit,
     channels, memberTiers, minAmount, tradeStatus, extConditions,
     calcMode, pointFormulas, floorPoints, maxPoints, perItemPoints, categoryWeights, quantityTiers,
     rewardPoints, tierFormulas, campaignPointType, campaignReward, aiGeneratedDrl]);
@@ -306,7 +310,7 @@ const RuleEditor: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience };
+      const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience, effectiveFrom, effectiveTo };
       const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, status: 'DRAFT', metadata: meta };
       if (isEdit) await api.put(`/admin/rules/${id}`, payload); else await api.post('/admin/rules', payload);
       message.success('已保存草稿');
@@ -316,7 +320,7 @@ const RuleEditor: React.FC = () => {
     setPublishing(true);
     try {
       let ruleId = id ? Number(id) : null;
-      const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience };
+      const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience, effectiveFrom, effectiveTo };
       const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, metadata: meta };
       if (isEdit) await api.put(`/admin/rules/${id}`, payload); else { const { data } = await api.post('/admin/rules', payload); ruleId = data?.data?.id; }
       try {
@@ -591,6 +595,10 @@ const RuleEditor: React.FC = () => {
           <Col span={6}><Form.Item label="规则代码" style={{ marginBottom: 0 }}><Input placeholder="自动生成" value={ruleCode} onChange={e => setRuleCode(e.target.value)} /></Form.Item></Col>
           <Col span={6}><Form.Item label="规则组" style={{ marginBottom: 0 }}><Select value={agendaGroup} onChange={setAgendaGroup} options={AGENDA_GROUPS} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={6}><Form.Item label="优先级" style={{ marginBottom: 0 }}><InputNumber min={0} max={1000} value={salience} onChange={v => setSalience(v || 0)} style={{ width: '100%' }} /></Form.Item></Col>
+        </Row>
+        <Row gutter={16} style={{ marginTop: 8 }}>
+          <Col span={6}><Form.Item label="启用时间" style={{ marginBottom: 0 }}><DatePicker size="small" placeholder="立即生效" value={effectiveFrom ? dayjs(effectiveFrom) : null} onChange={d => setEffectiveFrom(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={6}><Form.Item label="停用时间" style={{ marginBottom: 0 }}><DatePicker size="small" placeholder="不填=永久有效" value={effectiveTo ? dayjs(effectiveTo) : null} onChange={d => setEffectiveTo(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')} style={{ width: '100%' }} /></Form.Item></Col>
         </Row>
       </Card>
 
