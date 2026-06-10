@@ -231,7 +231,7 @@ const RuleEditor: React.FC = () => {
   const [tierOptions, setTierOptions] = useState<Option[]>([]);
   const [tradeStatusOptions, setTradeStatusOptions] = useState<Option[]>([]);
 
-  // 编辑模式: 加载已有规则数据
+  // 编辑模式: 加载已有规则数据 + 恢复表单状态
   useEffect(() => {
     if (!id) return;
     api.get(`/admin/rules/${id}`).then(({ data }) => {
@@ -240,7 +240,18 @@ const RuleEditor: React.FC = () => {
       setRuleName(r.rule_name || '');
       setRuleCode(r.rule_code || '');
       setAgendaGroup(r.agenda_group || r.activation_group || 'purchase');
-      // 加载 DRL 到脚本区(手动模式)
+      // 从 metadata 恢复表单状态
+      try {
+        const meta = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null;
+        if (meta) {
+          if (meta.selectedEntity) setSelectedEntity(meta.selectedEntity);
+          if (meta.pointFormulas) setPointFormulas(meta.pointFormulas);
+          if (meta.tierFormulas) setTierFormulas(meta.tierFormulas);
+          if (meta.extConditions) setExtConditions(meta.extConditions);
+          if (meta.salience) setSalience(meta.salience);
+        }
+      } catch (e) {}
+      // 加载 DRL 到脚本区
       if (r.drl_content) {
         setManualDrl(r.drl_content);
         setManualEdit(true);
@@ -295,7 +306,8 @@ const RuleEditor: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, status: 'DRAFT' };
+      const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience };
+      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, status: 'DRAFT', metadata: meta };
       if (isEdit) await api.put(`/admin/rules/${id}`, payload); else await api.post('/admin/rules', payload);
       message.success('已保存草稿');
     } catch (e: any) { message.error(e?.message || '保存失败'); } finally { setSaving(false); }
@@ -304,7 +316,8 @@ const RuleEditor: React.FC = () => {
     setPublishing(true);
     try {
       let ruleId = id ? Number(id) : null;
-      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode };
+      const meta = { selectedEntity, pointFormulas, tierFormulas, extConditions, salience };
+      const payload = { rule_code: ruleCode || `RULE_${Date.now()}`, rule_name: ruleName || '未命名规则', agenda_group: agendaGroup, rule_type: 'DRL', drl_content: drlCode, metadata: meta };
       if (isEdit) await api.put(`/admin/rules/${id}`, payload); else { const { data } = await api.post('/admin/rules', payload); ruleId = data?.data?.id; }
       try {
         const { data: td } = await api.post(`/admin/rules/${ruleId}/validate`); const r = td?.data;

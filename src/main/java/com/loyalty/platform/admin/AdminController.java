@@ -421,6 +421,9 @@ public class AdminController {
             return ResponseEntity.ok(ApiResponse.error("ERR_INVALID", "drl_content 不能为空"));
         }
 
+        @SuppressWarnings("unchecked")
+        Map<String, Object> metadata = (Map<String, Object>) body.get("metadata");
+
         RuleDefinition rule = RuleDefinition.builder()
                 .programCode(pc)
                 .ruleCode(ruleCode)
@@ -428,6 +431,7 @@ public class AdminController {
                 .ruleType((String) body.getOrDefault("rule_type", "DRL"))
                 .agendaGroup((String) body.getOrDefault("agenda_group", "default"))
                 .drlContent(drlContent)
+                .metadata(metadata)
                 .version(1)
                 .status("DRAFT")
                 .build();
@@ -454,6 +458,11 @@ public class AdminController {
         if (body.containsKey("agenda_group")) rule.setAgendaGroup((String) body.get("agenda_group"));
         if (body.containsKey("drl_content")) rule.setDrlContent((String) body.get("drl_content"));
         if (body.containsKey("status")) rule.setStatus((String) body.get("status"));
+        if (body.containsKey("metadata")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> meta = (Map<String, Object>) body.get("metadata");
+            rule.setMetadata(meta);
+        }
         rule.setUpdatedAt(LocalDateTime.now());
 
         ruleRepo.save(rule);
@@ -1095,6 +1104,7 @@ public class AdminController {
         m.put("status", r.getStatus());
         m.put("created_at", r.getCreatedAt() != null ? r.getCreatedAt().toString() : null);
         m.put("updated_at", r.getUpdatedAt() != null ? r.getUpdatedAt().toString() : null);
+        m.put("metadata", r.getMetadata());
         return m;
     }
 
