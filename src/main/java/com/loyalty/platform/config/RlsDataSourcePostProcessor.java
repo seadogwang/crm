@@ -69,11 +69,18 @@ public class RlsDataSourcePostProcessor implements BeanPostProcessor {
             String programCode = TenantContext.get();
             if (programCode != null) {
                 try (Statement stmt = conn.createStatement()) {
-                    stmt.execute("SET LOCAL app.current_program_code = '"
+                    // SET SESSION persists for the entire connection lifecycle
+                    // (SET LOCAL would be scoped to the current transaction, which may not exist yet)
+                    stmt.execute("SET SESSION app.current_program_code = '"
                             + programCode.replace("'", "''") + "'");
                 } catch (SQLException e) {
                     log.error("[RLS] 设置 app.current_program_code 失败: {}", programCode, e);
                 }
+            } else {
+                // 清除残留的租户上下文，防止连接池复用导致租户串数据
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("RESET app.current_program_code");
+                } catch (SQLException ignored) {}
             }
         }
 
