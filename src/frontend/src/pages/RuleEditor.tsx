@@ -467,8 +467,7 @@ const RuleEditor: React.FC = () => {
 
       <Divider style={{ margin: '12px 0' }} />
 
-      {/* 俱乐部基础积分 — 仅 ORDER 显示 */}
-      {selectedEntity === 'ORDER' && (
+      {/* 俱乐部基础积分 */}
       <Card size="small" title={<Space><Tag color="blue">基础积分</Tag>俱乐部基础规则</Space>}
         extra={<Text type="secondary" style={{ fontSize: 11 }}>设置后不常变更</Text>}>
         {pointFormulas.map((pf, i) => (
@@ -498,10 +497,8 @@ const RuleEditor: React.FC = () => {
             <Button size="small" type="dashed" onClick={() => setPointFormulas([...pointFormulas, { key: String(Date.now()), pointType: 'REWARD', field: 'order_amount', multiplier: 1 }])}>
               + 添加积分类型</Button>
       </Card>
-      )}
 
-      {/* 等级奖励 — 仅 ORDER 显示 */}
-      {selectedEntity === 'ORDER' && (
+      {/* 等级奖励 */}
       <Card size="small" title={<Space><Tag color="green">等级奖励</Tag>会员等级额外奖励</Space>} style={{ marginTop: 12 }}>
         {tierFormulas.map((tf, i) => (
           <Row gutter={6} key={tf.key} style={{ marginBottom: 4 }} align="middle">
@@ -528,7 +525,6 @@ const RuleEditor: React.FC = () => {
         <Button size="small" type="dashed" onClick={() => setTierFormulas([...tierFormulas, { key: String(Date.now()), tier: 'SILVER', pointType: pointFormulas[0]?.pointType || 'REWARD', multiplier: 0.1 }])}>
           + 添加等级奖励</Button>
       </Card>
-      )}
 
       </div>,
 
