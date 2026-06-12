@@ -3,13 +3,15 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 /** 组件类型定义 */
 export const NODE_TYPES = {
-  IDEMPOTENT: { type: 'idempotent', label: '幂等检查', componentName: 'idempotentCmp', color: '#1677ff' },
-  STANDARDIZE: { type: 'standardize', label: '数据标准化', componentName: 'standardizeCmp', color: '#52c41a' },
-  ONE_ID: { type: 'oneId', label: 'One-ID 匹配', componentName: 'oneIdCmp', color: '#fa8c16' },
-  FACT_BUILDER: { type: 'factBuilder', label: '事实构建', componentName: 'factBuilderCmp', color: '#722ed1' },
-  RULE_ENGINE: { type: 'ruleEngine', label: '规则引擎', componentName: 'ruleEngineCmp', color: '#eb2f96' },
-  ACTION_EXECUTE: { type: 'actionExecute', label: '动作执行', componentName: 'actionExecuteCmp', color: '#13c2c2' },
-  COMPLETE: { type: 'complete', label: '完成处理', componentName: 'completeCmp', color: '#8c8c8c' },
+  IDEMPOTENT:    { type: 'idempotent',    label: '幂等检查',   componentName: 'idempotentCmp',    color: '#1677ff' },
+  STANDARDIZE:   { type: 'standardize',   label: '数据标准化', componentName: 'standardizeCmp',   color: '#52c41a' },
+  ONE_ID:        { type: 'oneId',         label: 'One-ID 匹配',componentName: 'oneIdCmp',         color: '#fa8c16' },
+  FACT_BUILDER:  { type: 'factBuilder',   label: '事实构建',   componentName: 'factBuilderCmp',   color: '#722ed1' },
+  RULE_ENGINE:   { type: 'ruleEngine',    label: '规则引擎',   componentName: 'ruleEngineCmp',    color: '#eb2f96' },
+  ACTION_EXECUTE:{ type: 'actionExecute', label: '动作执行',   componentName: 'actionExecuteCmp', color: '#13c2c2' },
+  COMPLETE:      { type: 'complete',      label: '完成处理',   componentName: 'completeCmp',      color: '#8c8c8c' },
+  REFUND:        { type: 'refund',        label: '退款处理',   componentName: 'refundSpecificCmp', color: '#f5222d' },
+  ERROR_HANDLER: { type: 'errorHandler',  label: '异常处理',   componentName: 'errorHandlerCmp',   color: '#d4380d' },
 } as const;
 
 export type NodeTypeKey = keyof typeof NODE_TYPES;
@@ -20,6 +22,9 @@ export interface FlowNodeData {
   componentName: string;
   color: string;
   config?: Record<string, unknown>;
+  timeout?: number;
+  retryCount?: number;
+  async?: boolean;
 }
 
 /** 自定义节点渲染 */

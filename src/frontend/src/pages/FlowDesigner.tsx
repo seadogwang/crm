@@ -9,7 +9,7 @@ import {
   type OnConnectEnd,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Button, Card, Input, Select, Space, message, Typography, Divider, Tag } from 'antd';
+import { Button, Card, Input, InputNumber, Select, Space, message, Typography, Divider, Tag, Checkbox } from 'antd';
 import { PlusOutlined, SaveOutlined, SendOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import PageWrapper from '../components/PageWrapper';
@@ -197,6 +197,28 @@ const FlowDesigner: React.FC = () => {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>{(selectedNode.data as any)?.label}</Text>
               <Tag color={(selectedNode.data as any)?.color}>{(selectedNode.data as any)?.componentName}</Tag>
+              <Divider style={{ margin: '4px 0' }} />
+              <Text style={{ fontSize: 11, color: '#999' }}>超时时间 (ms)</Text>
+              <InputNumber size="small" style={{ width: '100%' }} min={100} step={100}
+                value={(selectedNode.data as any)?.timeout || 5000}
+                onChange={(v) => {
+                  const updated = { ...selectedNode, data: { ...selectedNode.data, timeout: v } };
+                  useFlowStore.setState((s) => ({ nodes: s.nodes.map((n) => n.id === selectedNode.id ? updated : n), selectedNode: updated }));
+                }} />
+              <Text style={{ fontSize: 11, color: '#999' }}>重试次数</Text>
+              <InputNumber size="small" style={{ width: '100%' }} min={0} max={10}
+                value={(selectedNode.data as any)?.retryCount || 0}
+                onChange={(v) => {
+                  const updated = { ...selectedNode, data: { ...selectedNode.data, retryCount: v } };
+                  useFlowStore.setState((s) => ({ nodes: s.nodes.map((n) => n.id === selectedNode.id ? updated : n), selectedNode: updated }));
+                }} />
+              <Checkbox
+                checked={(selectedNode.data as any)?.async || false}
+                onChange={(e) => {
+                  const updated = { ...selectedNode, data: { ...selectedNode.data, async: e.target.checked } };
+                  useFlowStore.setState((s) => ({ nodes: s.nodes.map((n) => n.id === selectedNode.id ? updated : n), selectedNode: updated }));
+                }}>异步执行</Checkbox>
+              <Divider style={{ margin: '4px 0' }} />
               <Button size="small" danger icon={<DeleteOutlined />} onClick={removeSelectedNode}>删除节点</Button>
             </Space>
           ) : (
