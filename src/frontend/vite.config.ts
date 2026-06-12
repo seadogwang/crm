@@ -19,6 +19,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['@xyflow/react'],
+    include: ['@xyflow/react', '@monaco-editor/react'],
+    exclude: [],
   },
 });
