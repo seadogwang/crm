@@ -7,6 +7,7 @@ import {
   type Node,
   type Edge,
   type OnConnectEnd,
+  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button, Card, Input, InputNumber, Select, Space, message, Typography, Divider, Tag, Checkbox } from 'antd';
@@ -184,6 +185,11 @@ const FlowDesigner: React.FC = () => {
             fitView
             deleteKeyCode={['Backspace', 'Delete']}
             onNodesDelete={() => {/* handled by useFlowStore */}}
+            connectionLineStyle={{ stroke: '#999', strokeWidth: 2 }}
+            defaultEdgeOptions={{
+              style: { stroke: '#1677ff', strokeWidth: 2 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: '#1677ff' },
+            }}
           >
             <Background />
             <Controls />
