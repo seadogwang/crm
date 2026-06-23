@@ -23,7 +23,7 @@ const PointsAccounts = lazy(() => import('../pages/PointsAccounts'));
 const PointsTransactions = lazy(() => import('../pages/PointsTransactions'));
 const PointsGrant = lazy(() => import('../pages/PointsGrant'));
 const PointsRedeem = lazy(() => import('../pages/PointsRedeem'));
-const TierConfig = lazy(() => import('../pages/TierConfig'));
+const TierRuleConfig = lazy(() => import('../pages/TierRuleConfig'));
 const RuleList = lazy(() => import('../pages/RuleList'));
 const RuleEditor = lazy(() => import('../pages/RuleEditor'));
 const PromoEditor = lazy(() => import('../pages/PromoEditor'));
@@ -160,8 +160,12 @@ export const router = createBrowserRouter([
 
       // 等级与规则
       {
+        path: 'rules/tier',
+        element: <SuspenseWrapper><AuthGuard><TierRuleConfig /></AuthGuard></SuspenseWrapper>,
+      },
+      {
         path: 'tiers',
-        element: <SuspenseWrapper><AuthGuard><TierConfig /></AuthGuard></SuspenseWrapper>,
+        element: <Navigate to="/rules/tier" replace />,
       },
       {
         path: 'rules',

@@ -313,10 +313,15 @@ public class AdminController {
             m.put("tierCode", t.getTierCode());
             m.put("tierName", t.getTierName());
             m.put("sequence", t.getSequence());
+            // 基础过期配置（从 upgradeCriteria 中读取）
             if (t.getUpgradeCriteria() != null) m.put("minPoints", t.getUpgradeCriteria().get("min_points"));
             if (t.getUpgradeCriteria() != null) m.put("maxPoints", t.getUpgradeCriteria().get("max_points"));
             if (t.getUpgradeCriteria() != null) m.put("validityMode", t.getUpgradeCriteria().getOrDefault("validity_mode", "CALENDAR_YEARS"));
             if (t.getUpgradeCriteria() != null) m.put("validityValue", t.getUpgradeCriteria().getOrDefault("validity_value", 1));
+            // 升级规则配置（完整 JSONB）
+            if (t.getUpgradeCriteria() != null) m.put("upgradeCriteria", t.getUpgradeCriteria());
+            // 降级/保级规则配置（完整 JSONB）
+            if (t.getDowngradeCriteria() != null) m.put("downgradeCriteria", t.getDowngradeCriteria());
             return m;
         }).collect(Collectors.toList());
 
@@ -1416,13 +1421,35 @@ public class AdminController {
             tier.setTierName((String) t.getOrDefault("tierName", tierCode));
             tier.setSequence(toInt(t.getOrDefault("sequence", (t.containsKey("sequence") ? t.get("sequence") : 99))));
 
-            // 升级/降级标准
+            // 基础过期配置 → upgradeCriteria JSONB
             Map<String, Object> upgrade = new LinkedHashMap<>();
             if (t.containsKey("minPoints")) upgrade.put("min_points", toBigDecimal(t.get("minPoints")));
             if (t.containsKey("maxPoints")) upgrade.put("max_points", toBigDecimal(t.get("maxPoints")));
             if (t.containsKey("validityMode")) upgrade.put("validity_mode", t.get("validityMode"));
             if (t.containsKey("validityValue")) upgrade.put("validity_value", toInt(t.get("validityValue")));
+
+            // 升级规则配置 → upgradeCriteria JSONB (与基础配置合并)
+            if (t.containsKey("upgradeRules")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> upgradeRules = (Map<String, Object>) t.get("upgradeRules");
+                upgrade.put("upgrade_rules", upgradeRules);
+            }
+
             if (!upgrade.isEmpty()) tier.setUpgradeCriteria(upgrade);
+
+            // 降级/保级规则配置 → downgradeCriteria JSONB
+            if (t.containsKey("downgradeCriteria")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> downgrade = (Map<String, Object>) t.get("downgradeCriteria");
+                tier.setDowngradeCriteria(downgrade);
+            } else if (t.containsKey("retentionCycleDays") || t.containsKey("downgradeTarget")) {
+                Map<String, Object> downgrade = new LinkedHashMap<>();
+                if (t.containsKey("retentionCycleDays")) downgrade.put("retention_cycle_days", toInt(t.get("retentionCycleDays")));
+                if (t.containsKey("retentionDimension")) downgrade.put("retention_dimension", t.get("retentionDimension"));
+                if (t.containsKey("retentionRequiredValue")) downgrade.put("retention_required_value", toBigDecimal(t.get("retentionRequiredValue")));
+                if (t.containsKey("downgradeTarget")) downgrade.put("downgrade_target", t.get("downgradeTarget"));
+                tier.setDowngradeCriteria(downgrade);
+            }
 
             tier.setUpdatedAt(LocalDateTime.now());
             tierRepo.save(tier);
