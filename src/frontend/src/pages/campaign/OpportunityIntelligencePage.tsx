@@ -15,6 +15,7 @@ import {
   Opportunity, ExternalSignalItem,
   CampaignWorkspace, CampaignGoal,
 } from '../../api/campaign';
+import { useAppStore } from '../../store';
 
 const { Text, Title } = Typography;
 
@@ -34,6 +35,7 @@ const actionLabel: Record<string, string> = {
 };
 
 const OpportunityIntelligencePage: React.FC = () => {
+  const { currentProgramCode } = useAppStore();
   // Workspace / Goal selection
   const [workspaces, setWorkspaces] = useState<CampaignWorkspace[]>([]);
   const [goals, setGoals] = useState<CampaignGoal[]>([]);
@@ -115,7 +117,7 @@ const OpportunityIntelligencePage: React.FC = () => {
   const fetchSignals = useCallback(async () => {
     setSignalsLoading(true);
     try {
-      const data = await getExternalSignals('BRAND_A');
+      const data = await getExternalSignals(currentProgramCode);
       setSignals(data?.signals || []);
     } catch { /* ignore */ } finally { setSignalsLoading(false); }
   }, []);

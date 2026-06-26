@@ -1,27 +1,26 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Card, Table, Button, Space, Tag, Input, Select, Modal, Form, message, Typography, Tooltip,
+  Card, Table, Button, Space, Tag, Input, Select, Modal, message, Typography, Tooltip,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, RightOutlined, EditOutlined,
-  ArchiveOutlined, HistoryOutlined,
+  InboxOutlined, HistoryOutlined,
 } from '@ant-design/icons';
 import {
-  listWorkspaces, createWorkspace, archiveWorkspace, CampaignWorkspace,
+  listWorkspaces, archiveWorkspace, CampaignWorkspace,
 } from '../../api/campaign';
+import { useAppStore } from '../../store';
 
 const { Text, Title } = Typography;
 
 const CampaignWorkspaceList: React.FC = () => {
   const navigate = useNavigate();
+  const { currentProgramCode } = useAppStore();
   const [workspaces, setWorkspaces] = useState<CampaignWorkspace[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [programFilter, setProgramFilter] = useState<string>('all');
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [form] = Form.useForm();
+  const [programFilter, setProgramFilter] = useState<string>(currentProgramCode);
 
   const fetchWorkspaces = useCallback(async () => {
     setLoading(true);
@@ -38,29 +37,6 @@ const CampaignWorkspaceList: React.FC = () => {
   useEffect(() => {
     fetchWorkspaces();
   }, [fetchWorkspaces]);
-
-  const handleCreate = async (values: any) => {
-    setCreateLoading(true);
-    try {
-      await createWorkspace({
-        name: values.name,
-        programCode: values.programCode,
-        description: values.description,
-        config: {
-          timezone: values.timezone || 'Asia/Shanghai',
-          defaultBudget: values.defaultBudget || 0,
-        },
-      });
-      message.success('工作区创建成功');
-      setCreateModalOpen(false);
-      form.resetFields();
-      fetchWorkspaces();
-    } catch (err: any) {
-      message.error('创建失败: ' + (err?.response?.data?.message || err.message));
-    } finally {
-      setCreateLoading(false);
-    }
-  };
 
   const handleArchive = async (workspace: CampaignWorkspace) => {
     Modal.confirm({
@@ -155,7 +131,7 @@ const CampaignWorkspaceList: React.FC = () => {
           {record.status === 'ACTIVE' && (
             <>
               <Tooltip title="归档">
-                <Button size="small" icon={<ArchiveOutlined />}
+                <Button size="small" icon={<InboxOutlined />}
                   onClick={() => handleArchive(record)} />
               </Tooltip>
             </>
@@ -176,7 +152,7 @@ const CampaignWorkspaceList: React.FC = () => {
             <Title level={4} style={{ margin: 0 }}>📊 营销工作区</Title>
             <Text type="secondary">管理营销活动的战略规划与执行</Text>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/campaign/workspaces/new')}>
             新建工作区
           </Button>
         </div>
@@ -210,44 +186,6 @@ const CampaignWorkspaceList: React.FC = () => {
         />
       </Card>
 
-      {/* 新建工作区弹窗 */}
-      <Modal
-        title="新建工作区"
-        open={createModalOpen}
-        onCancel={() => setCreateModalOpen(false)}
-        onOk={() => form.submit()}
-        confirmLoading={createLoading}
-        okText="创建"
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreate}>
-          <Form.Item name="name" label="工作区名称" rules={[{ required: true, message: '请输入工作区名称' }]}>
-            <Input placeholder="例如：618大促" />
-          </Form.Item>
-          <Form.Item name="programCode" label="关联 Program" rules={[{ required: true, message: '请选择 Program' }]}>
-            <Select
-              placeholder="选择 Program"
-              options={[
-                { label: 'PROG001', value: 'PROG001' },
-                { label: 'BRAND-A', value: 'BRAND-A' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={3} placeholder="工作区描述" />
-          </Form.Item>
-          <Form.Item name="timezone" label="时区" initialValue="Asia/Shanghai">
-            <Select
-              options={[
-                { label: 'Asia/Shanghai (UTC+8)', value: 'Asia/Shanghai' },
-                { label: 'America/New_York (UTC-5)', value: 'America/New_York' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="defaultBudget" label="默认预算（元）">
-            <Input type="number" prefix="¥" placeholder="0" />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };

@@ -8,6 +8,7 @@ import {
   SendOutlined, HistoryOutlined, EyeOutlined, FileTextOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
+import { useAppStore } from '../../store';
 import {
   listAssets, createAsset, updateAsset, getAsset,
   submitForApproval, approveAsset, rejectAsset,
@@ -19,6 +20,7 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 const ContentManagementPage: React.FC = () => {
+  const { currentProgramCode } = useAppStore();
   const [assets, setAssets] = useState<CampaignContentAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -32,14 +34,14 @@ const ContentManagementPage: React.FC = () => {
   const fetchAssets = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await listAssets('PROG001');
+      const data = await listAssets(currentProgramCode);
       setAssets(data || []);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
 
   const fetchPending = useCallback(async () => {
     try {
-      return await getPendingAssets('PROG001');
+      return await getPendingAssets(currentProgramCode);
     } catch { return []; }
   }, []);
 
@@ -49,7 +51,7 @@ const ContentManagementPage: React.FC = () => {
     setActionLoading(true);
     try {
       await createAsset({
-        programCode: 'PROG001',
+        programCode: currentProgramCode,
         assetName: values.assetName,
         assetType: values.assetType,
         channel: values.channel,

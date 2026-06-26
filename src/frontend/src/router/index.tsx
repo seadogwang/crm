@@ -53,6 +53,7 @@ const LlmConfig = lazy(() => import('../pages/LlmConfig'));
 
 // Campaign 营销管理
 const CampaignWorkspaceList = lazy(() => import('../pages/campaign/CampaignWorkspaceList'));
+const CampaignWorkspaceCreate = lazy(() => import('../pages/campaign/CampaignWorkspaceCreate'));
 const CampaignWorkspaceDetail = lazy(() => import('../pages/campaign/CampaignWorkspaceDetail'));
 const DecisionEnginePage = lazy(() => import('../pages/campaign/DecisionEnginePage'));
 const SimulationOptimizationPage = lazy(() => import('../pages/campaign/SimulationOptimizationPage'));
@@ -227,6 +228,10 @@ export const router = createBrowserRouter([
       {
         path: 'campaign/workspaces',
         element: <SuspenseWrapper><AuthGuard><CampaignWorkspaceList /></AuthGuard></SuspenseWrapper>,
+      },
+      {
+        path: 'campaign/workspaces/new',
+        element: <SuspenseWrapper><AuthGuard><CampaignWorkspaceCreate /></AuthGuard></SuspenseWrapper>,
       },
       {
         path: 'campaign/workspace/:workspaceId',
