@@ -44,7 +44,7 @@ public class SkillSchedulerService {
     }
 
     /**
-     * 舆情监控：每 2 小时。
+ * 舆情监控：每 2 小时。
      */
     @Scheduled(cron = "0 0 */2 * * ?")
     public void runSocialListening() {
@@ -55,12 +55,34 @@ public class SkillSchedulerService {
     }
 
     /**
+     * 政策法规监控：每 24 小时。
+     */
+    @Scheduled(cron = "0 0 0 */1 * ?")
+    public void runRegulatoryWatch() {
+        log.info("Scheduled: Running regulatory watch skills");
+        skills.stream()
+                .filter(s -> s instanceof RegulatoryWatchSkill)
+                .forEach(this::executeSkill);
+    }
+
+    /**
+     * 库存风险监控：每 4 小时。
+     */
+    @Scheduled(cron = "0 0 */4 * * ?")
+    public void runInventoryRisk() {
+        log.info("Scheduled: Running inventory risk skills");
+        skills.stream()
+                .filter(s -> s instanceof InventoryRiskSkill)
+                .forEach(this::executeSkill);
+    }
+
+    /**
      * 过期信号清理：每日凌晨 3 点。
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void cleanExpiredSignals() {
-        int count = signalService.cleanExpiredSignals();
-        log.info("Scheduled: Cleaned {} expired signals", count);
+        signalService.cleanExpiredSignals();
+        log.info("Scheduled: Expired signals cleaned");
     }
 
     private void executeSkill(ExternalSkill skill) {

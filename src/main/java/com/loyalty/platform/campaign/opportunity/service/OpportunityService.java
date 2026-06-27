@@ -6,10 +6,12 @@ import com.loyalty.platform.campaign.opportunity.entity.CampaignMemberDim;
 import com.loyalty.platform.campaign.opportunity.repository.CampaignMemberDimRepository;
 import com.loyalty.platform.common.exception.BusinessException;
 import com.loyalty.platform.domain.entity.campaign.CampaignGoal;
+import com.loyalty.platform.domain.entity.campaign.CampaignInitiative;
 import com.loyalty.platform.domain.entity.campaign.CampaignOpportunity;
 import com.loyalty.platform.domain.entity.campaign.CampaignWorkspace;
 import com.loyalty.platform.domain.entity.campaign.ExternalSignal;
 import com.loyalty.platform.domain.repository.campaign.CampaignGoalRepository;
+import com.loyalty.platform.domain.repository.campaign.CampaignInitiativeRepository;
 import com.loyalty.platform.domain.repository.campaign.CampaignOpportunityRepository;
 import com.loyalty.platform.domain.repository.campaign.CampaignWorkspaceRepository;
 import org.slf4j.Logger;
@@ -52,6 +54,7 @@ public class OpportunityService {
     private final CampaignOpportunityRepository opportunityRepository;
     private final CampaignGoalRepository goalRepository;
     private final CampaignWorkspaceRepository workspaceRepository;
+    private final CampaignInitiativeRepository initiativeRepository;
     private final MLScoringClient mlScoringClient;
     private final ExternalSignalService externalSignalService;
 
@@ -59,12 +62,14 @@ public class OpportunityService {
                                CampaignOpportunityRepository opportunityRepository,
                                CampaignGoalRepository goalRepository,
                                CampaignWorkspaceRepository workspaceRepository,
+                               CampaignInitiativeRepository initiativeRepository,
                                MLScoringClient mlScoringClient,
                                ExternalSignalService externalSignalService) {
         this.memberDimRepository = memberDimRepository;
         this.opportunityRepository = opportunityRepository;
         this.goalRepository = goalRepository;
         this.workspaceRepository = workspaceRepository;
+        this.initiativeRepository = initiativeRepository;
         this.mlScoringClient = mlScoringClient;
         this.externalSignalService = externalSignalService;
     }
@@ -86,11 +91,22 @@ public class OpportunityService {
         }
         log.info("Starting opportunity discovery: workspace={}, goal={}", workspaceId, goalId);
 
-        // 2. SQL 预过滤：硬性门槛
+        // 1.5 获取 Goal 下的所有 ACTIVE Initiative，收集目标分群
+        List<CampaignInitiative> initiatives = initiativeRepository.findByGoalId(goalId);
+        List<CampaignInitiative> activeInitiatives = initiatives.stream()
+                .filter(i -> "ACTIVE".equals(i.getStatus()))
+                .collect(Collectors.toList());
+        Set<String> targetSegments = activeInitiatives.stream()
+                .filter(i -> i.getRuleConfig() != null && i.getRuleConfig().get("segment") != null)
+                .map(i -> i.getRuleConfig().get("segment").toString())
+                .collect(Collectors.toSet());
+        log.info("Active initiatives: {}, target segments: {}", activeInitiatives.size(), targetSegments);
+
+        // 2. SQL 预过滤：硬性门槛（按举措目标分群过滤）
         String programCode = getProgramCodeFromGoal(goal);
+        String segmentFilter = targetSegments.isEmpty() ? null : String.join(",", targetSegments);
         List<CampaignMemberDim> eligibleMembers = memberDimRepository.findEligibleMembers(
                 programCode,
-                null,                    // segmentCode
                 List.of("ACTIVE"),       // 会员状态
                 null                     // tierCodes（全部等级）
         );
@@ -198,6 +214,23 @@ public class OpportunityService {
         summary.put("avgScore", avgScore != null ? BigDecimal.valueOf(avgScore).setScale(2, RoundingMode.HALF_UP) : 0);
         summary.put("highValueCount", highValueCount);
 
+        // 8.5 检测未被举措覆盖的高价值机会分群
+        Set<String> coveredSegments = targetSegments;
+        Map<String, Long> segmentDistribution = topOpportunities.stream()
+                .collect(Collectors.groupingBy(
+                        o -> o.getSegmentCode() != null ? o.getSegmentCode() : "unknown",
+                        Collectors.counting()));
+        List<Map<String, Object>> uncoveredSegments = new ArrayList<>();
+        for (Map.Entry<String, Long> entry : segmentDistribution.entrySet()) {
+            if (!coveredSegments.contains(entry.getKey()) && !"unknown".equals(entry.getKey())) {
+                Map<String, Object> uncovered = new LinkedHashMap<>();
+                uncovered.put("segmentCode", entry.getKey());
+                uncovered.put("opportunityCount", entry.getValue());
+                uncovered.put("suggestion", "建议创建针对「" + entry.getKey() + "」分群的举措");
+                uncoveredSegments.add(uncovered);
+            }
+        }
+
         // 构建 DTO 列表
         List<Opportunity> opportunityDTOs = topOpportunities.stream()
                 .map(this::toDTO)
@@ -209,6 +242,7 @@ public class OpportunityService {
                 .returnedCount(opportunityDTOs.size())
                 .opportunities(opportunityDTOs)
                 .summary(summary)
+                .uncoveredSegments(uncoveredSegments)
                 .build();
     }
 

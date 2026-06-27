@@ -16,10 +16,12 @@ import {
 } from '../../api/campaign';
 import SimulationResultChart from './components/SimulationResultChart';
 import BudgetAllocationChart from './components/BudgetAllocationChart';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
 const SimulationOptimizationPage: React.FC = () => {
+  const s = useCampaignStyles();
   // Workspace/Goal
   const [workspaces, setWorkspaces] = useState<CampaignWorkspace[]>([]);
   const [portfolios, setPortfolios] = useState<CampaignPortfolio[]>([]);
@@ -110,9 +112,8 @@ const SimulationOptimizationPage: React.FC = () => {
   try { segBreakdownParsed = simResult?.segmentBreakdown ? JSON.parse(simResult.segmentBreakdown) : {}; } catch {}
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><ExperimentOutlined /> 模拟与优化</Title>
-      <Text type="secondary">基线计算 · 三层模拟预测 · What-if 对比 · 贪心/遗传算法优化</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="模拟与优化" desc="基线计算 · 三层模拟预测 · What-if 对比 · 贪心/遗传算法优化" />
 
       <Tabs defaultActiveKey="simulate" style={{ marginTop: 16 }} items={[
         // ==================== Tab 1: 模拟 ====================

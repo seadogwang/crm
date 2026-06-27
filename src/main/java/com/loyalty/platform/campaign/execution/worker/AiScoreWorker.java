@@ -47,7 +47,7 @@ public class AiScoreWorker extends BaseCampaignWorker {
                         .build()
         ).toList();
 
-        var scores = mlClient.predict(features);
+        var scores = mlClient.predictBatch(features);
 
         return result("scores", scores);
     }

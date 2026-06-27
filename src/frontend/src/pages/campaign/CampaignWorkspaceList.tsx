@@ -11,6 +11,7 @@ import {
   listWorkspaces, archiveWorkspace, CampaignWorkspace,
 } from '../../api/campaign';
 import { useAppStore } from '../../store';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
@@ -20,6 +21,7 @@ const CampaignWorkspaceList: React.FC = () => {
   const [workspaces, setWorkspaces] = useState<CampaignWorkspace[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const s = useCampaignStyles();
 
   const fetchWorkspaces = useCallback(async () => {
     setLoading(true);
@@ -129,34 +131,31 @@ const CampaignWorkspaceList: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Card>
-        <Title level={4} style={{ margin: 0, marginBottom: 4 }}>📊 营销工作区</Title>
-        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>管理营销活动的战略规划与执行</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="营销工作区" desc="管理营销活动的战略规划与执行" />
 
-        <div style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'space-between' }}>
-          <Input
-            placeholder="搜索工作区..."
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            style={{ width: 300 }}
-            allowClear
-          />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/campaign/workspaces/new')}>
-            新建工作区
-          </Button>
-        </div>
-
-        <Table
-          dataSource={filtered}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: true }}
+      <div style={{ ...s.toolbarStyle, marginTop: 12 }}>
+        <Input
+          placeholder="搜索工作区..."
+          prefix={<SearchOutlined />}
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          style={s.inputLg}
+          allowClear
         />
-      </Card>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/campaign/workspaces/new')}>
+          新建工作区
+        </Button>
+      </div>
 
+      <Table
+        className="campaign-table"
+        dataSource={filtered}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        {...s.tableProps}
+      />
     </div>
   );
 };

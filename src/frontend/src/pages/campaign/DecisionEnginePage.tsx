@@ -20,6 +20,7 @@ import {
   CampaignWorkspace, CampaignPortfolio, CampaignGoal,
 } from '../../api/campaign';
 import BudgetAllocationChart from './components/BudgetAllocationChart';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
@@ -38,6 +39,7 @@ const statusColor: Record<string, string> = {
 };
 
 const DecisionEnginePage: React.FC = () => {
+  const s = useCampaignStyles();
   // --- 决策执行状态 ---
   const [workspaces, setWorkspaces] = useState<CampaignWorkspace[]>([]);
   const [portfolios, setPortfolios] = useState<CampaignPortfolio[]>([]);
@@ -204,9 +206,8 @@ const DecisionEnginePage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><ThunderboltOutlined /> 营销决策引擎</Title>
-      <Text type="secondary">完整决策 · 预算分配 · 冲突仲裁 · 三层模拟 · 频控管理</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="营销决策引擎" desc="完整决策 · 预算分配 · 冲突仲裁 · 三层模拟 · 频控管理" />
 
       <Tabs defaultActiveKey="execute" style={{ marginTop: 16 }} items={[
         // ================================================================

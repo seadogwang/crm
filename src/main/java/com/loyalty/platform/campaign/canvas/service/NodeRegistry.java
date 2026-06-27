@@ -50,7 +50,7 @@ public class NodeRegistry {
 
     public List<NodeTypeInfo> getByCategory(String category) {
         return registry.values().stream()
-                .filter(n -> n.getCategory().equals(category))
+                .filter(n -> n.category().equals(category))
                 .toList();
     }
 

@@ -115,19 +115,20 @@ public class GoalService {
         }
 
         // 使用分布式锁防止并发激活冲突
-        return lockService.executeWithLock(goal.getWorkspaceId(), () -> {
+        final CampaignGoal lockedGoal = goal;
+        return lockService.executeWithLock(lockedGoal.getWorkspaceId(), () -> {
             // 1. 停用该 Workspace 下所有其他 ACTIVE Goal
-            goalRepository.deactivateAllByWorkspace(goal.getWorkspaceId());
+            goalRepository.deactivateAllByWorkspace(lockedGoal.getWorkspaceId());
             // 2. 激活当前 Goal
-            goal.setStatus("ACTIVE");
-            goal.setUpdatedAt(LocalDateTime.now());
-            goal = goalRepository.save(goal);
+            lockedGoal.setStatus("ACTIVE");
+            lockedGoal.setUpdatedAt(LocalDateTime.now());
+            CampaignGoal saved = goalRepository.save(lockedGoal);
             // 3. 更新 Workspace 的 active_goal_id
-            workspaceService.setActiveGoal(goal.getWorkspaceId(), goal.getId());
+            workspaceService.setActiveGoal(saved.getWorkspaceId(), saved.getId());
             // 4. 创建版本快照
-            workspaceService.snapshot(goal.getWorkspaceId(), "GOAL", goal);
-            log.info("Goal activated: id={}, workspace={}", goal.getId(), goal.getWorkspaceId());
-            return goal;
+            workspaceService.snapshot(saved.getWorkspaceId(), "GOAL", saved);
+            log.info("Goal activated: id={}, workspace={}", saved.getId(), saved.getWorkspaceId());
+            return saved;
         });
     }
 

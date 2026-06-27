@@ -18,4 +18,5 @@ public class DiscoverOpportunitiesResponse {
     private int returnedCount;
     private List<Opportunity> opportunities;
     private Map<String, Object> summary;
+    private List<Map<String, Object>> uncoveredSegments;
 }

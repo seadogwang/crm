@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Card, Table, Button, Tag, Space, Typography, Tabs, message, Row, Col, Statistic, Spin, Empty,
+  Card, Table, Button, Tag, Space, Typography, Tabs, message, Row, Col, Statistic, Spin, Empty, Input,
 } from 'antd';
 import {
   DashboardOutlined, AlertOutlined, SettingOutlined,
@@ -11,10 +11,12 @@ import {
   getDriftHistory, getStrategyAdjustments, applyAdjustment,
   FeedbackMetrics, ModelDrift, StrategyAdjustment,
 } from '../../api/campaign';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
 const FeedbackAnalysisPage: React.FC = () => {
+  const s = useCampaignStyles();
   const [planId, setPlanId] = useState('plan_001');
   const [metrics, setMetrics] = useState<FeedbackMetrics | null>(null);
   const [drifts, setDrifts] = useState<ModelDrift[]>([]);
@@ -49,14 +51,13 @@ const FeedbackAnalysisPage: React.FC = () => {
   const deviationPct = (v: number | undefined) => ((v ?? 0) * 100).toFixed(1);
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><DashboardOutlined /> 反馈闭环分析</Title>
-      <Text type="secondary">预测vs实际 · 漂移检测 · 策略调整 · 执行→采集→学习→优化</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="反馈闭环分析" desc="预测vs实际 · 漂移检测 · 策略调整 · 执行→采集→学习→优化" />
 
       <Card size="small" style={{ marginTop: 12 }}>
         <Space>
           <Text strong>计划 ID:</Text>
-          <input value={planId} onChange={e => setPlanId(e.target.value)} style={{ width: 180, padding: '4px 8px', border: '1px solid #d9d9d9', borderRadius: 4 }} />
+          <Input value={planId} onChange={e => setPlanId(e.target.value)} style={{ width: 200 }} />
           <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>刷新</Button>
           <Button icon={<PlayCircleOutlined />} type="primary" onClick={handleCalculate}>计算反馈</Button>
         </Space>

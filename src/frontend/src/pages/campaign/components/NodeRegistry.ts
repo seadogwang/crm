@@ -27,8 +27,8 @@ export const NodeRegistry: Record<NodeType, NodeDefinition> = {
   },
   AUDIENCE_FILTER: {
     type: 'AUDIENCE_FILTER', label: '人群筛选', icon: '\u{1F465}', category: 'input',
-    description: '根据分群和条件筛选目标用户', color: '#3b82f6',
-    defaultConfig: () => ({ segmentCode: '', filters: [], limit: 10000 }),
+    description: '基于实时宽表的动态规则筛选（支持STAT/DETAIL/PERCENTILE条件）', color: '#3b82f6',
+    defaultConfig: () => ({ logic: 'AND', conditions: [], limit: 10000, excludeBlacklist: true }),
     inputPorts: [{ id: 'in', label: '', type: 'input' }],
     outputPorts: [{ id: 'out', label: '', type: 'output', dataType: 'array' }],
   },

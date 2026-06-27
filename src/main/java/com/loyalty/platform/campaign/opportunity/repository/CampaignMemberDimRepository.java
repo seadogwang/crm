@@ -10,26 +10,26 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * 会员宽表 Repository — 使用 native query 实现 SQL 预过滤。
+ * 会员宽表 Repository — 实时动态规则查询。
+ * 注意：已废弃 segmentCode 预计算分群，改用动态 SQL WHERE 子句。
  */
 @Repository
 public interface CampaignMemberDimRepository extends JpaRepository<CampaignMemberDim, String> {
 
     /**
      * SQL 预过滤：硬性门槛筛选符合条件的会员。
+     * 不再使用 segmentCode，改用实时动态规则。
      */
     @Query(value = """
         SELECT * FROM campaign_member_dim
         WHERE program_code = :programCode
           AND status IN (:statuses)
-          AND (:segmentCode IS NULL OR segment_code = :segmentCode)
           AND (:tierCodes IS NULL OR tier_code IN (:tierCodes))
         ORDER BY total_order_amount DESC
         LIMIT 50000
         """, nativeQuery = true)
     List<CampaignMemberDim> findEligibleMembers(
             @Param("programCode") String programCode,
-            @Param("segmentCode") String segmentCode,
             @Param("statuses") List<String> statuses,
             @Param("tierCodes") List<String> tierCodes
     );
@@ -38,6 +38,7 @@ public interface CampaignMemberDimRepository extends JpaRepository<CampaignMembe
 
     List<CampaignMemberDim> findByProgramCode(String programCode);
 
-    /** 按分群代码查找会员（用于模拟引擎）。 */
+    /** @deprecated 使用动态规则查询替代 */
+    @Deprecated
     List<CampaignMemberDim> findBySegmentCode(String segmentCode);
 }

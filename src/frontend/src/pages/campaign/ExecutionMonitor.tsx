@@ -14,10 +14,12 @@ import {
   getInstanceByPlan, getWorkers, getJobTypes,
   getExecutionStatus, pauseExecution, resumeExecution,
 } from '../../api/campaign';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
 const ExecutionMonitor: React.FC = () => {
+  const s = useCampaignStyles();
   const [planId, setPlanId] = useState('plan_001');
   const [instance, setInstance] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
@@ -74,9 +76,8 @@ const ExecutionMonitor: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><DashboardOutlined /> 执行监控</Title>
-      <Text type="secondary">流程部署 · 实例管理 · Worker 监控 · 节点执行</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="执行监控" desc="流程部署 · 实例管理 · Worker 监控 · 节点执行 · 暂停/恢复/取消" />
 
       <Card size="small" style={{ marginTop: 12 }}>
         <Space wrap>

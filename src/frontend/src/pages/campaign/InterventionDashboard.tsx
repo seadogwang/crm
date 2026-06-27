@@ -14,11 +14,13 @@ import {
   emergencyThrottle, removeThrottle, checkBeforeExecution,
   CampaignInterventionCommand,
 } from '../../api/campaign';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 const InterventionDashboard: React.FC = () => {
+  const s = useCampaignStyles();
   const [planId, setPlanId] = useState('plan_001');
   const [nodeId, setNodeId] = useState('N3');
   const [tenantId, setTenantId] = useState('default');
@@ -132,9 +134,8 @@ const InterventionDashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><WarningOutlined /> 人工干预中心</Title>
-      <Text type="secondary">活动控制 · 节点干预 · 紧急限流 · 防护检查</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="人工干预中心" desc="活动控制 · 节点干预 · 紧急限流 · 防护检查 · 审计追溯" />
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={6}>

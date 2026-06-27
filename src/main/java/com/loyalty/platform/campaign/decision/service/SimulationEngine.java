@@ -21,7 +21,7 @@ import java.util.*;
  *   <li><b>Conversion Model</b>：转化概率（Uplift × Intent × OfferMatch）</li>
  * </ol>
  */
-@Service
+@Service("decisionSimulationEngine")
 public class SimulationEngine {
 
     private static final Logger log = LoggerFactory.getLogger(SimulationEngine.class);

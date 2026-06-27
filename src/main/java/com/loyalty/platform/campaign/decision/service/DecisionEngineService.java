@@ -127,13 +127,13 @@ public class DecisionEngineService {
 
             // 校验 Portfolio 状态
             if (!"OPTIMIZED".equals(portfolio.getStatus()) && !"DRAFT".equals(portfolio.getStatus())) {
-                throw new BusinessException(DecisionErrorCode.PORTFOLIO_NOT_OPTIMIZED.getMessage());
+                throw new BusinessException(DecisionErrorCode.PORTFOLIO_NOT_OPTIMIZED.getCode(), DecisionErrorCode.PORTFOLIO_NOT_OPTIMIZED.getMessage());
             }
 
             // 2. 获取活跃的 Initiatives
             List<CampaignInitiative> initiatives = initiativeService.getActiveInitiatives(workspaceId);
             if (initiatives.isEmpty()) {
-                throw new BusinessException(DecisionErrorCode.NO_CANDIDATES.getMessage());
+                throw new BusinessException(DecisionErrorCode.NO_CANDIDATES.getCode(), DecisionErrorCode.NO_CANDIDATES.getMessage());
             }
 
             // 3. 获取活跃的机会（按 Initiative 分组）
@@ -145,7 +145,7 @@ public class DecisionEngineService {
                     initiatives, opportunitiesByInitiative, portfolio.getTotalBudget());
 
             if (candidates.isEmpty()) {
-                throw new BusinessException(DecisionErrorCode.NO_CANDIDATES.getMessage());
+                throw new BusinessException(DecisionErrorCode.NO_CANDIDATES.getCode(), DecisionErrorCode.NO_CANDIDATES.getMessage());
             }
 
             // 5. 预算分配
@@ -353,7 +353,7 @@ public class DecisionEngineService {
             List<DecisionCandidateInternal> candidates, BigDecimal totalBudget) {
 
         if (totalBudget == null || totalBudget.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(DecisionErrorCode.INSUFFICIENT_BUDGET.getMessage());
+            throw new BusinessException(DecisionErrorCode.INSUFFICIENT_BUDGET.getCode(), DecisionErrorCode.INSUFFICIENT_BUDGET.getMessage());
         }
 
         List<BudgetAllocationInternal> allocations = new ArrayList<>();
@@ -780,7 +780,7 @@ public class DecisionEngineService {
                         DecisionErrorCode.DECISION_NOT_FOUND.getMessage()));
 
         if ("APPLIED".equals(decision.getStatus())) {
-            throw new BusinessException(DecisionErrorCode.DECISION_ALREADY_APPLIED.getMessage());
+            throw new BusinessException(DecisionErrorCode.DECISION_ALREADY_APPLIED.getCode(), DecisionErrorCode.DECISION_ALREADY_APPLIED.getMessage());
         }
 
         decision.setStatus("APPLIED");

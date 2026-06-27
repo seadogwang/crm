@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -57,7 +58,7 @@ public class SocialListeningSkill implements ExternalSkill {
                 .impactFactor(BigDecimal.valueOf(0.85))
                 .affectedSegments("[\"ALL\"]")
                 .recommendedAction("PAUSE_CAMPAIGN")
-                .expiresAt(Instant.now().plus(2, ChronoUnit.DAYS))
+                .expiresAt(LocalDateTime.now().plusDays(2))
                 .isConsumed(false)
                 .build();
         signals.add(negativeSignal);
@@ -74,7 +75,7 @@ public class SocialListeningSkill implements ExternalSkill {
                 .impactFactor(BigDecimal.valueOf(1.20))
                 .affectedSegments("[\"ENGAGED\",\"ACTIVE\"]")
                 .recommendedAction("BOOST_ENGAGEMENT")
-                .expiresAt(Instant.now().plus(1, ChronoUnit.DAYS))
+                .expiresAt(LocalDateTime.now().plusDays(1))
                 .isConsumed(false)
                 .build();
         signals.add(positiveSignal);

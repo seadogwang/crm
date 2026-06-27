@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, Table, Button, Space, Tag, Typography, Input, Select, Modal,
   message, Row, Col, Statistic, Descriptions, Progress, Tabs, Timeline, Divider, Alert,
@@ -6,7 +7,7 @@ import {
 import {
   ThunderboltOutlined, SearchOutlined, ReloadOutlined,
   EyeOutlined, CheckCircleOutlined, WarningOutlined,
-  AlertOutlined, BarChartOutlined,
+  AlertOutlined, BarChartOutlined, SafetyOutlined, ShopOutlined, SettingOutlined, PlusOutlined,
 } from '@ant-design/icons';
 import {
   discoverOpportunities, queryOpportunities, consumeOpportunity,
@@ -16,6 +17,7 @@ import {
   CampaignWorkspace, CampaignGoal,
 } from '../../api/campaign';
 import { useAppStore } from '../../store';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
@@ -36,6 +38,8 @@ const actionLabel: Record<string, string> = {
 
 const OpportunityIntelligencePage: React.FC = () => {
   const { currentProgramCode } = useAppStore();
+  const navigate = useNavigate();
+  const s = useCampaignStyles();
   // Workspace / Goal selection
   const [workspaces, setWorkspaces] = useState<CampaignWorkspace[]>([]);
   const [goals, setGoals] = useState<CampaignGoal[]>([]);
@@ -196,12 +200,16 @@ const OpportunityIntelligencePage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><ThunderboltOutlined /> 机会智能</Title>
-      <Text type="secondary">市场感知 · 机会识别 · 外部信号 · 双引擎混合驱动</Text>
+    <div style={s.pageStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <TitleWithDesc title="机会智能" desc="市场感知 · 机会识别 · 外部信号 · 双引擎混合驱动 · AI技能主动感知" />
+        <Button type="text" icon={<SettingOutlined />} onClick={() => navigate('/campaign/opportunity/config')}>
+          评分配置
+        </Button>
+      </div>
 
       {/* 工作区/目标选择器 */}
-      <Card size="small" style={{ marginTop: 12 }} bodyStyle={{ padding: '8px 16px' }}>
+      <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
         <Space wrap>
           <Text strong>工作区:</Text>
           <Select value={workspaceId || undefined} onChange={v => { setWorkspaceId(v); setGoalId(''); }}
@@ -223,7 +231,7 @@ const OpportunityIntelligencePage: React.FC = () => {
             <div>
               {/* 机会概览 */}
               {discoverResult && (
-                <Card size="small" style={{ marginBottom: 16 }} bodyStyle={{ padding: 12 }}>
+                <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
                   <Row gutter={16}>
                     <Col span={6}><Statistic title="总机会" value={discoverResult.totalDiscovered} /></Col>
                     <Col span={6}>
@@ -248,11 +256,28 @@ const OpportunityIntelligencePage: React.FC = () => {
                       ))}
                     </div>
                   )}
+                  {/* 未覆盖分群建议 */}
+                  {discoverResult.uncoveredSegments?.length > 0 && (
+                    <Alert type="warning" showIcon icon={<WarningOutlined />}
+                      style={{ marginTop: 12 }}
+                      message="发现未覆盖的高价值机会分群"
+                      description={
+                        <div>
+                          {discoverResult.uncoveredSegments.map((seg: any) => (
+                            <div key={seg.segmentCode} style={{ marginBottom: 4 }}>
+                              <Tag>{seg.segmentCode}</Tag>
+                              <Text>{seg.suggestion}（{seg.opportunityCount}个机会）</Text>
+                            </div>
+                          ))}
+                        </div>
+                      }
+                    />
+                  )}
                 </Card>
               )}
 
               {/* 筛选栏 */}
-              <Card size="small" style={{ marginBottom: 16 }} bodyStyle={{ padding: '8px 12px' }}>
+              <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
                 <Space wrap>
                   <Button type="primary" icon={<ThunderboltOutlined />} loading={discovering}
                     onClick={handleDiscover}>🔄 刷新机会</Button>
@@ -303,9 +328,13 @@ const OpportunityIntelligencePage: React.FC = () => {
                   <Button icon={<ReloadOutlined />} loading={signalsLoading}
                     onClick={fetchSignals}>刷新信号</Button>
                   <Button onClick={() => handleExecuteSkill('COMPETITOR_MONITOR')}>
-                    执行竞品监控</Button>
+                    <SearchOutlined /> 竞品监控</Button>
                   <Button onClick={() => handleExecuteSkill('SOCIAL_LISTENING')}>
-                    执行舆情监控</Button>
+                    <AlertOutlined /> 舆情监控</Button>
+                  <Button onClick={() => handleExecuteSkill('REGULATORY_WATCH')}>
+                    <SafetyOutlined /> 政策法规</Button>
+                  <Button onClick={() => handleExecuteSkill('INVENTORY_RISK')}>
+                    <ShopOutlined /> 库存风险</Button>
                 </Space>
                 {skillResult && (
                   <Alert type="success" message={`技能执行完成: ${skillResult.skillName}, 生成 ${skillResult.signalsGenerated} 个信号 (${skillResult.executionTimeMs}ms)`}
@@ -336,6 +365,69 @@ const OpportunityIntelligencePage: React.FC = () => {
                   })}
                 </Row>
               </Card>
+            </div>
+          ),
+        },
+        // ==================== 技能管理 Tab ====================
+        {
+          key: 'skills',
+          label: <span><SettingOutlined /> 技能管理</span>,
+          children: (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <Button type="primary" icon={<PlusOutlined />}
+                  onClick={() => { /* TODO: 新增技能弹窗 */ message.info('技能扩展功能开发中'); }}>
+                  新增技能
+                </Button>
+              </div>
+              <Table
+                dataSource={[
+                  {
+                    key: 'COMPETITOR_MONITOR', name: '竞品监控', icon: '🔍',
+                    schedule: '每6小时', status: '运行中', lastRun: '2分钟前',
+                    signalsToday: 3, totalSignals: 156,
+                    description: '爬取竞品网页，分析价格变化和促销活动',
+                  },
+                  {
+                    key: 'SOCIAL_LISTENING', name: '舆情监控', icon: '📢',
+                    schedule: '每2小时', status: '运行中', lastRun: '1小时前',
+                    signalsToday: 2, totalSignals: 89,
+                    description: '监控社交媒体舆情，分析品牌情感倾向',
+                  },
+                  {
+                    key: 'REGULATORY_WATCH', name: '政策法规', icon: '🛡️',
+                    schedule: '每24小时', status: '运行中', lastRun: '12小时前',
+                    signalsToday: 0, totalSignals: 12,
+                    description: '监控行业政策法规变化，评估合规风险',
+                  },
+                  {
+                    key: 'INVENTORY_RISK', name: '库存风险', icon: '📦',
+                    schedule: '每4小时', status: '运行中', lastRun: '3小时前',
+                    signalsToday: 1, totalSignals: 45,
+                    description: '监控库存水平，识别积压和缺货风险',
+                  },
+                ]}
+                columns={[
+                  { title: '技能', key: 'name', render: (_: any, r: any) => (
+                    <Space><Text strong>{r.name}</Text><Tag color="green">{r.status}</Tag></Space>
+                  )},
+                  { title: '调度策略', dataIndex: 'schedule', key: 'schedule', width: 100 },
+                  { title: '上次运行', dataIndex: 'lastRun', key: 'lastRun', width: 100 },
+                  { title: '今日信号', dataIndex: 'signalsToday', key: 'signalsToday', width: 80 },
+                  { title: '累计信号', dataIndex: 'totalSignals', key: 'totalSignals', width: 80 },
+                  { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+                  { title: '操作', key: 'action', width: 200, render: (_: any, r: any) => (
+                    <Space>
+                      <Button size="small" icon={<ThunderboltOutlined />}
+                        onClick={() => handleExecuteSkill(r.key)}>执行</Button>
+                      <Button size="small">配置</Button>
+                      <Button size="small" danger>禁用</Button>
+                    </Space>
+                  )},
+                ]}
+                rowKey="key" size="small"
+                pagination={false}
+              />
             </div>
           ),
         },

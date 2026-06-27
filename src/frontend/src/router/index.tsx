@@ -63,6 +63,7 @@ const InterventionDashboard = lazy(() => import('../pages/campaign/InterventionD
 const ExecutionMonitor = lazy(() => import('../pages/campaign/ExecutionMonitor'));
 const FeedbackAnalysisPage = lazy(() => import('../pages/campaign/FeedbackAnalysisPage'));
 const OpportunityIntelligencePage = lazy(() => import('../pages/campaign/OpportunityIntelligencePage'));
+const OpportunityScoringConfig = lazy(() => import('../pages/campaign/OpportunityScoringConfig'));
 
 // ==================== 加载占位 ====================
 
@@ -272,6 +273,10 @@ export const router = createBrowserRouter([
       {
         path: 'campaign/opportunity',
         element: <SuspenseWrapper><AuthGuard><OpportunityIntelligencePage /></AuthGuard></SuspenseWrapper>,
+      },
+      {
+        path: 'campaign/opportunity/config',
+        element: <SuspenseWrapper><AuthGuard><OpportunityScoringConfig /></AuthGuard></SuspenseWrapper>,
       },
 
       // API 配置管理

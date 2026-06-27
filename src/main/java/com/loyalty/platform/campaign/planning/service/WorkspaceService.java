@@ -8,6 +8,9 @@ import com.loyalty.platform.domain.entity.Program;
 import com.loyalty.platform.domain.entity.campaign.*;
 import com.loyalty.platform.domain.repository.ProgramRepository;
 import com.loyalty.platform.domain.repository.campaign.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,8 @@ import java.util.UUID;
 public class WorkspaceService {
 
     private static final Logger log = LoggerFactory.getLogger(WorkspaceService.class);
+
+    private final ObjectMapper objectMapper;
 
     private final CampaignWorkspaceRepository workspaceRepository;
     private final CampaignWorkspaceMemberRepository memberRepository;
@@ -51,6 +56,8 @@ public class WorkspaceService {
         this.portfolioRepository = portfolioRepository;
         this.programRepository = programRepository;
         this.lockService = lockService;
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     /**
@@ -195,11 +202,24 @@ public class WorkspaceService {
     public void snapshot(String workspaceId, String snapshotType, Object data) {
         int nextVersion = snapshotRepository.getNextVersion(workspaceId, snapshotType);
 
+        String snapshotData;
+        if (data instanceof String) {
+            snapshotData = (String) data;
+        } else {
+            try {
+                snapshotData = objectMapper.writeValueAsString(data);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to serialize snapshot data for workspace={}, type={}: {}",
+                        workspaceId, snapshotType, e.getMessage());
+                snapshotData = "{\"error\":\"serialization failed\"}";
+            }
+        }
+
         CampaignWorkspaceSnapshot snapshot = CampaignWorkspaceSnapshot.builder()
                 .id(UUID.randomUUID().toString())
                 .workspaceId(workspaceId)
                 .snapshotType(snapshotType)
-                .snapshotData(data instanceof String ? (String) data : data.toString())
+                .snapshotData(snapshotData)
                 .version(nextVersion)
                 .createdBy(getCurrentUserId())
                 .build();

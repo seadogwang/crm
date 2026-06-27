@@ -9,6 +9,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../../store';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 import {
   listAssets, createAsset, updateAsset, getAsset,
   submitForApproval, approveAsset, rejectAsset,
@@ -21,6 +22,7 @@ const { TextArea } = Input;
 
 const ContentManagementPage: React.FC = () => {
   const { currentProgramCode } = useAppStore();
+  const s = useCampaignStyles();
   const [assets, setAssets] = useState<CampaignContentAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -158,9 +160,8 @@ const ContentManagementPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}><SafetyCertificateOutlined /> 内容与合规管理</Title>
-      <Text type="secondary">素材管理 · 审批工作流 · 合规校验</Text>
+    <div style={s.pageStyle}>
+      <TitleWithDesc title="内容与合规管理" desc="素材管理 · 审批工作流 · 合规校验 · 个性化渲染" />
 
       <Card style={{ marginTop: 16 }}>
         <div style={{ marginBottom: 16 }}>

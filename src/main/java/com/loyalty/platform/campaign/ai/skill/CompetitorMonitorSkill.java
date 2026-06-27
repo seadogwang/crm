@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -61,7 +62,7 @@ public class CompetitorMonitorSkill implements ExternalSkill {
                 .impactFactor(BigDecimal.valueOf(1.25))
                 .affectedSegments("[\"HIGH_VALUE\",\"PRICE_SENSITIVE\"]")
                 .recommendedAction("PRICE_MATCH_WINBACK")
-                .expiresAt(Instant.now().plus(3, ChronoUnit.DAYS))
+                .expiresAt(LocalDateTime.now().plusDays(3))
                 .isConsumed(false)
                 .build());
 
@@ -77,7 +78,7 @@ public class CompetitorMonitorSkill implements ExternalSkill {
                 .impactFactor(BigDecimal.valueOf(1.10))
                 .affectedSegments("[\"PREMIUM\",\"HIGH_VALUE\"]")
                 .recommendedAction("VALUE_ADD_OFFER")
-                .expiresAt(Instant.now().plus(7, ChronoUnit.DAYS))
+                .expiresAt(LocalDateTime.now().plusDays(7))
                 .isConsumed(false)
                 .build());
 

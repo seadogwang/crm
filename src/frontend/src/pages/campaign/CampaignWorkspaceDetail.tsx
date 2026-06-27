@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined, PlusOutlined, PlayCircleOutlined, PauseCircleOutlined,
-  LockOutlined, BarChartOutlined, RightOutlined,
+  LockOutlined, BarChartOutlined, RightOutlined, BranchesOutlined,
 } from '@ant-design/icons';
 import {
   loadWorkspaceContext, getWorkspace,
@@ -16,6 +16,7 @@ import {
   getGoalsByWorkspace,
   CampaignWorkspace, CampaignGoal, CampaignInitiative, CampaignPortfolio,
 } from '../../api/campaign';
+import { useCampaignStyles, TitleWithDesc } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -23,6 +24,7 @@ const { RangePicker } = DatePicker;
 const CampaignWorkspaceDetail: React.FC = () => {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
+  const s = useCampaignStyles();
   const [workspace, setWorkspace] = useState<CampaignWorkspace | null>(null);
   const [activeGoal, setActiveGoal] = useState<CampaignGoal | null>(null);
   const [allGoals, setAllGoals] = useState<CampaignGoal[]>([]);
@@ -34,6 +36,8 @@ const CampaignWorkspaceDetail: React.FC = () => {
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [initiativeModalOpen, setInitiativeModalOpen] = useState(false);
   const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
+  const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<CampaignPortfolio | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const [goalForm] = Form.useForm();
@@ -298,6 +302,9 @@ const CampaignWorkspaceDetail: React.FC = () => {
         {(r.status === 'ACTIVE' || r.status === 'PAUSED') && (
           <Button size="small" onClick={() => completeGoal(r.id)}>完成</Button>
         )}
+        {r.status === 'COMPLETED' && (
+          <Button size="small" onClick={() => archiveGoal(r.id)}>归档</Button>
+        )}
       </Space>
     )},
   ];
@@ -323,6 +330,10 @@ const CampaignWorkspaceDetail: React.FC = () => {
           <Button size="small" icon={<PauseCircleOutlined />}
             onClick={() => handlePauseInitiative(r.id)}>暂停</Button>
         )}
+        <Button size="small" type="primary" icon={<BranchesOutlined />}
+          onClick={() => navigate(`/campaign/canvas/new?initiativeId=${r.id}&goalId=${r.goalId}&workspaceId=${workspaceId}`)}>
+          画布编排
+        </Button>
       </Space>
     )},
   ];
@@ -354,30 +365,26 @@ const CampaignWorkspaceDetail: React.FC = () => {
           <Button size="small" icon={<LockOutlined />}
             onClick={() => handleLockPortfolio(r.id)}>锁定</Button>
         )}
-        <Button size="small" icon={<RightOutlined />}>详情</Button>
+        <Button size="small" icon={<RightOutlined />}
+            onClick={() => { setSelectedPortfolio(r); setPortfolioDetailOpen(true); }}>详情</Button>
       </Space>
     )},
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      {/* 页面头部 */}
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/campaign/workspaces')}>
-              返回列表
-            </Button>
-            <div>
-              <Title level={4} style={{ margin: 0 }}>{workspace.name}</Title>
-              <Text type="secondary">{workspace.description}</Text>
-            </div>
-          </Space>
-          <Tag color={workspace.status === 'ACTIVE' ? 'green' : 'default'}>
-            {workspace.status}
-          </Tag>
-        </div>
-        <Descriptions size="small" style={{ marginTop: 16 }} column={3}>
+    <div className="campaign-page" style={s.pageStyle}>
+      {/* 标题行 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <TitleWithDesc title={workspace.name} desc={workspace.description}
+          tag={<Tag color={workspace.status === 'ACTIVE' ? 'green' : 'default'}>{workspace.status}</Tag>} />
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/campaign/workspaces')}>
+          返回
+        </Button>
+      </div>
+
+      {/* 工作区信息 */}
+      <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
+        <Descriptions size="small" column={3}>
           <Descriptions.Item label="关联目标">
             {activeGoal ? <Text strong>{activeGoal.name}</Text> : <Text type="secondary">未设置</Text>}
           </Descriptions.Item>
@@ -387,93 +394,83 @@ const CampaignWorkspaceDetail: React.FC = () => {
         </Descriptions>
       </Card>
 
-      {/* 当前激活目标卡片 */}
+      {/* 当前激活目标 */}
       {activeGoal && (
-        <Card style={{ marginBottom: 16 }} bodyStyle={{ padding: 16 }}>
+        <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <Space>
-                <Text strong style={{ fontSize: 16 }}>🎯 {activeGoal.name}</Text>
-                <Tag color="green">● ACTIVE</Tag>
+                <Text strong style={{ fontSize: 16 }}>{activeGoal.name}</Text>
+                <Tag color="green">ACTIVE</Tag>
               </Space>
-              <div style={{ marginTop: 8 }}>
-                <Text type="secondary">
+              <div style={{ marginTop: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
                   类型: {getGoalTypeLabel(activeGoal.goalType)} |
                   目标: ¥{activeGoal.targetValue?.toLocaleString()} |
                   当前: ¥{activeGoal.currentValue?.toLocaleString()}
                 </Text>
               </div>
             </div>
-            <div style={{ width: 300 }}>
-              <Progress
-                percent={activeGoal.targetValue
-                  ? Math.round(Math.min((activeGoal.currentValue / activeGoal.targetValue) * 100, 100))
-                  : 0}
-                size="small"
-                format={pct => `${pct}%`}
-              />
-            </div>
+            <Progress
+              style={{ width: 260 }}
+              percent={activeGoal.targetValue
+                ? Math.round(Math.min((activeGoal.currentValue / activeGoal.targetValue) * 100, 100))
+                : 0}
+              size="small"
+              format={pct => `${pct}%`}
+            />
           </div>
         </Card>
       )}
 
-      {/* Tab 页面 */}
-      <Card>
-        <Tabs defaultActiveKey="goals" items={[
+      {/* Tabs: 目标 / 举措 / 组合 */}
+      <Card size="small" bodyStyle={{ padding: 12 }}>
+        <Tabs className="campaign-tabs" defaultActiveKey="goals" items={[
           {
             key: 'goals',
-            label: <span>🎯 目标管理</span>,
+            label: '目标管理',
             children: (
               <div>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
                   <Button type="primary" icon={<PlusOutlined />}
-                    onClick={() => {
-                      goalForm.resetFields();
-                      setGoalModalOpen(true);
-                    }}>
+                    onClick={() => { goalForm.resetFields(); setGoalModalOpen(true); }}>
                     新建目标
                   </Button>
                 </div>
-                <Table dataSource={allGoals} columns={goalColumns} rowKey="id"
-                  pagination={{ pageSize: 10 }} />
+                <Table className="campaign-table" dataSource={allGoals} columns={goalColumns} rowKey="id"
+                  size="small" pagination={{ pageSize: 10, showSizeChanger: true }} />
               </div>
             ),
           },
           {
             key: 'initiatives',
-            label: <span>📋 举措管理</span>,
+            label: '举措管理',
             children: (
               <div>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
                   <Button type="primary" icon={<PlusOutlined />}
-                    onClick={() => {
-                      initiativeForm.resetFields();
-                      setInitiativeModalOpen(true);
-                    }}>
+                    onClick={() => { initiativeForm.resetFields(); setInitiativeModalOpen(true); }}>
                     新建举措
                   </Button>
                 </div>
-                <Table dataSource={initiatives} columns={initiativeColumns} rowKey="id"
-                  pagination={{ pageSize: 10 }} />
+                <Table className="campaign-table" dataSource={initiatives} columns={initiativeColumns} rowKey="id"
+                  size="small" pagination={{ pageSize: 10, showSizeChanger: true }} />
               </div>
             ),
           },
           {
             key: 'portfolios',
-            label: <span>📊 组合管理</span>,
+            label: '组合管理',
             children: (
               <div>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
                   <Button type="primary" icon={<PlusOutlined />}
-                    onClick={() => {
-                      portfolioForm.resetFields();
-                      setPortfolioModalOpen(true);
-                    }}>
+                    onClick={() => { portfolioForm.resetFields(); setPortfolioModalOpen(true); }}>
                     新建组合
                   </Button>
                 </div>
-                <Table dataSource={portfolios} columns={portfolioColumns} rowKey="id"
-                  pagination={{ pageSize: 10 }} />
+                <Table className="campaign-table" dataSource={portfolios} columns={portfolioColumns} rowKey="id"
+                  size="small" pagination={{ pageSize: 10, showSizeChanger: true }} />
               </div>
             ),
           },
@@ -576,6 +573,31 @@ const CampaignWorkspaceDetail: React.FC = () => {
             <RangePicker style={{ width: '100%' }} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* ==================== 组合详情弹窗 ==================== */}
+      <Modal title="组合详情" open={portfolioDetailOpen}
+        onCancel={() => setPortfolioDetailOpen(false)}
+        footer={<Button onClick={() => setPortfolioDetailOpen(false)}>关闭</Button>}
+        width={560}>
+        {selectedPortfolio && (
+          <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="组合名称">{selectedPortfolio.name}</Descriptions.Item>
+            <Descriptions.Item label="描述">{selectedPortfolio.description || '-'}</Descriptions.Item>
+            <Descriptions.Item label="状态">{portfolioStatusTag(selectedPortfolio.status)}</Descriptions.Item>
+            <Descriptions.Item label="优化模式">
+              {{ ROI_MAXIMIZATION: 'ROI 最大化', REVENUE_MAXIMIZATION: '营收最大化', BALANCED: '平衡模式' }[selectedPortfolio.optimizationMode] || selectedPortfolio.optimizationMode}
+            </Descriptions.Item>
+            <Descriptions.Item label="总预算">
+              {selectedPortfolio.totalBudget ? `¥${selectedPortfolio.totalBudget.toLocaleString()}` : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="有效期">
+              {selectedPortfolio.startTime
+                ? `${new Date(selectedPortfolio.startTime).toLocaleDateString()} ~ ${new Date(selectedPortfolio.endTime).toLocaleDateString()}`
+                : '-'}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
       </Modal>
     </div>
   );

@@ -65,9 +65,28 @@ export type NodeConfig =
   | ApprovalConfig | WebhookConfig | Record<string, any>;
 
 export interface AudienceFilterConfig {
-  segmentCode: string;
-  filters: { field: string; operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'in'; value: any }[];
-  limit?: number;
+  logic: 'AND' | 'OR';
+  conditions: AudienceCondition[];
+  limit: number;
+  excludeBlacklist: boolean;
+}
+type AudienceCondition = DynamicStatCondition | StaticAttrCondition;
+interface DynamicStatCondition {
+  type: 'DYNAMIC_STAT';
+  name: string;
+  dataSource: 'order_fact' | 'points_transaction' | 'tier_change_log';
+  aggFunc: string;
+  aggField: string;
+  timeWindowType?: string;
+  timeWindowDays?: number;
+  operator: string;
+  value: string | number;
+}
+interface StaticAttrCondition {
+  type: 'STATIC_ATTR';
+  field: string;
+  operator: string;
+  value: string | number;
 }
 
 export interface ConditionConfig {

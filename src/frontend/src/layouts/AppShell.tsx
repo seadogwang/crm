@@ -139,15 +139,67 @@ const AppShell: React.FC = () => {
   };
 
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.defaultAlgorithm,
-        token: {
-          colorPrimary: '#1a1a1a',
-          borderRadius: 6,
-        },
-        components: {
-          Menu: {
+    <>
+      <style>{`
+        :root {
+          --campaign-title-size: 24px;
+          --campaign-subtitle-size: 16px;
+          --campaign-body-size: 14px;
+          --campaign-caption-size: 12px;
+          --campaign-label-size: 13px;
+          --campaign-page-padding: 4px 24px 24px;
+          --campaign-card-gap: 12px;
+          --campaign-section-gap: 16px;
+          --campaign-element-gap: 8px;
+          --campaign-card-radius: 8px;
+          --campaign-card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+          --campaign-input-sm: 120px;
+          --campaign-input-md: 200px;
+          --campaign-input-lg: 320px;
+          --campaign-table-row-height: 48px;
+          --campaign-table-font-size: 14px;
+          --campaign-table-header-bg: #fafafa;
+          --campaign-btn-radius: 6px;
+          --campaign-primary: #1890ff;
+          --campaign-text-primary: #262626;
+          --campaign-text-secondary: #8c8c8c;
+          --campaign-bg-light: #fafafa;
+          --campaign-border: #f0f0f0;
+        }
+        .campaign-page { padding: var(--campaign-page-padding); }
+        .campaign-page .campaign-page-title {
+          font-size: var(--campaign-title-size); font-weight: 600; margin-bottom: 4px; line-height: 1.3;
+        }
+        .campaign-page .campaign-page-subtitle {
+          font-size: var(--campaign-body-size); color: var(--campaign-text-secondary); margin-bottom: var(--campaign-section-gap);
+        }
+        .campaign-table .ant-table-thead > tr > th {
+          font-size: var(--campaign-label-size); font-weight: 600; background: var(--campaign-table-header-bg);
+          white-space: nowrap; padding: 10px 12px;
+        }
+        .campaign-table .ant-table-tbody > tr > td {
+          font-size: var(--campaign-table-font-size); padding: 10px 12px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .campaign-toolbar {
+          display: flex; justify-content: space-between; align-items: center;
+          flex-wrap: wrap; gap: var(--campaign-element-gap); margin-bottom: var(--campaign-card-gap);
+        }
+        .campaign-filter-bar {
+          display: flex; align-items: center; flex-wrap: wrap;
+          gap: var(--campaign-element-gap); padding: 8px 12px;
+        }
+        .campaign-filter-bar .ant-select { min-width: var(--campaign-input-sm); }
+      `}</style>
+      <ConfigProvider
+        theme={{
+          algorithm: theme.defaultAlgorithm,
+          token: {
+            colorPrimary: '#1a1a1a',
+            borderRadius: 6,
+          },
+          components: {
+            Menu: {
             colorBgElevated: '#fff',
           },
         },
@@ -155,14 +207,34 @@ const AppShell: React.FC = () => {
     >
       <Layout style={{ minHeight: '100vh', background: '#fff' }}>
         <style>{`
-          /* 顶部菜单：选中项再次悬停时的背景色 */
-          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu-selected > .ant-menu-submenu-title:hover {
-            background: rgba(0, 0, 0, 0.04) !important;
+          /* 顶部菜单：禁用hover背景色 */
+          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu-title:hover,
+          .app-shell-menu.ant-menu-horizontal .ant-menu-item:hover {
+            background: transparent !important;
           }
+          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu-selected > .ant-menu-submenu-title:hover,
           .app-shell-menu.ant-menu-horizontal .ant-menu-item-selected:hover {
-            background: rgba(0, 0, 0, 0.04) !important;
+            background: transparent !important;
           }
-          /* 顶部菜单下拉弹出层：白色背景（Popup 渲染在 body 下，必须用全局选择器） */
+          /* 选中项：无背景色 */
+          .app-shell-menu.ant-menu-horizontal .ant-menu-item-selected,
+          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu-selected > .ant-menu-submenu-title {
+            background: transparent !important;
+          }
+          /* 选中和hover下划线：完全统一 */
+          .app-shell-menu.ant-menu-horizontal .ant-menu-item-selected,
+          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu-selected > .ant-menu-submenu-title,
+          .app-shell-menu.ant-menu-horizontal .ant-menu-item:hover,
+          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu-title:hover {
+            border-bottom: 3px solid #1a1a1a !important;
+            border-radius: 0 !important;
+          }
+          /* 隐藏默认的 ::after 下划线 */
+          .app-shell-menu.ant-menu-horizontal .ant-menu-item::after,
+          .app-shell-menu.ant-menu-horizontal .ant-menu-submenu::after {
+            display: none !important;
+          }
+          /* 顶部菜单下拉弹出层 */
           .ant-menu-submenu-popup > .ant-menu {
             background: #fff !important;
           }
@@ -275,6 +347,7 @@ const AppShell: React.FC = () => {
         </Layout>
       </Layout>
     </ConfigProvider>
+    </>
   );
 };
 

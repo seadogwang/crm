@@ -98,7 +98,7 @@ public class PortfolioService {
      * </ol>
      */
     public CampaignPortfolio optimizePortfolio(String portfolioId) {
-        CampaignPortfolio portfolio = getPortfolio(portfolioId);
+        final CampaignPortfolio portfolio = getPortfolio(portfolioId);
         if (!"DRAFT".equals(portfolio.getStatus())) {
             throw new BusinessException("ERR_PORTFOLIO_NOT_DRAFT", "Only DRAFT portfolio can be optimized");
         }
@@ -142,11 +142,11 @@ public class PortfolioService {
             // 5. 更新 Portfolio 状态
             portfolio.setStatus("OPTIMIZED");
             portfolio.setUpdatedAt(LocalDateTime.now());
-            portfolio = portfolioRepository.save(portfolio);
+            CampaignPortfolio savedPortfolio = portfolioRepository.save(portfolio);
 
             log.info("Portfolio optimized: id={}, allocated {} initiatives",
                     portfolioId, allocation.size());
-            return portfolio;
+            return savedPortfolio;
         });
     }
 

@@ -8,12 +8,14 @@ import {
 } from '@ant-design/icons';
 import { createWorkspace } from '../../api/campaign';
 import { useAppStore } from '../../store';
+import { useCampaignStyles } from './styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
 const CampaignWorkspaceCreate: React.FC = () => {
   const navigate = useNavigate();
   const { currentProgramCode } = useAppStore();
+  const s = useCampaignStyles();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -39,16 +41,14 @@ const CampaignWorkspaceCreate: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/campaign/workspaces')}>
-            返回列表
-          </Button>
-        </Space>
-        <Title level={4} style={{ marginTop: 16 }}>新建工作区</Title>
-        <Text type="secondary">创建一个新的营销工作区，作为营销活动的战略规划容器</Text>
+    <div style={s.pageStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <h4 className="campaign-page-title" style={{ ...s.titleStyle, margin: 0 }}>新建工作区</h4>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/campaign/workspaces')}>
+          返回
+        </Button>
       </div>
+      <p className="campaign-page-subtitle" style={{ ...s.subtitleStyle, marginBottom: 16 }}>创建一个新的营销工作区，作为营销活动的战略规划容器</p>
 
       <Card>
         <Form form={form} layout="vertical" onFinish={handleSubmit}

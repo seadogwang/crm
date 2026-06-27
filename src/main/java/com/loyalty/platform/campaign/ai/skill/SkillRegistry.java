@@ -43,7 +43,9 @@ public class SkillRegistry {
     public List<ExternalSkill> getAllEnabled() {
         return List.of(
                 skills.get("COMPETITOR_MONITOR"),
-                skills.get("SOCIAL_LISTENING")
+                skills.get("SOCIAL_LISTENING"),
+                skills.get("REGULATORY_WATCH"),
+                skills.get("INVENTORY_RISK")
         );
     }
 
