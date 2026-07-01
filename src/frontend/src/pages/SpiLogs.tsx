@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Tag, Select, Space, Button, Typography, DatePicker, Descriptions, message } from 'antd';
 import { ReloadOutlined, PlayCircleOutlined, AuditOutlined, SearchOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Title } = Typography;
@@ -67,9 +67,9 @@ const SpiLogs: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>SPI 调用日志</Title>
+        <TitleWithDesc title="SPI 调用日志" desc="查看和追踪 SPI 适配器的调用日志，支持死信重放和请求/响应详情查看" />
         <Button icon={<ReloadOutlined />} onClick={fetch}>刷新</Button>
       </div>
 
@@ -127,7 +127,7 @@ const SpiLogs: React.FC = () => {
           rowExpandable: () => true,
         }}
       />
-    </PageWrapper>
+    </div>
   );
 };
 

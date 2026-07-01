@@ -8,7 +8,7 @@ import {
   SaveOutlined, SendOutlined, PlusOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Title, Text } = Typography;
@@ -142,9 +142,9 @@ const TierActivityEditor: React.FC = () => {
   };
 
   return (
-    <PageWrapper>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>{isEdit ? '编辑等级活动' : '新建等级活动'}</Title>
+        <TitleWithDesc title={isEdit ? '编辑等级活动' : '新建等级活动'} desc="配置等级升级活动，设置触发条件和直升目标等级" />
         <Space>
           <Button onClick={() => navigate('/rules/tier')}>取消</Button>
           <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving}>保存</Button>
@@ -216,7 +216,7 @@ const TierActivityEditor: React.FC = () => {
           </Space>
         </Card>
       </Card>
-    </PageWrapper>
+    </div>
   );
 };
 

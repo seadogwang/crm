@@ -8,7 +8,7 @@ import {
   ApiOutlined, SearchOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Text, Title } = Typography;
@@ -257,11 +257,9 @@ const ApiConfig: React.FC = () => {
   // ---- 渲染 ----
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          <ApiOutlined /> API 操作配置
-        </Title>
+        <TitleWithDesc title="API 操作配置" desc="管理入站/出站 API 操作，配置认证、分页和业务实体映射" />
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           新增 API
         </Button>
@@ -431,7 +429,7 @@ const ApiConfig: React.FC = () => {
           </Form.Item>
         </Form>
       </Drawer>
-    </PageWrapper>
+    </div>
   );
 };
 

@@ -1268,6 +1268,92 @@ export async function getGdprRequests(memberId: string) {
   return res.data.data;
 }
 
+// ==================== Terms & Legal Consent API ====================
+
+export interface TermsMaster {
+  id?: string;
+  programCode: string;
+  termsType: string;
+  termsVersion: string;
+  termsContent?: string;
+  effectiveDate: string;
+  isActive: boolean;
+  releasedBy?: string;
+  releasedAt?: string;
+  createdAt?: string;
+}
+
+export interface TermsAcceptance {
+  id?: string;
+  memberId: string;
+  programCode: string;
+  termsType: string;
+  termsVersion: string;
+  isAccepted: boolean;
+  acceptedAt?: string;
+  acceptedIp?: string;
+  userAgent?: string;
+  source?: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  revokedReason?: string;
+  createdAt?: string;
+}
+
+/** 检查会员是否已接受最新条款 */
+export async function checkTermsAccepted(memberId: string, termsType?: string) {
+  const res = await api.get<ApiResponse<{ accepted: boolean; latestVersion: string; termsType: string }>>(
+    '/campaign/terms/check', { params: { memberId, termsType } }
+  );
+  return res.data.data;
+}
+
+/** 接受条款 */
+export async function acceptTerms(data: {
+  memberId: string; termsType?: string; source?: string;
+}) {
+  const res = await api.post<ApiResponse<TermsAcceptance>>('/campaign/terms/accept', data);
+  return res.data.data;
+}
+
+/** 获取当前生效的条款内容 */
+export async function getActiveTerms(termsType?: string) {
+  const res = await api.get<ApiResponse<TermsMaster>>('/campaign/terms/active', { params: { termsType } });
+  return res.data.data;
+}
+
+/** 获取会员的接受历史 */
+export async function getAcceptanceHistory(memberId: string) {
+  const res = await api.get<ApiResponse<TermsAcceptance[]>>(`/campaign/terms/history/${memberId}`);
+  return res.data.data;
+}
+
+/** 管理员：查询条款版本列表 */
+export async function getTermsVersions(termsType?: string) {
+  const res = await api.get<ApiResponse<TermsMaster[]>>('/campaign/terms/admin/versions', { params: { termsType } });
+  return res.data.data;
+}
+
+/** 管理员：创建条款版本 */
+export async function createTermsVersion(data: Partial<TermsMaster>) {
+  const res = await api.post<ApiResponse<TermsMaster>>('/campaign/terms/admin/versions', data);
+  return res.data.data;
+}
+
+/** 管理员：停用条款版本 */
+export async function deactivateTermsVersion(id: string) {
+  const res = await api.post(`/campaign/terms/admin/versions/${id}/deactivate`);
+  return res.data.data;
+}
+
+/** 管理员：查询接受记录（审计） */
+export async function getTermsAcceptances(termsType: string, termsVersion: string) {
+  const res = await api.get<ApiResponse<TermsAcceptance[]>>('/campaign/terms/admin/acceptances', {
+    params: { termsType, termsVersion },
+  });
+  return res.data.data;
+}
+
 // ==================== Experiment A/B Testing API ====================
 
 export interface ExperimentEntity {

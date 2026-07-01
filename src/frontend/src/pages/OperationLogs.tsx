@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Tag, Select, Space, Button, Typography, DatePicker, Drawer, Descriptions, Input } from 'antd';
 import { ReloadOutlined, FileTextOutlined, SearchOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Title, Text } = Typography;
@@ -56,9 +56,9 @@ const OperationLogs: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>操作日志</Title>
+        <TitleWithDesc title="操作日志" desc="查看系统操作审计日志，追踪用户创建、更新、删除等关键操作记录" />
         <Button icon={<ReloadOutlined />} onClick={fetch}>刷新</Button>
       </div>
 
@@ -103,7 +103,7 @@ const OperationLogs: React.FC = () => {
           </Descriptions>
         )}
       </Drawer>
-    </PageWrapper>
+    </div>
   );
 };
 

@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Card, Input, InputNumber, Row, Col, Typography, Progress, Button, Space, Table, Tag } from 'antd';
 import { SearchOutlined, DollarOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
 import api from '../api';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const { Title, Text } = Typography;
 
@@ -28,10 +28,10 @@ const PointsAccounts: React.FC = () => {
   }, [memberId]);
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
-      <Title level={4} style={{ marginBottom: 16 }}>账户总览</Title>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
+      <TitleWithDesc title="积分账户总览" desc="查询会员积分账户余额、累计获得/消耗/过期明细" />
 
-      <Space style={{ marginBottom: 24 }}>
+      <Space style={{ marginBottom: 12 }}>
         <InputNumber
           placeholder="会员 ID"
           value={memberId}
@@ -47,7 +47,7 @@ const PointsAccounts: React.FC = () => {
 
       <Row gutter={16}>
         {accounts.map(acc => (
-          <Col xs={24} sm={12} md={8} key={acc.account_type} style={{ marginBottom: 16 }}>
+          <Col xs={24} sm={12} md={8} key={acc.account_type} style={{ marginBottom: 12 }}>
             <Card
               title={<Space><DollarOutlined />{acc.account_type || '积分账户'}</Space>}
               size="small"
@@ -77,7 +77,7 @@ const PointsAccounts: React.FC = () => {
           </Col>
         ))}
       </Row>
-    </PageWrapper>
+    </div>
   );
 };
 

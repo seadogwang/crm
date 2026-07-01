@@ -58,14 +58,22 @@ public class ProgramSchemaService {
     }
 
     public ProgramSchema saveSchema(String programCode, String entityType, Map<String, Object> fieldSchema) {
-        ProgramSchema existing = schemaRepo.findCurrentByType(programCode, entityType).orElse(null);
-        int nextVersion = existing != null ? Integer.parseInt(existing.getVersion().replace("v", "")) + 1 : 1;
-
+        ProgramSchema existing = schemaRepo.findByProgramCodeAndEntityType(programCode, entityType.toUpperCase()).orElse(null);
+        if (existing != null) {
+            // 已有记录则更新字段定义，递增版本号，重置状态为 DRAFT
+            int currentVer = parseVersionNumber(existing.getVersion());
+            existing.setVersion(String.valueOf(currentVer + 1));
+            existing.setFieldSchema(fieldSchema);
+            existing.setStatus("DRAFT");
+            existing.setUpdatedAt(java.time.LocalDateTime.now());
+            return schemaRepo.save(existing);
+        }
+        // 首次创建
         ProgramSchema ps = ProgramSchema.builder()
                 .programCode(programCode)
                 .entityType(entityType.toUpperCase())
                 .entityCategory("SYSTEM")
-                .version("v" + nextVersion)
+                .version("1")
                 .status("DRAFT")
                 .fieldSchema(fieldSchema)
                 .schemaCode(entityType.toLowerCase())
@@ -74,10 +82,38 @@ public class ProgramSchemaService {
     }
 
     public ProgramSchema publishSchema(String programCode, String entityType, Map<String, Object> fieldSchema) {
-        ProgramSchema ps = saveSchema(programCode, entityType, fieldSchema);
-        ps.setStatus("PUBLISHED");
-        ps.setPublishedAt(java.time.LocalDateTime.now());
+        ProgramSchema existing = schemaRepo.findByProgramCodeAndEntityType(programCode, entityType.toUpperCase()).orElse(null);
+        if (existing != null) {
+            // 已有记录：更新字段定义、递增版本号、标记为 PUBLISHED
+            int currentVer = parseVersionNumber(existing.getVersion());
+            existing.setVersion(String.valueOf(currentVer + 1));
+            existing.setFieldSchema(fieldSchema);
+            existing.setStatus("PUBLISHED");
+            existing.setPublishedAt(java.time.LocalDateTime.now());
+            existing.setUpdatedAt(java.time.LocalDateTime.now());
+            return schemaRepo.save(existing);
+        }
+        // 首次创建并发布
+        ProgramSchema ps = ProgramSchema.builder()
+                .programCode(programCode)
+                .entityType(entityType.toUpperCase())
+                .entityCategory("SYSTEM")
+                .version("1")
+                .status("PUBLISHED")
+                .fieldSchema(fieldSchema)
+                .schemaCode(entityType.toLowerCase())
+                .publishedAt(java.time.LocalDateTime.now())
+                .build();
         return schemaRepo.save(ps);
+    }
+
+    /**
+     * 从版本字符串中解析出版本数字。
+     * 兼容 "v2"、"2"、"v1" 等格式。
+     */
+    private int parseVersionNumber(String version) {
+        if (version == null) return 0;
+        return Integer.parseInt(version.replaceAll("[^0-9]", ""));
     }
 
     /** 查询所有 Schema */

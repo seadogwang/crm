@@ -3,6 +3,7 @@ import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select
 import { SearchOutlined, CopyOutlined, EditOutlined, DollarOutlined, CrownOutlined, LockOutlined, MergeCellsOutlined, HistoryOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import api from '../api';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
@@ -203,6 +204,7 @@ const OrderDetail: React.FC<{ memberId: string; orderId: string }> = ({ memberId
 
 const MemberService: React.FC = () => {
   const programCode = useAppStore(s => s.currentProgramCode);
+  const s = useCampaignStyles();
   // 枚举缓存
   const [enumCache, setEnumCache] = useState<Record<string, string>>({});
   const enumName = (type: string, code: string) => enumCache[`${type}:${code}`] || code;
@@ -422,9 +424,8 @@ const MemberService: React.FC = () => {
   ];
 
   return (
-    <div style={{ background: '#fff', minHeight: 'calc(100vh - 120px)', padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+    <div className="campaign-page" style={s.pageStyle}>
       <style>{`
-        /* 搜索框获焦时，去掉蓝色外发光，改用黑色边框，保持与按钮高度一致 */
         .member-search-input .ant-input:focus {
           border-color: #1a1a1a !important;
           box-shadow: none !important;
@@ -433,8 +434,11 @@ const MemberService: React.FC = () => {
           border-color: #1a1a1a !important;
         }
       `}</style>
+
+      <TitleWithDesc title="会员服务" desc="查询会员信息、管理积分账户、调整等级、查看交易流水" />
+
       {/* 搜索栏 */}
-      <Card size="small" style={{ marginBottom: 16 }} bodyStyle={{ padding: 16 }}>
+      <CampaignCard>
         <Space>
           <AutoComplete
               options={recentSearches.length > 0
@@ -454,7 +458,7 @@ const MemberService: React.FC = () => {
               />
             </AutoComplete>
         </Space>
-      </Card>
+      </CampaignCard>
 
       {loading && <Spin style={{ display: 'block', margin: '40px auto' }} />}
 
@@ -465,7 +469,7 @@ const MemberService: React.FC = () => {
       {member && (
         <>
           {/* 会员摘要卡片 */}
-          <Card style={{ marginBottom: 16 }} bodyStyle={{ padding: 20 }}>
+          <Card style={{ marginBottom: 12 }} bodyStyle={{ padding: 20 }}>
             <Row gutter={24}>
               <Col span={14}>
                 <Space direction="vertical" size={4}>
@@ -526,14 +530,14 @@ const MemberService: React.FC = () => {
           </div>
 
           {/* Tabs */}
-          <Card bodyStyle={{ padding: 0 }}>
+          <CampaignCard bodyStyle={{ padding: 0 }}>
             <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ padding: '0 16px' }}
               items={[
                 {
                   key: 'orders', label: <Space><HistoryOutlined />交易流水</Space>,
                   children: (
-                    <Table dataSource={orderData} columns={orderColumns} rowKey="orderId" size="small"
-                      loading={orderLoading} pagination={false} scroll={{ x: 800 }}
+                    <Table className="campaign-table" dataSource={orderData} columns={orderColumns} rowKey="orderId" size="small"
+                      loading={orderLoading} pagination={false} scroll={{ x: 'max-content' }}
                       expandable={{
                         rowExpandable: () => true,
                         expandedRowRender: (r: OrderVO) => <OrderDetail memberId={member.memberId} orderId={r.orderId} />,
@@ -544,37 +548,37 @@ const MemberService: React.FC = () => {
                 {
                   key: 'transactions', label: <Space><HistoryOutlined />积分流水</Space>,
                   children: (
-                    <Table dataSource={txData} columns={pointsColumns} rowKey="id" size="small"
+                    <Table className="campaign-table" dataSource={txData} columns={pointsColumns} rowKey="id" size="small"
                       loading={txLoading} pagination={{
                         total: txTotal, current: txPage + 1, pageSize: 20,
                         onChange: (p) => fetchTransactions(p - 1, member),
-                      }} scroll={{ x: 600 }}
+                      }} scroll={{ x: 'max-content' }}
                       locale={{ emptyText: '暂无交易记录' }} />
                   ),
                 },
                 {
                   key: 'tier-logs', label: <Space><CrownOutlined />等级变更日志</Space>,
                   children: (
-                    <Table dataSource={tierData} columns={tierColumns} rowKey="id" size="small"
+                    <Table className="campaign-table" dataSource={tierData} columns={tierColumns} rowKey="id" size="small"
                       pagination={{
                         total: tierTotal, pageSize: 20,
                         onChange: (p) => fetchTierLogs(p - 1),
-                      }} scroll={{ x: 500 }}
+                      }} scroll={{ x: 'max-content' }}
                       locale={{ emptyText: '暂无等级变更' }} />
                   ),
                 },
                 {
                   key: 'channels', label: <Space><ApiOutlined />渠道绑定</Space>,
                   children: (
-                    <Table dataSource={member.channels || []} columns={channelColumns}
+                    <Table className="campaign-table" dataSource={member.channels || []} columns={channelColumns}
                       rowKey={(r, i) => r.keyCombination + i} size="small"
-                      pagination={false} scroll={{ x: 400 }}
+                      pagination={false} scroll={{ x: 'max-content' }}
                       locale={{ emptyText: '暂无渠道绑定' }} />
                   ),
                 },
               ]}
             />
-          </Card>
+          </CampaignCard>
         </>
       )}
 

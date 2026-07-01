@@ -1,16 +1,20 @@
 package com.loyalty.platform.api.controller;
 
+import com.loyalty.platform.member.MemberMergeService;
 import com.loyalty.platform.accounting.PointGrantService;
 import com.loyalty.platform.accounting.PointRedeemService;
 import com.loyalty.platform.api.service.MemberService;
 import com.loyalty.platform.api.service.ProgramSchemaService;
+import com.loyalty.platform.campaign.consent.TermsService;
 import com.loyalty.platform.common.annotation.Idempotent;
 import com.loyalty.platform.common.context.TenantContext;
 import com.loyalty.platform.common.dto.ApiResponse;
+import com.loyalty.platform.common.exception.BusinessException;
 import com.loyalty.platform.domain.entity.*;
 import com.loyalty.platform.domain.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -30,24 +34,33 @@ public class MemberController {
 
     @PersistenceContext private EntityManager em;
     private final MemberService memberService;
+    private final TermsService termsService;
     private final MemberRepository memberRepo;
     private final PointGrantService pointGrantService;
     private final PointRedeemService pointRedeemService;
     private final ProgramSchemaService programSchemaService;
     private final AccountTransactionRepository txRepo;
     private final MergeTaskRepository mergeTaskRepo;
+    private final TierDefinitionRepository tierDefRepo;
+    private final MemberMergeService memberMergeService;
 
-    public MemberController(MemberService memberService, MemberRepository memberRepo,
+    public MemberController(MemberService memberService, TermsService termsService,
+                            MemberRepository memberRepo,
                             PointGrantService pointGrantService, PointRedeemService pointRedeemService,
                             ProgramSchemaService programSchemaService, AccountTransactionRepository txRepo,
-                            MergeTaskRepository mergeTaskRepo) {
+                            MergeTaskRepository mergeTaskRepo,
+                            TierDefinitionRepository tierDefRepo,
+                            MemberMergeService memberMergeService) {
         this.memberService = memberService;
+        this.termsService = termsService;
         this.memberRepo = memberRepo;
         this.pointGrantService = pointGrantService;
         this.pointRedeemService = pointRedeemService;
         this.programSchemaService = programSchemaService;
         this.txRepo = txRepo;
         this.mergeTaskRepo = mergeTaskRepo;
+        this.tierDefRepo = tierDefRepo;
+        this.memberMergeService = memberMergeService;
     }
 
     // ==================== 查询 ====================
@@ -88,14 +101,43 @@ public class MemberController {
 
     @PostMapping
     @Idempotent
-    public ResponseEntity<ApiResponse<Member>> create(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Member>> create(@RequestBody Map<String, Object> body,
+                                                       HttpServletRequest request) {
         String pc = TenantContext.getRequired();
+
+        // § 注册流程：必须先通过"同意章程"检查，才能创建会员
+        Boolean termsAccepted = body.containsKey("terms_accepted")
+                ? Boolean.valueOf(body.get("terms_accepted").toString()) : false;
+        if (!termsAccepted) {
+            throw new BusinessException("ERR_TERMS_NOT_ACCEPTED",
+                    "必须同意俱乐部章程才能注册");
+        }
+
         @SuppressWarnings("unchecked")
         Map<String, Object> ext = (Map<String, Object>) body.getOrDefault("ext_attributes", Map.of());
         Member m = memberService.createMember(pc,
             body.containsKey("member_id") ? Long.valueOf(body.get("member_id").toString()) : null,
             (String) body.getOrDefault("tier_code", "BASE"), ext);
+
+        // 记录同意记录（与会员创建在同一事务中，但需要独立 try-catch 防止回滚会员创建）
+        try {
+            String ip = getClientIp(request);
+            String userAgent = request.getHeader("User-Agent");
+            termsService.acceptTerms(m.getMemberId().toString(), "CHARTER", "WEB_APP", ip, userAgent);
+        } catch (Exception e) {
+            log.error("记录条款同意失败: memberId={}", m.getMemberId(), e);
+            // 不阻断注册流程，但记录错误
+        }
+
         return ResponseEntity.ok(ApiResponse.success("创建成功", m));
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     // ==================== 交易流水 (transaction_event) ====================
@@ -299,6 +341,16 @@ public class MemberController {
         Optional<Member> opt = memberRepo.findByMemberId(pc, memberId);
         if (opt.isEmpty()) return ResponseEntity.ok(ApiResponse.error("ERR_NOT_FOUND", "会员不存在"));
 
+        // 校验等级有效性：newTier 必须在 tier_definition 表中存在（Bug B-02 修复）
+        if (newTier == null || newTier.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.error("ERR_INVALID_TIER", "等级代码不能为空"));
+        }
+        boolean tierExists = tierDefRepo.findByProgramCodeAndTierCode(pc, newTier).isPresent();
+        if (!tierExists) {
+            return ResponseEntity.ok(ApiResponse.error("ERR_INVALID_TIER",
+                    "无效的等级代码: " + newTier + "，请在等级定义中先创建该等级"));
+        }
+
         Member m = opt.get();
         String old = m.getTierCode();
         m.setTierCode(newTier);
@@ -336,7 +388,7 @@ public class MemberController {
     }
 
     @PostMapping("/merge")
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> merge(@RequestBody Map<String, Object> body) {
         String pc = TenantContext.getRequired();
         Long mainId = Long.valueOf(body.get("mainMemberId").toString());
@@ -345,11 +397,15 @@ public class MemberController {
         Optional<Member> dupOpt = memberRepo.findByMemberId(pc, dupId);
         if (mainOpt.isEmpty() || dupOpt.isEmpty()) return ResponseEntity.ok(ApiResponse.error("ERR_NOT_FOUND", "会员不存在"));
 
+        // 同步执行合并操作（Bug B-03 修复：确保合并立即生效，而非仅创建异步任务）
+        memberMergeService.merge(pc, mainId, dupId);
+
+        // 记录合并任务作为审计日志
         MergeTask task = new MergeTask();
         task.setProgramCode(pc);
         task.setMainMemberId(mainId);
         task.setDuplicateMemberId(dupId);
-        task.setStatus("CREATED");
+        task.setStatus("COMPLETED");
         task.setCreatedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
         mergeTaskRepo.save(task);
@@ -358,8 +414,8 @@ public class MemberController {
         r.put("taskId", task.getId());
         r.put("mainMemberId", mainId);
         r.put("duplicateMemberId", dupId);
-        r.put("status", "CREATED");
-        return ResponseEntity.ok(ApiResponse.success("合并任务已创建", r));
+        r.put("status", "COMPLETED");
+        return ResponseEntity.ok(ApiResponse.success("会员合并成功", r));
     }
 
     // ==================== 辅助 ====================

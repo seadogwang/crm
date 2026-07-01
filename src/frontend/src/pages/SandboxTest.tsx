@@ -4,8 +4,8 @@ import {
   Card, Table, Tag, Button, Select, Space, Typography, Alert, Descriptions, Row, Col, Statistic,
 } from 'antd';
 import { PlayCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
 import api from '../api';
+import { useCampaignStyles, TitleWithDesc } from './campaign/styles/campaign-ui-standard';
 
 const { Title, Text } = Typography;
 
@@ -59,13 +59,11 @@ const SandboxTest: React.FC = () => {
   ];
 
   return (
-    <PageWrapper>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>沙箱回归测试 — 规则 #{id}</Title>
-      </div>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
+      <TitleWithDesc title={`沙箱回归测试 — 规则 #${id}`} desc="沙箱环境下运行回归测试，对比基线规则与候选规则的输出差异" />
 
       {/* 测试控制 */}
-      <Card size="small" style={{ marginBottom: 16 }}>
+      <Card size="small" style={{ marginBottom: 12 }}>
         <Space>
           <Text strong>测试数据集：</Text>
           <Select value={dataset} onChange={setDataset} style={{ width: 200 }}
@@ -129,7 +127,7 @@ const SandboxTest: React.FC = () => {
           )}
         </>
       )}
-    </PageWrapper>
+    </div>
   );
 };
 

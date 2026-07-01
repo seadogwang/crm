@@ -8,6 +8,7 @@ import {
   SettingOutlined, UserOutlined, LogoutOutlined, ApartmentOutlined,
   SafetyCertificateOutlined, FileTextOutlined, WarningOutlined, RobotOutlined,
   BarChartOutlined, ProjectOutlined, ThunderboltOutlined, BranchesOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import api from '../api';
@@ -66,15 +67,6 @@ const menuItems: MenuItemType[] = [
       { key: 'campaign-opportunity', icon: <ThunderboltOutlined />, label: '机会智能', path: '/campaign/opportunity', requiredPermission: 'RULE_READ' },
       { key: 'campaign-simulation', icon: <BarChartOutlined />, label: '模拟优化', path: '/campaign/simulation', requiredPermission: 'RULE_READ' },
       { key: 'campaign-feedback', icon: <BellOutlined />, label: '反馈闭环', path: '/campaign/feedback', requiredPermission: 'AUDIT_READ' },
-      { key: 'campaign-strategy', icon: <ThunderboltOutlined />, label: '策略蓝图', path: '/campaign/strategy-blueprint', requiredPermission: 'RULE_READ' },
-
-      { key: 'campaign-budget', icon: <DollarOutlined />, label: '预算节奏', path: '/campaign/budget-pacing', requiredPermission: 'RULE_READ' },
-      { key: 'campaign-calendar', icon: <BarChartOutlined />, label: '活动日历', path: '/campaign/calendar', requiredPermission: 'RULE_READ' },
-      { key: 'campaign-dlq', icon: <WarningOutlined />, label: '死信队列', path: '/campaign/dlq', requiredPermission: 'AUDIT_READ' },
-      { key: 'campaign-webhook', icon: <ApiOutlined />, label: 'Webhook 监控', path: '/campaign/webhook', requiredPermission: 'CHANNEL_READ' },
-      { key: 'campaign-consent', icon: <SafetyCertificateOutlined />, label: '偏好管理', path: '/campaign/consent', requiredPermission: 'MEMBER_WRITE' },
-      { key: 'campaign-sharing', icon: <ApartmentOutlined />, label: '共享管理', path: '/campaign/sharing', requiredPermission: 'TENANT_WRITE' },
-      { key: 'campaign-recommendation', icon: <RobotOutlined />, label: '推荐管理', path: '/campaign/recommendation', requiredPermission: 'RULE_READ' },
     ],
   },
   {
@@ -90,6 +82,17 @@ const menuItems: MenuItemType[] = [
       { key: 'spi-logs', icon: <AuditOutlined />, label: 'SPI 日志', path: '/system/spi-logs', requiredPermission: 'AUDIT_READ' },
       { key: 'audit', icon: <WarningOutlined />, label: '租户审计', path: '/system/audit', requiredPermission: 'AUDIT_READ' },
       { key: 'llm-config', icon: <RobotOutlined />, label: '大模型配置', path: '/system/llm-config', requiredPermission: 'TENANT_WRITE' },
+      // 从营销管理移入的二级菜单
+      { key: 'campaign-strategy', icon: <ThunderboltOutlined />, label: '策略蓝图', path: '/campaign/strategy-blueprint', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-budget', icon: <DollarOutlined />, label: '预算节奏', path: '/campaign/budget-pacing', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-calendar', icon: <BarChartOutlined />, label: '活动日历', path: '/campaign/calendar', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-dlq', icon: <WarningOutlined />, label: '死信队列', path: '/campaign/dlq', requiredPermission: 'AUDIT_READ' },
+      { key: 'campaign-webhook', icon: <ApiOutlined />, label: 'Webhook 监控', path: '/campaign/webhook', requiredPermission: 'CHANNEL_READ' },
+      { key: 'campaign-consent', icon: <SafetyCertificateOutlined />, label: '偏好管理', path: '/campaign/consent', requiredPermission: 'MEMBER_WRITE' },
+      { key: 'campaign-sharing', icon: <ApartmentOutlined />, label: '共享管理', path: '/campaign/sharing', requiredPermission: 'TENANT_WRITE' },
+      { key: 'campaign-recommendation', icon: <RobotOutlined />, label: '推荐管理', path: '/campaign/recommendation', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-experiment', icon: <ExperimentOutlined />, label: '实验管理', path: '/campaign/experiment', requiredPermission: 'RULE_WRITE' },
+      { key: 'campaign-terms', icon: <FileTextOutlined />, label: '条款管理', path: '/campaign/terms', requiredPermission: 'TENANT_WRITE' },
     ],
   },
 ];

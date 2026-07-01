@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { Table, Input, Select, Space, Tag, InputNumber, Card, Button, Typography, DatePicker } from 'antd';
-import { SearchOutlined, ExportOutlined, HistoryOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
+import { Table, Input, Select, Space, Tag, InputNumber, Button, Typography, DatePicker } from 'antd';
+import { SearchOutlined, HistoryOutlined } from '@ant-design/icons';
 import api from '../api';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -76,30 +76,31 @@ const PointsTransactions: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>积分流水</Title>
-        <Button icon={<ExportOutlined />} onClick={handleExport} loading={exporting}>导出 Excel</Button>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
+      <TitleWithDesc title="积分流水" desc="查询积分交易流水，支持按会员、类型、日期范围筛选" />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <Space wrap>
+          <InputNumber placeholder="会员 ID" value={memberId} onChange={v => setMemberId(v)} style={{ width: 140 }} />
+          <Select
+            placeholder="交易类型"
+            value={txType}
+            onChange={setTxType}
+            allowClear
+            style={{ width: 150 }}
+            options={['ACCRUAL', 'REDEMPTION', 'EXPIRATION', 'REPAYMENT', 'CREDIT_REPAY', 'OVERDRAFT', 'CASCADE_DEDUCT']
+              .map(t => ({ label: t, value: t }))}
+          />
+          <RangePicker onChange={(_, dateStrings) => setDateRange(dateStrings[0] && dateStrings[1] ? [dateStrings[0], dateStrings[1]] : null)} />
+          <Button type="primary" icon={<SearchOutlined />} onClick={fetch}>查询</Button>
+        </Space>
       </div>
 
-      <Space wrap style={{ marginBottom: 16 }}>
-        <InputNumber placeholder="会员 ID" value={memberId} onChange={v => setMemberId(v)} style={{ width: 140 }} />
-        <Select
-          placeholder="交易类型"
-          value={txType}
-          onChange={setTxType}
-          allowClear
-          style={{ width: 150 }}
-          options={['ACCRUAL', 'REDEMPTION', 'EXPIRATION', 'REPAYMENT', 'CREDIT_REPAY', 'OVERDRAFT', 'CASCADE_DEDUCT']
-            .map(t => ({ label: t, value: t }))}
-        />
-        <RangePicker onChange={(_, dateStrings) => setDateRange(dateStrings[0] && dateStrings[1] ? [dateStrings[0], dateStrings[1]] : null)} />
-        <Button type="primary" icon={<SearchOutlined />} onClick={fetch}>查询</Button>
-      </Space>
-
-      <Table dataSource={txs} columns={columns} loading={loading} rowKey="id" size="small"
-        pagination={{ pageSize: 30 }} scroll={{ x: 1100 }} />
-    </PageWrapper>
+      <CampaignCard>
+        <Table className="campaign-table" dataSource={txs} columns={columns} loading={loading} rowKey="id" size="small"
+          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `共 ${t} 条` }} scroll={{ x: 'max-content' }} />
+      </CampaignCard>
+    </div>
   );
 };
 

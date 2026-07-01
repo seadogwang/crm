@@ -8,7 +8,7 @@ import {
   ArrowRightOutlined, SaveOutlined, ReloadOutlined,
   ApiOutlined, DatabaseOutlined, PlusOutlined, DeleteOutlined,
 } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Text, Title } = Typography;
@@ -245,14 +245,12 @@ const ApiMappingConfig: React.FC = () => {
   const targetEntity = apiOp.target_business_entity || apiOp.source_business_entity;
 
   return (
-    <div style={{ padding: 0 }}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       {/* 头部信息卡片 */}
       <Card size="small" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <Title level={4} style={{ margin: 0 }}>
-              <ApiOutlined /> 字段映射配置
-            </Title>
+            <TitleWithDesc title="字段映射配置" desc="配置 API 字段与业务实体字段之间的映射关系和转换表达式" />
             <Descriptions size="small" column={4} style={{ marginTop: 12 }}>
               <Descriptions.Item label="操作编码">
                 <Text code>{apiOp.operation_code}</Text>

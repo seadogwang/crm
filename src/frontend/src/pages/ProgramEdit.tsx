@@ -5,7 +5,7 @@ import {
   message, Space, Typography,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Title } = Typography;
@@ -151,11 +151,9 @@ const ProgramEdit: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          {isEdit ? `编辑俱乐部: ${code}` : '新建俱乐部'}
-        </Title>
+        <TitleWithDesc title={isEdit ? `编辑俱乐部: ${code}` : '新建俱乐部'} desc="配置俱乐部基本信息、等级阶梯和逆向策略" />
         <Space>
           <Button onClick={() => navigate('/programs')}>取消</Button>
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => form.submit()}>
@@ -167,7 +165,7 @@ const ProgramEdit: React.FC = () => {
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
       </Form>
-    </PageWrapper>
+    </div>
   );
 };
 

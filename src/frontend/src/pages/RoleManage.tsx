@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Space, Card, Typography, Modal, Form, Input, Tree, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
 import {
   listSystemRoles, createSystemRole, updateSystemRole,
   listSystemPermissions, type SystemRoleEntity, type SystemPermissionEntity,
 } from '../api/campaign';
 import api from '../api';
+import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const { Title } = Typography;
 

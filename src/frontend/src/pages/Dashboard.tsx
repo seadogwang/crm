@@ -6,9 +6,9 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
-import PageWrapper from '../components/PageWrapper';
 import { useAppStore } from '../store';
 import api from '../api';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const { Text, Title } = Typography;
 
@@ -92,6 +92,7 @@ const SimpleTrendChart: React.FC<{
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const programCode = useAppStore(s => s.currentProgramCode);
+  const s = useCampaignStyles();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,11 +163,11 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetchData}>
-      <Title level={4} style={{ marginBottom: 24 }}>仪表盘</Title>
+    <div className="campaign-page" style={s.pageStyle}>
+      <TitleWithDesc title="仪表盘" desc="会员运营核心指标概览与实时告警" />
 
       {/* 指标卡片行 */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={16} style={{ marginBottom: 12 }}>
         <Col xs={12} sm={6}>
           <StatCard
             title="会员总数"
@@ -214,20 +215,20 @@ const Dashboard: React.FC = () => {
           />
         </Col>
         <Col xs={24} lg={9}>
-          <Card title={<Space><WarningOutlined />待处理告警</Space>} size="small">
-            <Table
+          <CampaignCard title={<Space><WarningOutlined />待处理告警</Space>}>
+            <Table className="campaign-table"
               dataSource={alerts}
               columns={alertColumns}
               rowKey="id"
               size="small"
               pagination={false}
               locale={{ emptyText: '暂无告警 ✅' }}
-              scroll={{ x: 400 }}
+              scroll={{ x: 'max-content' }}
             />
-          </Card>
+          </CampaignCard>
         </Col>
       </Row>
-    </PageWrapper>
+    </div>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Tag, Space, Button, Typography, DatePicker, Tooltip, message } from 'antd';
 import { ReloadOutlined, WarningOutlined, ExportOutlined, SearchOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Title, Text } = Typography;
@@ -86,12 +86,9 @@ const TenantAudit: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          <WarningOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />
-          租户污染审计
-        </Title>
+        <TitleWithDesc title="租户污染审计" desc="监控和审计跨租户访问请求，识别潜在的数据隔离违规行为" />
         <Space>
           <Button icon={<ExportOutlined />} onClick={handleExport} loading={exporting}>导出 CSV</Button>
           <Button icon={<ReloadOutlined />} onClick={fetch}>刷新</Button>
@@ -113,7 +110,7 @@ const TenantAudit: React.FC = () => {
         scroll={{ x: 1200 }}
         locale={{ emptyText: '暂无跨租户访问记录 ✅' }}
       />
-    </PageWrapper>
+    </div>
   );
 };
 

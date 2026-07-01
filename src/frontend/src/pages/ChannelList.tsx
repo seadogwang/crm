@@ -1,28 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Tag, Button, Space, Modal, Form, Input, Select, Card, Typography, message, Descriptions } from 'antd';
+import { Table, Tag, Button, Space, Modal, Form, Input, Select, Typography, message } from 'antd';
 import { PlusOutlined, EditOutlined, LinkOutlined, ApiOutlined, CodeOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import PageWrapper from '../components/PageWrapper';
 import api from '../api';
-
-const { Title } = Typography;
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const ChannelList: React.FC = () => {
   const navigate = useNavigate();
+  const s = useCampaignStyles();
   const [channels, setChannels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [form] = Form.useForm();
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const { data } = await api.get('/admin/channels');
       setChannels(data?.data || []);
     } catch (e: any) {
-      setError(e.message || '加载失败');
       setChannels([]);
     } finally {
       setLoading(false);
@@ -50,57 +46,49 @@ const ChannelList: React.FC = () => {
   };
 
   const columns = [
-    {
-      title: '渠道标识', dataIndex: 'channel', width: 120,
-      render: (v: string) => <Tag color="blue"><ApiOutlined /> {v}</Tag>,
-    },
-    { title: '渠道名称', dataIndex: 'channel_name', width: 120 },
-    {
-      title: '映射模式', dataIndex: 'mapping_mode', width: 100,
-      render: (v: string) => <Tag color={v === 'VISUAL' ? 'green' : 'purple'}>{v === 'VISUAL' ? <LinkOutlined /> : <CodeOutlined />} {v || 'SCRIPT'}</Tag>,
-    },
-    {
-      title: '状态', dataIndex: 'status', width: 80,
+    { title: '渠道标识', dataIndex: 'channel', width: 120,
+      render: (v: string) => <Tag color="blue"><ApiOutlined /> {v}</Tag> },
+    { title: '渠道名称', dataIndex: 'channel_name', width: 120, ellipsis: true },
+    { title: '映射模式', dataIndex: 'mapping_mode', width: 100,
+      render: (v: string) => <Tag color={v === 'VISUAL' ? 'green' : 'purple'}>{v === 'VISUAL' ? <LinkOutlined /> : <CodeOutlined />} {v || 'SCRIPT'}</Tag> },
+    { title: '状态', dataIndex: 'status', width: 80,
       render: (v: string) => {
         const colorMap: Record<string, string> = { ACTIVE: 'green', DRAFT: 'orange', INACTIVE: 'default' };
         return <Tag color={colorMap[v] || 'default'}>{v}</Tag>;
-      },
-    },
+      }},
     { title: '速率限制', dataIndex: 'rate_limit_config', width: 150, ellipsis: true,
       render: (v: any) => v ? `QPS: ${v.qps || '—'}` : '—' },
-    {
-      title: '操作', key: 'actions', width: 280,
+    { title: '操作', key: 'actions', width: 200,
       render: (_: any, record: any) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/channels/${record.id}/mapping`)}>
-            映射配置
-          </Button>
-          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleTestConnection(record.channel)}>
-            测试连接
-          </Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/channels/${record.id}/mapping`)}>映射配置</Button>
+          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleTestConnection(record.channel)}>测试连接</Button>
         </Space>
       ),
     },
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetch}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>渠道适配器配置</Title>
+    <div className="campaign-page" style={s.pageStyle}>
+      <TitleWithDesc title="渠道适配器配置" desc="管理外部渠道接入配置，包括天猫、京东、抖音、微信小程序等" />
+
+      <div style={s.toolbarStyle}>
+        <div />
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新增渠道</Button>
       </div>
 
-      <Table dataSource={channels} columns={columns} loading={loading} rowKey="id" size="small"
-        pagination={{ pageSize: 20 }} />
+      <CampaignCard>
+        <Table className="campaign-table" dataSource={channels} columns={columns} loading={loading} rowKey="id"
+          size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `共 ${t} 条` }}
+          scroll={{ x: 'max-content' }} />
+      </CampaignCard>
 
-      <Modal title="新增渠道" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => form.submit()}>
-        <Form form={form} layout="vertical" onFinish={handleCreate}>
+      <Modal title="新增渠道" className="campaign-modal" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => form.submit()}>
+        <Form form={form} layout="vertical" onFinish={handleCreate} className="campaign-form">
           <Form.Item name="channel" label="渠道代码" rules={[{ required: true }]}>
             <Select options={['TMALL', 'JD', 'DOUYIN', 'WECHAT_MINI'].map(c => ({ label: c, value: c }))} />
           </Form.Item>
-          <Form.Item name="channel_name" label="渠道名称">
-            <Input placeholder="如 天猫旗舰店" />
-          </Form.Item>
+          <Form.Item name="channel_name" label="渠道名称"><Input placeholder="如 天猫旗舰店" /></Form.Item>
           <Form.Item name="mapping_mode" label="映射模式" initialValue="SCRIPT">
             <Select options={[{ label: '可视模式', value: 'VISUAL' }, { label: '脚本模式', value: 'SCRIPT' }]} />
           </Form.Item>
@@ -115,7 +103,7 @@ const ChannelList: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </PageWrapper>
+    </div>
   );
 };
 

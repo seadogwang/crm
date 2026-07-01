@@ -165,7 +165,22 @@ const LoginPage: React.FC = () => {
       );
       message.success('登录成功');
       setLoading(false);
-      navigate('/onboarding');
+
+      // 检查是否已有俱乐部配置，有则进仪表盘，无则进引导页
+      try {
+        const { data: progData } = await api.get('/admin/programs');
+        const programs = progData?.data || [];
+        if (programs.length > 0) {
+          // 设置当前 Program
+          const activeProgram = programs.find((p: any) => p.status === 'ACTIVE') || programs[0];
+          useAppStore.getState().setCurrentProgram(activeProgram.programCode);
+          navigate('/dashboard');
+        } else {
+          navigate('/onboarding');
+        }
+      } catch {
+        navigate('/onboarding');
+      }
     } catch (e: any) {
       const msg = e.response?.data?.message || '登录失败，请检查用户名和密码';
       setError(msg);

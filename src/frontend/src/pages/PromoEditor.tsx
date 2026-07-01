@@ -9,8 +9,9 @@ import {
   PlayCircleOutlined, EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import PageWrapper from '../components/PageWrapper';
 import api from '../api';
+import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc } from './campaign/styles/campaign-ui-standard';
 
 const { Title, Text } = Typography;
 

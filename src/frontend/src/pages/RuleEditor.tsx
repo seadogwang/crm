@@ -8,9 +8,10 @@ import {
   SaveOutlined, ThunderboltOutlined, SendOutlined, SettingOutlined,
   GiftOutlined, LeftOutlined, RightOutlined, CheckOutlined, CopyOutlined, EditOutlined, EyeOutlined, PlusOutlined,
 } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
 import api from '../api';
 import dayjs from 'dayjs';
+import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc } from './campaign/styles/campaign-ui-standard';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;

@@ -49,6 +49,7 @@ public class MergeTaskJob extends TenantAwareJob {
      * 每 30 秒扫描一次 member_merge_task 表。
      */
     @Scheduled(fixedDelay = 30000)
+    @Transactional
     public void execute() {
         if (log.isDebugEnabled()) {
             log.debug("[MergeTaskJob] 触发定时扫描");
@@ -56,7 +57,6 @@ public class MergeTaskJob extends TenantAwareJob {
         forEachTenant(this::processTenant);
     }
 
-    @Transactional
     void processTenant(String programCode) {
         // SELECT … FOR UPDATE SKIP LOCKED — 并发安全的 FIFO 出队
         @SuppressWarnings("unchecked")

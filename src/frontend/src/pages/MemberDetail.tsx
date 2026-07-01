@@ -8,10 +8,10 @@ import {
   ArrowLeftOutlined, StopOutlined, MergeCellsOutlined, DollarOutlined,
   PlusOutlined, HistoryOutlined,
 } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
 import DynamicRenderer from '../components/DynamicRenderer/DynamicRenderer';
 import { useAppStore } from '../store';
 import api from '../api';
+import { useCampaignStyles, TitleWithDesc } from './campaign/styles/campaign-ui-standard';
 
 const { Title, Text } = Typography;
 
@@ -59,7 +59,7 @@ const MemberDetail: React.FC = () => {
   };
 
   if (!member && !loading) {
-    return <PageWrapper error={error} onRetry={fetchMember}><div /></PageWrapper>;
+    return <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)' }}><Text type="danger">{error}</Text></div>;
   }
 
   const tabItems = [
@@ -91,16 +91,14 @@ const MemberDetail: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetchMember}>
-      <div style={{ marginBottom: 16 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/members')}>返回列表</Button>
-          <Title level={4} style={{ margin: 0 }}>会员详情 — {memberId}</Title>
-        </Space>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/members')}>返回列表</Button>
+        <TitleWithDesc title={`会员详情 — ${memberId}`} desc="查看和管理会员的详细信息、积分账户、交易流水、渠道关联和属性扩展" />
       </div>
 
       {/* 顶部信息卡片 */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 12 }}>
         <Row gutter={16} align="middle">
           <Col>
             <Title level={3} style={{ margin: 0 }}>#{memberId}</Title>
@@ -134,7 +132,7 @@ const MemberDetail: React.FC = () => {
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
       </Card>
-    </PageWrapper>
+    </div>
   );
 };
 

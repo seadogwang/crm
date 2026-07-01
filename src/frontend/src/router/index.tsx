@@ -75,6 +75,8 @@ const WebhookMonitorPage = lazy(() => import('../pages/campaign/WebhookMonitorPa
 const SharingManagementPage = lazy(() => import('../pages/campaign/SharingManagementPage'));
 const RecommendationPage = lazy(() => import('../pages/campaign/RecommendationPage'));
 const StrategyBlueprintPage = lazy(() => import('../pages/campaign/StrategyBlueprintPage'));
+const TermsManagementPage = lazy(() => import('../pages/campaign/TermsManagementPage'));
+const TermsConsentPage = lazy(() => import('../pages/campaign/TermsConsentPage'));
 
 // ==================== 加载占位 ====================
 
@@ -111,6 +113,12 @@ export const router = createBrowserRouter([
   {
     path: '/onboarding',
     element: <SuspenseWrapper><Onboarding /></SuspenseWrapper>,
+  },
+
+  // ====== 条款同意页（独立布局，无菜单 — 未接受章程时重定向至此） ======
+  {
+    path: '/terms/consent',
+    element: <SuspenseWrapper><TermsConsentPage /></SuspenseWrapper>,
   },
 
   // ====== 主应用（AppShell 布局 — 完成基础设置后才使用） ======
@@ -328,6 +336,10 @@ export const router = createBrowserRouter([
       {
         path: 'campaign/strategy-blueprint',
         element: <SuspenseWrapper><AuthGuard permission="RULE_READ"><StrategyBlueprintPage /></AuthGuard></SuspenseWrapper>,
+      },
+      {
+        path: 'campaign/terms',
+        element: <SuspenseWrapper><AuthGuard permission="TENANT_WRITE"><TermsManagementPage /></AuthGuard></SuspenseWrapper>,
       },
 
       // API 配置管理

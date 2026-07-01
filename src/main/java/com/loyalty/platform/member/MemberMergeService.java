@@ -72,10 +72,10 @@ public class MemberMergeService {
         // 3. 等级资产：取两个账号中等级最高的一方
         transferTier(programCode, primaryMemberId, secondaryMemberId);
 
-        // 4. member_unique_key 记录重定向
+        // 4. member_unique_key 记录重定向：将副会员的唯一键指向主会员
         em.createNativeQuery(
-                "UPDATE member_unique_key SET target_member_id = ? "
-                        + "WHERE program_code = ? AND target_member_id = ?")
+                "UPDATE member_unique_key SET member_id = ? "
+                        + "WHERE program_code = ? AND member_id = ?")
                 .setParameter(1, primaryMemberId)
                 .setParameter(2, programCode)
                 .setParameter(3, secondaryMemberId)

@@ -44,7 +44,7 @@ public class ProgramSchema {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "entity_relations", columnDefinition = "jsonb")
     @Builder.Default
-    private Object entityRelations = Map.of();
+    private Map<String, Object> entityRelations = new java.util.HashMap<>();
 
     @Column(name = "description", columnDefinition = "text")
     private String description;
@@ -76,6 +76,18 @@ public class ProgramSchema {
 
     /** 获取版本标签: schema_code:v{version} */
     public String getVersionTag() {
-        return (schemaCode != null ? schemaCode : entityType.toLowerCase()) + ":v" + version;
+        // 兼容 "v2" 和 "2" 两种存储格式，统一输出 member:v2
+        String raw = version;
+        String num;
+        if (raw == null || raw.isEmpty()) {
+            num = "0";
+        } else if (raw.startsWith("v") || raw.startsWith("V")) {
+            num = raw.substring(1);
+        } else {
+            num = raw;
+        }
+        String prefix = schemaCode != null ? schemaCode :
+                        (entityType != null ? entityType.toLowerCase() : "unknown");
+        return prefix + ":v" + num;
     }
 }

@@ -13,10 +13,10 @@ import '@xyflow/react/dist/style.css';
 import { Button, Card, Input, InputNumber, Select, Space, message, Typography, Divider, Tag, Checkbox } from 'antd';
 import { PlusOutlined, SaveOutlined, SendOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import PageWrapper from '../components/PageWrapper';
 import api from '../api';
 import FlowDesignerNode, { NODE_TYPES, type NodeTypeKey } from './FlowDesignerNode';
 import { useFlowStore } from './useFlowStore';
+import { useCampaignStyles, TitleWithDesc } from './campaign/styles/campaign-ui-standard';
 
 const { Title, Text } = Typography;
 
@@ -126,7 +126,7 @@ const FlowDesigner: React.FC = () => {
   };
 
   return (
-    <PageWrapper>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <Title level={4} style={{ margin: 0 }}>流程设计器</Title>
         <Space>
@@ -300,7 +300,7 @@ const FlowDesigner: React.FC = () => {
           )}
         </Card>
       </div>
-    </PageWrapper>
+    </div>
   );
 };
 

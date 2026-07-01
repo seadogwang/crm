@@ -6,7 +6,7 @@ import {
   DeleteOutlined, PlusOutlined,
 } from '@ant-design/icons';
 import Editor from '@monaco-editor/react';
-import PageWrapper from '../components/PageWrapper';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 import api from '../api';
 
 const { Title, Text } = Typography;
@@ -183,11 +183,11 @@ const MappingEditor: React.FC = () => {
   };
 
   return (
-    <PageWrapper>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/channels')}>返回</Button>
-          <Title level={4} style={{ margin: 0 }}>映射编辑器 — 渠道 #{id}</Title>
+          <TitleWithDesc title={`映射编辑器 — 渠道 #${id}`} desc="通过可视模式或脚本模式配置 SPI 渠道数据转换映射" />
         </Space>
         <Space>
           <Button icon={<SaveOutlined />} onClick={handleSave}>保存</Button>
@@ -327,7 +327,7 @@ const MappingEditor: React.FC = () => {
           },
         ]}
       />
-    </PageWrapper>
+    </div>
   );
 };
 

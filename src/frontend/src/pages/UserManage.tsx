@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Space, Card, Typography, Modal, Form, Input, Select, Tag, message } from 'antd';
 import { PlusOutlined, EditOutlined, KeyOutlined } from '@ant-design/icons';
-import PageWrapper from '../components/PageWrapper';
 import {
   listSystemUsers, createSystemUser, updateSystemUser, resetUserPassword,
   listSystemRoles, type SystemUserEntity, type SystemRoleEntity,
 } from '../api/campaign';
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const { Title } = Typography;
 
@@ -127,7 +127,7 @@ const UserManage: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetchUsers}>
+    <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)', minHeight: 'calc(100vh - 64px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>用户管理</Title>
         <Button type="primary" icon={<PlusOutlined />}
@@ -202,7 +202,7 @@ const UserManage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </PageWrapper>
+    </div>
   );
 };
 

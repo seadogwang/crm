@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class MemberService {
@@ -41,10 +43,18 @@ public class MemberService {
         this.programSchemaService = programSchemaService;
     }
 
+    /** 系统内置字段，始终允许在 ext_attributes 中使用（即使未在 schema 中定义） */
+    private static final Set<String> SYSTEM_EXT_FIELDS = Set.of(
+            "_schema_version", "mobile", "phone", "name"
+    );
+
     @Transactional(rollbackFor = Exception.class)
     public Member createMember(String programCode, Long memberId, String tierCode,
                                 Map<String, Object> extAttributes) {
         final String pc = resolveTenant(programCode);
+
+        // §3.5 动态属性字段合法性校验：所有键必须在当前 MEMBER schema 中定义
+        validateExtAttributes(pc, extAttributes);
 
         // §3.4.4 手机号唯一性校验：同一手机号不能重复注册
         String mobile = (String) extAttributes.get("mobile");
@@ -94,6 +104,9 @@ public class MemberService {
     public Member updateMember(String programCode, Long memberId, Map<String, Object> extAttributes) {
         final String pc = resolveTenant(programCode);
 
+        // §3.5 动态属性字段合法性校验：所有键必须在当前 MEMBER schema 中定义
+        validateExtAttributes(pc, extAttributes);
+
         Member member = memberRepo.findByMemberId(pc, memberId)
                 .orElseThrow(() -> new BusinessException("ERR_MEMBER_NOT_FOUND",
                         "Member not found: " + pc + "/" + memberId));
@@ -115,6 +128,47 @@ public class MemberService {
     private String resolveTenant(String programCode) {
         return (programCode != null && !programCode.isBlank())
                 ? programCode : TenantContext.getRequired();
+    }
+
+    // ==================== 动态属性字段合法性校验 (§3.5) ====================
+
+    /**
+     * 校验 ext_attributes 中的每个字段名是否在当前 MEMBER schema 中定义。
+     * 拒绝未定义的字段，防止非法数据混入。
+     *
+     * <p>系统内置字段（{@link #SYSTEM_EXT_FIELDS}）始终允许，
+     * 即使 schema 中未显式声明。
+     *
+     * <p>如果没有已发布的 schema（首次部署或 schema 尚未定义），则跳过校验，
+     * 保证系统在 schema 就绪前仍可运行。
+     *
+     * @param pc            租户代码
+     * @param extAttributes 待校验的扩展属性
+     * @throws BusinessException 如果包含未在 schema 中定义的字段
+     */
+    private void validateExtAttributes(String pc, Map<String, Object> extAttributes) {
+        if (extAttributes == null || extAttributes.isEmpty()) return;
+
+        // 获取当前已发布的 MEMBER schema 属性名集合
+        Map<String, Object> schema = programSchemaService.getCurrentSchema(pc, "MEMBER");
+        Map<String, Object> properties = schema != null
+                ? (Map<String, Object>) schema.get("properties") : null;
+        if (properties == null || properties.isEmpty()) {
+            // 没有发布 schema 时跳过校验（兼容初始化阶段）
+            return;
+        }
+        Set<String> allowedFields = new HashSet<>(properties.keySet());
+        allowedFields.addAll(SYSTEM_EXT_FIELDS);
+
+        // 逐一校验
+        for (String key : extAttributes.keySet()) {
+            if (!allowedFields.contains(key)) {
+                log.warn("[MemberService] 非法动态属性字段: field={}, allowed={}", key, allowedFields);
+                throw new BusinessException("ERR_INVALID_EXT_FIELD",
+                        "动态属性字段 '" + key + "' 未在 MEMBER schema 中定义，"
+                        + "请先在 SchemaEditor 中添加该字段定义后重试");
+            }
+        }
     }
 
     // ==================== 积分账户初始化 ====================
@@ -155,12 +209,30 @@ public class MemberService {
      * 从 extAttributes 提取手机号，规范化后写入 member_unique_key（MOBILE_PLAIN）。
      * §3.4.2 要求所有可用标识在入会/更新时写入辅助唯一键表。
      */
+    /**
+     * 从 extAttributes 提取手机号，规范化后写入 member_unique_key（MOBILE_PLAIN）。
+     * §3.4.2 要求所有可用标识在入会/更新时写入辅助唯一键表。
+     *
+     * <p>注意：修改手机号时会先清理该会员旧的 MOBILE_PLAIN 唯一键，
+     * 避免新旧手机号同时可搜索到同一会员（Bug B-01 修复）。
+     */
     private void bindMobileUniqueKey(String programCode, Long memberId, Map<String, Object> ext) {
         if (ext == null) return;
         String raw = (String) ext.get("mobile");
         if (raw == null) raw = (String) ext.get("phone");
         String normalized = normalizePhoneNumber(raw);
         if (normalized == null) return;
+
+        // 先清理该会员下所有旧的 MOBILE_PLAIN 唯一键（更新手机号场景），
+        // 保证一个会员只有一个有效的手机号唯一键。
+        List<MemberUniqueKey> oldKeys = uniqueKeyRepo.findByProgramCodeAndMemberId(programCode, memberId);
+        for (MemberUniqueKey old : oldKeys) {
+            if ("MOBILE_PLAIN".equals(old.getKeyCombination())) {
+                uniqueKeyRepo.delete(old);
+                log.info("[MemberService] 已清理旧手机号唯一键: program={}, memberId={}, oldMobile={}",
+                    programCode, memberId, old.getKeyValue());
+            }
+        }
 
         try {
             uniqueKeyRepo.save(MemberUniqueKey.builder()

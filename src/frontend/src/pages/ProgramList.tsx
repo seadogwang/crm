@@ -1,30 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Input, Space, Tag, message, Popconfirm, Typography } from 'antd';
+import { Table, Button, Input, Space, Tag, message, Popconfirm } from 'antd';
 import { PlusOutlined, SearchOutlined, EditOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import PageWrapper from '../components/PageWrapper';
 import { useAppStore } from '../store';
 import api from '../api';
-
-const { Title } = Typography;
+import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
 const ProgramList: React.FC = () => {
   const navigate = useNavigate();
   const currentProgramCode = useAppStore(s => s.currentProgramCode);
+  const s = useCampaignStyles();
 
   const [programs, setPrograms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const fetchPrograms = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const { data } = await api.get('/admin/programs', { params: { q: search } });
       setPrograms(data?.data || []);
     } catch (e: any) {
-      setError(e.message || '加载失败');
       setPrograms([]);
     } finally {
       setLoading(false);
@@ -55,10 +51,9 @@ const ProgramList: React.FC = () => {
 
   const columns = [
     { title: '俱乐部代码', dataIndex: 'programCode', width: 150, render: (v: string) => <Tag color="blue">{v}</Tag> },
-    { title: '名称', dataIndex: 'displayName', width: 150 },
+    { title: '名称', dataIndex: 'displayName', width: 150, ellipsis: true },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'ACTIVE' ? 'green' : 'default'}>{v}</Tag> },
-    { title: '会员数', dataIndex: 'memberCount', width: 80 },
-    { title: '创建时间', dataIndex: 'createdAt', width: 120 },
+    { title: '创建时间', dataIndex: 'createdAt', width: 160, ellipsis: true },
     {
       title: '操作', key: 'actions', width: 200,
       render: (_: any, record: any) => (
@@ -74,27 +69,23 @@ const ProgramList: React.FC = () => {
   ];
 
   return (
-    <PageWrapper loading={loading} error={error} onRetry={fetchPrograms}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>俱乐部</Title>
-        <Space>
-          <Input.Search
-            placeholder="搜索俱乐部"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onSearch={fetchPrograms}
-            style={{ width: 250 }}
-            enterButton={<SearchOutlined />}
-          />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/programs/new')}>
-            新建俱乐部
-          </Button>
-        </Space>
+    <div className="campaign-page" style={s.pageStyle}>
+      <TitleWithDesc title="俱乐部管理" desc="管理俱乐部(Program)的创建、配置和状态" />
+
+      <div style={s.toolbarStyle}>
+        <Input.Search placeholder="搜索俱乐部" value={search} onChange={e => setSearch(e.target.value)}
+          onSearch={fetchPrograms} style={s.inputLg} enterButton={<SearchOutlined />} />
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/programs/new')}>
+          新建俱乐部
+        </Button>
       </div>
-      <Table dataSource={programs} columns={columns} loading={loading} rowKey="programCode"
-        size="small" pagination={{ pageSize: 20 }}
-        locale={{ emptyText: '暂无俱乐部' }} />
-    </PageWrapper>
+
+      <CampaignCard>
+        <Table className="campaign-table" dataSource={programs} columns={columns} loading={loading}
+          rowKey="programCode" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `共 ${t} 条` }}
+          scroll={{ x: 'max-content' }} locale={{ emptyText: '暂无俱乐部' }} />
+      </CampaignCard>
+    </div>
   );
 };
 
