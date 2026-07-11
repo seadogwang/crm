@@ -79,6 +79,13 @@ public class AiRuleController {
             result.put("status", status);
             result.put("message", aiMessage);
             result.put("context", llmResult.getOrDefault("context", Map.of()));
+            // 透传 question 和 suggestions
+            if (llmResult.containsKey("question")) {
+                result.put("question", llmResult.get("question"));
+            }
+            if (llmResult.containsKey("suggestions")) {
+                result.put("suggestions", llmResult.get("suggestions"));
+            }
 
             if ("READY".equals(status)) {
                 session.rulePreview = llmResult;

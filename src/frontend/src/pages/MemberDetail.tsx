@@ -6,9 +6,10 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined, StopOutlined, MergeCellsOutlined, DollarOutlined,
-  PlusOutlined, HistoryOutlined,
+  PlusOutlined, HistoryOutlined, EditOutlined,
 } from '@ant-design/icons';
 import DynamicRenderer from '../components/DynamicRenderer/DynamicRenderer';
+import LayoutRenderer from '../components/LayoutRenderer/LayoutRenderer';
 import { useAppStore } from '../store';
 import api from '../api';
 import { useCampaignStyles, TitleWithDesc } from './campaign/styles/campaign-ui-standard';
@@ -34,6 +35,11 @@ const MemberDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm] = Form.useForm();
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+
   const fetchMember = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -58,6 +64,60 @@ const MemberDetail: React.FC = () => {
     } catch (e: any) { message.error(e.response?.data?.message || '操作失败'); }
   };
 
+  const openEditModal = async () => {
+    try {
+      const { data } = await api.get('/admin/tiers');
+      const tierList = data?.data?.tiers || [];
+      setTiers(tierList);
+      const ext = member?.ext_attributes || {};
+      // 过滤掉系统字段，方便用户编辑
+      const userExt: Record<string, unknown> = {};
+      if (ext && typeof ext === 'object') {
+        for (const [k, v] of Object.entries(ext as Record<string, unknown>)) {
+          if (!k.startsWith('_')) userExt[k] = v;
+        }
+      }
+      editForm.setFieldsValue({
+        tier_code: member?.tier_code || 'BASE',
+        mobile: ext?.mobile || ext?.phone || '',
+        ext_attributes: JSON.stringify(userExt, null, 2),
+      });
+      setEditOpen(true);
+    } catch (e: any) {
+      message.error('获取等级列表失败');
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const values = await editForm.validateFields();
+      setSaving(true);
+      // 1. 等级变更
+      if (values.tier_code && values.tier_code !== member?.tier_code) {
+        await api.post(`/members/${memberId}/tier/adjust`, { newTier: values.tier_code });
+      }
+      // 2. ext_attributes 变更
+      let ext: Record<string, unknown> = {};
+      try {
+        if (values.ext_attributes) ext = JSON.parse(values.ext_attributes);
+      } catch { /* keep empty */ }
+      if (values.mobile) ext.mobile = values.mobile;
+      // 保留系统字段
+      if (member?.ext_attributes?._schema_version) {
+        ext._schema_version = member.ext_attributes._schema_version;
+      }
+      await api.put(`/members/${memberId}`, { ext_attributes: ext });
+      message.success('会员信息已更新');
+      setEditOpen(false);
+      fetchMember();
+    } catch (e: any) {
+      if (e.errorFields) return; // form validation error
+      message.error(e.response?.data?.message || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!member && !loading) {
     return <div className="campaign-page" style={{ padding: 'var(--campaign-page-padding)' }}><Text type="danger">{error}</Text></div>;
   }
@@ -66,7 +126,7 @@ const MemberDetail: React.FC = () => {
     {
       key: 'basic',
       label: '基本信息',
-      children: <BasicInfoTab member={member} />,
+      children: <BasicInfoTab member={member} onRefresh={fetchMember} />,
     },
     {
       key: 'accounts',
@@ -119,6 +179,7 @@ const MemberDetail: React.FC = () => {
           </Col>
           <Col flex="auto" style={{ textAlign: 'right' }}>
             <Space>
+              <Button type="primary" icon={<EditOutlined />} onClick={openEditModal}>修改信息</Button>
               <Popconfirm title="确定停用此会员?" onConfirm={handleDeactivate}>
                 <Button danger icon={<StopOutlined />}>停用</Button>
               </Popconfirm>
@@ -132,29 +193,113 @@ const MemberDetail: React.FC = () => {
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
       </Card>
+
+      {/* 修改信息弹窗 */}
+      <Modal
+        title="修改会员信息"
+        open={editOpen}
+        onCancel={() => setEditOpen(false)}
+        onOk={() => editForm.submit()}
+        confirmLoading={saving}
+        width={560}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleSave}>
+          <Form.Item name="tier_code" label="会员等级">
+            <Select
+              options={tiers.map((t: any) => ({ label: `${t.tierName || t.tierCode} (${t.tierCode})`, value: t.tierCode }))}
+              placeholder="选择等级"
+            />
+          </Form.Item>
+          <Form.Item name="mobile" label="手机号">
+            <Input placeholder="13900000001" />
+          </Form.Item>
+          <Form.Item
+            name="ext_attributes"
+            label="扩展属性 (JSON)"
+            rules={[{
+              validator: (_, v) => {
+                if (!v) return Promise.resolve();
+                try { JSON.parse(v); return Promise.resolve(); }
+                catch { return Promise.reject('JSON 格式不正确'); }
+              },
+            }]}
+          >
+            <Input.TextArea rows={8} placeholder='{"name":"张三","age":25}' />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
 
 // ==================== Tab 1: 基本信息 ====================
 
-const BasicInfoTab: React.FC<{ member: any }> = ({ member }) => {
+const BasicInfoTab: React.FC<{ member: any; onRefresh: () => void }> = ({ member, onRefresh }) => {
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
   if (!member) return null;
+
+  const extAttrs = member.ext_attributes || {};
+  const extFields = Object.entries(extAttrs as Record<string, unknown>)
+    .filter(([k]) => !k.startsWith('_'));
+
+  const startEdit = () => {
+    const data: Record<string, string> = {};
+    extFields.forEach(([k, v]) => { data[k] = String(v ?? ''); });
+    setEditData(data);
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // 合并原始 ext_attributes，只更新修改的字段
+      const updated = { ...extAttrs };
+      for (const [k, v] of Object.entries(editData)) {
+        updated[k] = v;
+      }
+      await api.put(`/members/${member.member_id}`, { ext_attributes: updated });
+      message.success('已保存');
+      setEditing(false);
+      onRefresh();
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Descriptions bordered size="small" column={2}>
-      <Descriptions.Item label="会员ID">{member.member_id}</Descriptions.Item>
-      <Descriptions.Item label="等级">{member.tier_code || 'BASE'}</Descriptions.Item>
-      <Descriptions.Item label="状态">{member.status}</Descriptions.Item>
-      <Descriptions.Item label="注册渠道">{member.enroll_channel || '—'}</Descriptions.Item>
-      <Descriptions.Item label="创建时间">{member.created_at || '—'}</Descriptions.Item>
-      <Descriptions.Item label="更新时间">{member.updated_at || '—'}</Descriptions.Item>
-      {member.ext_attributes && Object.entries(member.ext_attributes as Record<string, unknown>)
-        .filter(([k]) => !k.startsWith('_'))
-        .slice(0, 10)
-        .map(([k, v]) => (
-          <Descriptions.Item key={k} label={k}>{String(v)}</Descriptions.Item>
+    <div>
+      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        {editing ? (
+          <>
+            <Button onClick={() => setEditing(false)}>取消</Button>
+            <Button type="primary" onClick={handleSave} loading={saving}>保存</Button>
+          </>
+        ) : (
+          <Button icon={<EditOutlined />} onClick={startEdit}>编辑</Button>
+        )}
+      </div>
+      <Descriptions bordered size="small" column={2}>
+        <Descriptions.Item label="会员ID">{member.member_id}</Descriptions.Item>
+        <Descriptions.Item label="等级">{member.tier_code || 'BASE'}</Descriptions.Item>
+        <Descriptions.Item label="状态">{member.status}</Descriptions.Item>
+        <Descriptions.Item label="注册渠道">{member.enroll_channel || '—'}</Descriptions.Item>
+        <Descriptions.Item label="创建时间">{member.created_at || '—'}</Descriptions.Item>
+        <Descriptions.Item label="更新时间">{member.updated_at || '—'}</Descriptions.Item>
+        {extFields.map(([k, v]) => (
+          <Descriptions.Item key={k} label={k}>
+            {editing ? (
+              <Input size="small" value={editData[k] || ''}
+                onChange={e => setEditData(prev => ({ ...prev, [k]: e.target.value }))} />
+            ) : String(v)}
+          </Descriptions.Item>
         ))}
-    </Descriptions>
+      </Descriptions>
+    </div>
   );
 };
 

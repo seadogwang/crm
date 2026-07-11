@@ -77,6 +77,10 @@ public class Member implements Serializable {
     @Builder.Default
     private String status = "ENROLLED";
 
+    /** 入会渠道编码 */
+    @Column(name = "enroll_channel", length = 50)
+    private String enrollChannel;
+
     /** 当前等级代码 */
     @Column(name = "tier_code", length = 16)
     private String tierCode;

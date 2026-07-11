@@ -1,0 +1,12 @@
+{
+  "name": "apifox-clone",
+  "version": "1.0.0",
+  "description": "API Entity Configuration - Apifox-style standalone tool",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0"
+  }
+}

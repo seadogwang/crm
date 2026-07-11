@@ -193,9 +193,6 @@ public class MemberService {
                     .creditUsed(BigDecimal.ZERO)
                     .overdraftLimit(BigDecimal.ZERO)
                     .pendingRepayAmount(BigDecimal.ZERO)
-                    .totalAccrued(BigDecimal.ZERO)
-                    .totalRedeemed(BigDecimal.ZERO)
-                    .totalExpired(BigDecimal.ZERO)
                     .build();
             accountRepo.save(acc);
             log.info("[MemberService] 积分账户已创建: member={}, type={}, accountId={}",

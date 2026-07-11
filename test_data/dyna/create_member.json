@@ -1,0 +1,30 @@
+{
+  "terms_accepted": true,
+  "tier_code": "SILVER",
+  "ext_attributes": {
+    "name": "动态属性测试会员",
+    "mobile": "17700000001",
+    "gender": "FEMALE",
+    "birthday": "1992-08-20",
+    "email": "dynamic_test@example.com",
+    "city": "上海市",
+    "age": 32,
+    "vip_level": "DIAMOND",
+    "membership_source": "APP",
+    "annual_income": 500000,
+    "preferred_channel": "WECHAT",
+    "tags": ["高净值", "活跃用户", "母婴类目偏好"],
+    "hobbies": ["瑜伽", "旅行", "阅读"],
+    "referral_code": "REF2026VIP001",
+    "notes": "重要客户，生日月赠送双倍积分",
+    "id_verified": true,
+    "last_purchase_date": "2026-06-28",
+    "total_points_earned": 15000,
+    "member_tenure_months": 24,
+    "preferred_store": "上海静安店",
+    "consent_marketing": true,
+    "pet_name": "布丁",
+    "total_spent": 86800,
+    "total_orders": 156
+  }
+}

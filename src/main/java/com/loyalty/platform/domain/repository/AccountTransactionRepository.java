@@ -102,6 +102,15 @@ public interface AccountTransactionRepository extends BaseRepository<AccountTran
     List<AccountTransaction> findRepayableForMember(@Param("pc") String programCode,
                                                      @Param("mid") Long memberId);
 
+    /** 实时汇总指定类型的累计值（发分/核销） */
+    @Query("SELECT COALESCE(SUM(ABS(t.amount)), 0) FROM AccountTransaction t "
+            + "WHERE t.programCode = :pc AND t.memberId = :mid AND t.accountType = :atype "
+            + "AND t.transactionType = :ttype")
+    BigDecimal sumByType(@Param("pc") String programCode,
+                         @Param("mid") Long memberId,
+                         @Param("atype") String accountType,
+                         @Param("ttype") String transactionType);
+
     /**
      * 统计指定积分类型在时间窗口内的 ACCRUAL 累计值。
      */
@@ -113,4 +122,35 @@ public interface AccountTransactionRepository extends BaseRepository<AccountTran
                                @Param("mid") Long memberId,
                                @Param("atype") String accountType,
                                @Param("since") LocalDateTime since);
+
+    /**
+     * 批量查询：按积分类型分组汇总 SUM 和 COUNT。
+     * 用于变量计算服务的按需预加载（设计文档 §6.3）。
+     *
+     * @return Object[]{accountType, sum, count}
+     */
+    @Query("SELECT t.accountType, COALESCE(SUM(t.amount), 0), COUNT(t) "
+            + "FROM AccountTransaction t "
+            + "WHERE t.programCode = :pc AND t.memberId = :mid "
+            + "AND t.accountType IN :types "
+            + "AND t.transactionType = 'ACCRUAL' AND t.status = 'ACTIVE' "
+            + "AND t.createdAt >= :since "
+            + "GROUP BY t.accountType")
+    List<Object[]> sumAndCountByMemberIdAndTypesAndTimeRange(@Param("pc") String programCode,
+                                                              @Param("mid") Long memberId,
+                                                              @Param("types") List<String> types,
+                                                              @Param("since") LocalDateTime since);
+
+    /**
+     * 批量查询：按积分类型分组获取当前余额（考虑所有交易类型）。
+     * 用于 balance() 函数。
+     */
+    @Query("SELECT t.accountType, COALESCE(SUM(t.amount), 0) "
+            + "FROM AccountTransaction t "
+            + "WHERE t.programCode = :pc AND t.memberId = :mid "
+            + "AND t.accountType IN :types AND t.status = 'ACTIVE' "
+            + "GROUP BY t.accountType")
+    List<Object[]> balanceByMemberIdAndTypes(@Param("pc") String programCode,
+                                              @Param("mid") Long memberId,
+                                              @Param("types") List<String> types);
 }

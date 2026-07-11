@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>测试</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#8b5cf6;--primary-bg:#f3f0ff;--primary-light:#a78bfa;
+  --bg:#f7f8fa;--white:#fff;--border:#e5e7eb;--border2:#f3f4f6;
+  --text:#1f2937;--text2:#6b7280;--text3:#9ca3af;
+  --green:#10b981;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--pink:#ec4899;--cyan:#06b6d4;
+  --r:4px;--r2:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;font-size:13px}
+.app{display:flex;height:100vh}
+
+/* ===== Left Nav ===== */
+.left-nav{width:52px;min-width:52px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:2px}
+.logo-box{width:36px;height:36px;background:linear-gradient(135deg,#8b5cf6,#6366f1);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;margin-bottom:12px}
+.nav-btn{width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-radius:var(--r2);color:var(--text3);font-size:10px;gap:2px;transition:all .15s;border:none;background:none}
+.nav-btn:hover{background:var(--border2);color:var(--text2)}
+.nav-btn.active{background:var(--primary-bg);color:var(--primary)}
+.nav-btn .ico{font-size:18px;line-height:1}
+.nav-bottom{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding-bottom:8px}
+
+/* ===== Sidebar ===== */
+.sidebar{width:240px;min-width:240px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;min-height:44px}
+.sb-header .proj{font-size:11px;color:var(--text3);margin-left:auto;cursor:pointer}
+.sb-search{padding:6px 12px;border-bottom:1px solid var(--border)}
+.sb-search input{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;outline:none;background:var(--bg)}
+.sb-search input:focus{border-color:var(--primary)}
+.sb-tree{flex:1;overflow-y:auto;padding:4px 0}
+.sb-tree::-webkit-scrollbar{width:4px}
+.sb-tree::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:2px}
+.ti{display:flex;align-items:center;padding:4px 14px;cursor:pointer;font-size:13px;gap:4px;color:var(--text2);transition:background .1s;user-select:none}
+.ti:hover{background:var(--border2)}
+.ti.act{background:var(--primary-bg);color:var(--primary);font-weight:500}
+.ti .arr{width:16px;font-size:10px;color:var(--text3);text-align:center;flex-shrink:0;transition:transform .15s}
+.ti .arr.open{transform:rotate(90deg)}
+.ti .ico{width:16px;text-align:center;flex-shrink:0;font-size:13px}
+.ti .lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc{padding-left:14px}
+.td{height:1px;background:var(--border);margin:4px 12px}
+.ta{padding:5px 14px;font-size:12px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:4px}
+.ta:hover{color:var(--primary)}
+
+/* ===== Main ===== */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:36px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:6px;font-size:12px;flex-shrink:0}
+.bc{color:var(--text3)}.bc a{color:var(--text3);text-decoration:none}.bc a:hover{color:var(--text2)}
+.bc .cur{color:var(--text);font-weight:500}
+.tr{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tr .bs{padding:3px 8px;font-size:11px;border:1px solid var(--border);background:#fff;border-radius:var(--r);cursor:pointer;color:var(--text2)}
+.tr .bs:hover{border-color:var(--primary);color:var(--primary)}
+
+/* Content tabs */
+.ctabs{display:flex;background:#fff;border-bottom:1px solid var(--border);padding:0 16px;flex-shrink:0}
+.ctab{padding:8px 14px;font-size:12px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.ctab:hover{color:var(--text)}
+.ctab.act{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
+
+/* Page */
+.pg{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* ===== API Management Page ===== */
+.api-pg{display:flex;height:100%}
+.api-list{flex:1;overflow-y:auto;padding:16px 24px}
+.api-list::-webkit-scrollbar{width:6px}
+.api-list::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+.api-sec{margin-bottom:20px}
+.api-sec-t{font-size:14px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.api-sec-t .cnt{font-size:12px;color:var(--text3);font-weight:400}
+.api-item{display:flex;align-items:center;padding:10px 16px;background:#fff;border:1px solid var(--border);border-radius:var(--r2);margin-bottom:6px;cursor:pointer;transition:all .15s;gap:12px}
+.api-item:hover{border-color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.api-item .mt{width:56px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.api-item .mt.GET{background:var(--green)}.api-item .mt.POST{background:var(--blue)}.api-item .mt.PUT{background:var(--orange)}.api-item .mt.DELETE{background:var(--red)}.api-item .mt.PATCH{background:var(--purple)}
+.api-item .nm{font-weight:500;flex:1}
+.api-item .pth{color:var(--text3);font-family:"SF Mono","Fira Code",monospace;font-size:12px}
+.api-item .st{font-size:11px;padding:2px 8px;border-radius:10px}
+.api-item .st.todo{background:#fef3c7;color:#92400e}
+.api-item .st.done{background:#d1fae5;color:#065f46}
+
+/* API empty state */
+.api-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:12px;padding:40px}
+.api-empty .ei{font-size:48px;opacity:.3;margin-bottom:8px}
+.api-empty h3{font-size:16px;color:var(--text2);font-weight:500}
+.api-empty p{font-size:12px;color:var(--text3)}
+.api-empty .btns{display:flex;gap:8px;margin-top:8px}
+.api-empty .btns button{padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text2)}
+.api-empty .btns button:hover{border-color:var(--primary);color:var(--primary)}
+.api-empty .btns button.pri{background:var(--primary);color:#fff;border-color:var(--primary)}
+.api-empty .btns button.pri:hover{background:var(--primary-light)}
+
+/* ===== Scenario List ===== */
+.sc-pg{padding:16px 24px;overflow-y:auto;flex:1}
+.sc-pg::-webkit-scrollbar{width:6px}
+.sc-pg::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+.sc-tb{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sc-tb .fb{padding:4px 10px;border:1px solid var(--border);background:#fff;border-radius:var(--r);font-size:11px;cursor:pointer;color:var(--text2)}
+.sc-tb .fb:hover{border-color:var(--primary);color:var(--primary)}
+.sc-tb .ab{padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:11px;cursor:pointer;margin-left:auto}
+.sc-tb .ab:hover{background:var(--primary-light)}
+
+/* Table */
+.dt{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)}
+.dt th{text-align:left;padding:8px 14px;font-weight:500;color:var(--text2);border-bottom:1px solid var(--border);background:var(--bg);font-size:12px;white-space:nowrap}
+.dt td{padding:8px 14px;border-bottom:1px solid var(--border2);vertical-align:middle;font-size:12px}
+.dt tr:last-child td{border-bottom:none}
+.dt tbody tr{cursor:pointer;transition:background .1s}
+.dt tbody tr:hover{background:var(--primary-bg)}
+.dt tbody tr.sel{background:var(--primary-bg)}
+.dt .cb{width:24px}
+.dt .cb input{cursor:pointer}
+.sc-nm{font-weight:500;color:var(--text)}
+.sc-ds{font-size:11px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:500}
+.pb.P0{background:#fef2f2;color:#dc2626}.pb.P1{background:#fff7ed;color:#ea580c}.pb.P2{background:#fefce8;color:#a16207}.pb.P3{background:#f0fdf4;color:#16a34a}.pb.P4{background:#eff6ff;color:#2563eb}
+.tg{display:flex;gap:3px;flex-wrap:wrap}
+.tg .tag{font-size:10px;padding:1px 6px;border-radius:8px;background:var(--border2);color:var(--text2)}
+.ta2{display:flex;gap:4px}
+.ta2 button{padding:2px 8px;border:1px solid var(--border);background:#fff;border-radius:var(--r);font-size:10px;cursor:pointer;color:var(--text2)}
+.ta2 button:hover{border-color:var(--primary);color:var(--primary)}
+.ta2 button.dn:hover{border-color:var(--red);color:var(--red)}
+
+/* ===== Test Case Detail ===== */
+.tc-d{display:flex;height:100%}
+.tc-m{flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column}
+.tc-m::-webkit-scrollbar{width:6px}
+.tc-m::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+.tc-h{margin-bottom:12px}
+.tc-h .tc-pr{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);margin-bottom:6px;cursor:pointer}
+.tc-h .tc-pr .bd{padding:1px 6px;border-radius:3px;background:var(--border2);font-size:10px;font-weight:500}
+.tc-h h2{font-size:15px;font-weight:600;margin-bottom:2px}
+.tc-h .tc-ds{font-size:11px;color:var(--text3);margin-bottom:2px}
+.tc-h .tc-me{font-size:10px;color:var(--text3)}
+.tc-sel{font-size:11px;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:4px}
+
+/* Steps */
+.sl{flex:1}
+.si{background:#fff;border:1px solid var(--border);border-radius:var(--r2);margin-bottom:3px;overflow:hidden}
+.sh{display:flex;align-items:center;padding:6px 10px;gap:6px;cursor:pointer;user-select:none}
+.sh:hover{background:var(--border2)}
+.sc2{width:14px;height:14px;border:2px solid var(--border);border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sc2.on{background:var(--primary);border-color:var(--primary)}
+.sc2.on::after{content:"✓";color:#fff;font-size:9px;font-weight:700}
+.sa{width:14px;font-size:9px;color:var(--text3);text-align:center;flex-shrink:0;transition:transform .15s}
+.sa.op{transform:rotate(90deg)}
+.sic{width:18px;text-align:center;flex-shrink:0;font-size:13px}
+.stl{font-size:11px;font-weight:500;flex-shrink:0}
+.stl.http{color:var(--green)}.stl.if{color:var(--pink)}.stl.foreach{color:var(--orange)}.stl.else{color:var(--pink)}.stl.group{color:var(--green)}.stl.delay{color:var(--cyan)}.stl.database{color:var(--blue)}.stl.assertion{color:var(--purple)}
+.sn{flex:1;font-size:12px;color:var(--text)}
+.sw{color:var(--orange);font-size:12px}
+.sd{width:18px;height:18px;border:none;background:transparent;cursor:pointer;color:var(--text3);font-size:12px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);opacity:0;transition:all .15s}
+.si:hover .sd{opacity:1}
+.sd:hover{background:#fef2f2;color:var(--red)}
+.sch{padding-left:20px;border-top:1px solid var(--border2)}
+.sch .si{border-left:2px solid var(--border);border-radius:0;margin-bottom:0}
+.asa{border:1px dashed var(--border);border-radius:var(--r2);padding:10px;text-align:center;color:var(--text3);cursor:pointer;margin-top:3px;transition:all .15s;font-size:12px}
+.asa:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
+
+/* Right Panel */
+.tc-r{width:300px;min-width:300px;background:#fff;border-left:1px solid var(--border);padding:14px;overflow-y:auto}
+.tc-r::-webkit-scrollbar{width:4px}
+.tc-r::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:2px}
+.rt{display:flex;border-bottom:1px solid var(--border);margin-bottom:14px}
+.rtab{padding:6px 10px;font-size:11px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent}
+.rtab.act{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
+.rtab.dis{color:var(--text3);cursor:not-allowed}
+.rf{margin-bottom:12px}
+.rf label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.rf select,.rf input[type="text"],.rf input[type="number"]{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r);font-size:11px;outline:none;background:#fff}
+.rf select:focus,.rf input:focus{border-color:var(--primary)}
+.rr{display:flex;gap:10px}
+.rr .rf{flex:1}
+.tog{display:flex;align-items:center;gap:6px;cursor:pointer}
+.tog .sw2{width:32px;height:18px;background:var(--border);border-radius:9px;position:relative;transition:background .2s}
+.tog .sw2.on{background:var(--primary)}
+.tog .sw2::after{content:"";width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.tog .sw2.on::after{transform:translateX(14px)}
+.ct{display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;font-size:11px;color:var(--text2)}
+.ct .ar{font-size:9px;transition:transform .2s}
+.ct .ar.op{transform:rotate(90deg)}
+.br{width:100%;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;margin-top:12px}
+.br:hover{background:var(--primary-light)}
+.bs2{width:100%;padding:7px;background:#fff;color:var(--text);border:1px solid var(--border);border-radius:var(--r);font-size:12px;cursor:pointer;margin-top:6px}
+.bs2:hover{border-color:var(--primary);color:var(--primary)}
+
+/* Bottom */
+.bb{height:28px;background:#fff;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:12px;font-size:10px;color:var(--text3);flex-shrink:0}
+.bb a{color:var(--text3);text-decoration:none;cursor:pointer}
+.bb a:hover{color:var(--primary)}
+.bb .sp{color:var(--border)}
+.bb .rt2{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* Modal */
+.mo{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:all .2s}
+.mo.act{opacity:1;visibility:visible}
+.mdl{background:#fff;border-radius:var(--r2);width:460px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.mh{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mh h3{font-size:13px;font-weight:600}
+.mc{width:22px;height:22px;border:none;background:transparent;cursor:pointer;font-size:16px;color:var(--text3);display:flex;align-items:center;justify-content:center;border-radius:var(--r)}
+.mc:hover{background:var(--border2)}
+.mb{padding:16px}
+.mf{padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:6px}
+
+/* Step type grid */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.so{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--r2);cursor:pointer;transition:all .15s}
+.so:hover{border-color:var(--primary);background:var(--primary-bg)}
+.so .si2{width:28px;height:28px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.so .si2.http{background:#d1fae5;color:var(--green)}.so .si2.if{background:#fce7f3;color:var(--pink)}.so .si2.foreach{background:#fef3c7;color:var(--orange)}.so .si2.else{background:#fce7f3;color:var(--pink)}.so .si2.group{background:#d1fae5;color:var(--green)}.so .si2.delay{background:#cffafe;color:var(--cyan)}.so .si2.database{background:#dbeafe;color:var(--blue)}.so .si2.assertion{background:#ede9fe;color:var(--purple)}
+.so .sl2{font-size:12px;font-weight:500}
+.so .sd2{font-size:10px;color:var(--text3)}
+
+/* Toast */
+.toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:6px 16px;border-radius:var(--r2);font-size:12px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Left Nav -->
+  <div class="left-nav">
+    <div class="logo-box">A</div>
+    <button class="nav-btn" data-v="api" onclick="switchView('api')"><span class="ico">🔌</span><span>接口</span></button>
+    <button class="nav-btn active" data-v="auto" onclick="switchView('auto')"><span class="ico"></span><span>自动化</span></button>
+    <button class="nav-btn" data-v="doc" onclick="switchView('doc')"><span class="ico">📖</span><span>文档</span></button>
+    <button class="nav-btn" data-v="hist" onclick="switchView('hist')"><span class="ico">🕐</span><span>历史</span></button>
+    <div class="nav-bottom">
+      <button class="nav-btn" data-v="set" onclick="switchView('set')"><span class="ico">️</span><span>设置</span></button>
+      <button class="nav-btn" onclick="showToast('邀请成员')"><span class="ico">👤</span><span>邀请</span></button>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sb-header"><span id="sbTitle">自动化测试</span><span class="proj">main ▾</span></div>
+    <div class="sb-search"><input placeholder="搜索..." id="sbSearch" oninput="renderSidebar()"></div>
+    <div class="sb-tree" id="sbTree"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="bc"><a href="#">主窗口</a> / <span class="cur" id="bcCur">测试</span></div>
+      <div class="tr"><button class="bs" id="tbActions">+ 新建</button></div>
+    </div>
+    <div class="ctabs" id="cTabs"></div>
+    <div class="pg" id="pgContent"></div>
+    <div class="bb">
+      <a>● 在线</a><span class="sp">|</span>
+      <a> 请求代理 ▾</a><span class="sp">|</span>
+      <a>Cookie 管理</a><span class="sp">|</span>
+      <a>🗑️ 回收站</a>
+      <div class="rt2"><a>📖 文档 & 交流群</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Step Modal -->
+<div class="mo" id="stepModal">
+  <div class="mdl">
+    <div class="mh"><h3>添加步骤</h3><button class="mc" onclick="closeModal('stepModal')">&times;</button></div>
+    <div class="mb"><div class="sg" id="stepGrid"></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='',PID=8076196;
+async function ag(p){try{const r=await fetch(API+p);const j=await r.json();return j.success?j.data:null}catch(e){return null}}
+async function ap(p,b){try{const r=await fetch(API+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();return j.success?j.data:null}catch(e){return null}}
+async function au(p,b){try{const r=await fetch(API+p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();return j.success?j.data:null}catch(e){return null}}
+async function ad(p){try{const r=await fetch(API+p,{method:'DELETE'});const j=await r.json();return j.success}catch(e){return false}}
+
+let S={project:{id:PID,name:'测试'},apis:[],scenarios:[],suites:[],tdata:[],models:[],envs:[]};
+let view='auto',sub='scenario',selId=null,selModelId=null,stepPid=null,stepCid=null;
+
+const STYPES=[
+  {type:'http',ico:'',lbl:'接口请求',desc:'发送 HTTP 请求',c:'http'},
+  {type:'if',ico:'🔀',lbl:'If 条件',desc:'条件分支',c:'if'},
+  {type:'foreach',ico:'🔁',lbl:'ForEach 循环',desc:'遍历集合',c:'foreach'},
+  {type:'else',ico:'↔️',lbl:'Else',desc:'否则分支',c:'else'},
+  {type:'group',ico:'📦',lbl:'Group 分组',desc:'步骤分组',c:'group'},
+  {type:'delay',ico:'⏱️',lbl:'Delay 等待',desc:'延迟执行',c:'delay'},
+  {type:'database',ico:'🗄️',lbl:'Database',desc:'数据库操作',c:'database'},
+  {type:'assertion',ico:'✅',lbl:'Assertion 断言',desc:'验证结果',c:'assertion'},
+];
+function sti(t){return STYPES.find(s=>s.type===t)||{type:t,ico:'',lbl:t,desc:'',c:''}}
+
+async function load(){
+  const[a,b,c,d,e]=await Promise.all([
+    ag('/api/v1/auto-test/single-cases'),ag('/api/v1/auto-test/scenario-cases'),
+    ag('/api/v1/auto-test/test-suites'),ag('/api/v1/auto-test/test-data'),
+    ag('/api/v1/projects/'+PID+'/environments')
+  ]);
+  if(a)S.apis=a;if(b)S.scenarios=b;if(c)S.suites=c;if(d)S.tdata=d;if(e)S.envs=e;if(!S.models)S.models=[];
+  renderSidebar();renderContent();
+}
+async function refresh(){await load()}
+
+function switchView(v){
+  view=v;
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.toggle('active',el.dataset.v===v));
+  const t={api:'接口管理',auto:'自动化测试',doc:'分享文档',hist:'请求历史',set:'项目设置'};
+  document.getElementById('sbTitle').textContent=t[v]||v;
+  renderSidebar();renderContent();
+}
+
+function renderSidebar(){
+  const tree=document.getElementById('sbTree');
+  const q=(document.getElementById('sbSearch').value||'').toLowerCase();
+  let h='';
+  if(view==='api'){
+    h+='<div class="ti act"><span class="arr open">▶</span><span class="ico"></span><span class="lbl">默认模块</span></div>';
+    h+='<div class="tc"><div class="ti"><span class="arr" style="visibility:hidden">▶</span><span class="ico">📁</span><span class="lbl">接口根目录</span></div>';
+    h+='<div class="tc">';
+    for(const a of S.apis){
+      if(q&&!a.name.toLowerCase().includes(q))continue;
+      h+='<div class="ti" onclick="selectApi('+a.id+')"><span class="arr" style="visibility:hidden">▶</span><span class="ico"><span style="font-size:9px;padding:0 2px;border-radius:2px;background:'+((a.method||'GET')==='GET'?'var(--green)':'var(--blue'))+';color:#fff;font-weight:600">'+(a.method||'GET')+'</span></span><span class="lbl">'+hl(a.name,q)+'</span></div>';
+    }
+    h+='</div></div>';
+    h+='<div class="td"></div>';
+    h+='<div class="ti'+(sub==='datamodel'?' act':'')+'" onclick="switchSub('datamodel')"><span class="arr'+(sub==='datamodel'?' open':'')+'">▶</span><span class="ico">📦</span><span class="lbl">数据模型</span></div>';
+    if(sub==='datamodel'){
+      h+='<div class="tc">';
+      for(const m of (S.models||[])) h+='<div class="ti'+(selModelId===m.id?' act':'')+'" onclick="selectModel('+m.id+')"><span class="arr" style="visibility:hidden">▶</span><span class="ico">📋</span><span class="lbl">'+m.name+'</span></div>';
+      h+='<div class="ta" onclick="createModel()">+ 新增</div></div>';
+    }
+    h+='<div class="ti"><span class="arr">▶</span><span class="ico">🧩</span><span class="lbl">组件库</span></div>';
+    h+='<div class="ti"><span class="arr">▶</span><span class="ico">⚡</span><span class="lbl">快捷请求</span></div>';
+    h+='<div class="ta" onclick="createApi()">+ 新建接口</div>';
+  } else if(view==='auto'){
+    h+='<div class="ti'+(sub==='single'?' act':'')+'" onclick="switchSub('single')"><span class="arr open">▶</span><span class="ico">🔌</span><span class="lbl">单接口用例</span></div>';
+    h+='<div class="tc"><div class="ti"><span class="arr" style="visibility:hidden">▶</span><span class="ico">📁</span><span class="lbl">默认模块</span></div></div>';
+    h+='<div class="ti'+(sub==='scenario'?' act':'')+'" onclick="switchSub('scenario')"><span class="arr open">▶</span><span class="ico">📋</span><span class="lbl">场景用例</span></div>';
+    h+='<div class="tc">';
+    h+='<div class="ti"><span class="arr" style="visibility:hidden">▶</span><span class="ico">📁</span><span class="lbl">场景用例根目录</span></div>';
+    for(const sc of S.scenarios){
+      if(q&&!sc.name.toLowerCase().includes(q))continue;
+      h+='<div class="ti'+(selId===sc.id?' act':'')+'" onclick="selectSc('+sc.id+')"><span class="arr" style="visibility:hidden">▶</span><span class="ico">📝</span><span class="lbl">'+hl(sc.name,q)+'</span></div>';
+    }
+    h+='<div class="ta" onclick="createSc()">+ 新增</div></div>';
+    h+='<div class="ti" onclick="switchSub('suite')"><span class="arr">▶</span><span class="ico">📦</span><span class="lbl">测试套件</span></div>';
+    h+='<div class="tc" style="display:none">';
+    for(const s of S.suites) h+='<div class="ti"><span class="arr" style="visibility:hidden">▶</span><span class="ico"></span><span class="lbl">'+s.name+'</span></div>';
+    h+='<div class="ta" onclick="createSuite()">+ 新增</div></div>';
+    h+='<div class="ti" onclick="switchSub('tdata')"><span class="arr">▶</span><span class="ico">💾</span><span class="lbl">测试数据</span></div>';
+    h+='<div class="tc" style="display:none"><div class="ta" onclick="createTData()">+ 新增</div></div>';
+    h+='<div class="ti"><span class="arr">▶</span><span class="ico">⏰</span><span class="lbl">定时任务</span></div>';
+    h+='<div class="ti"><span class="arr">▶</span><span class="ico">📊</span><span class="lbl">测试报告</span></div>';
+    h+='<div class="td"></div>';
+    h+='<div class="ti'+(sub==='datamodel'?' act':'')+'" onclick="switchSub('datamodel')"><span class="arr'+(sub==='datamodel'?' open':'')+'">▶</span><span class="ico">📦</span><span class="lbl">数据模型</span></div>';
+  } else {
+    h+='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">功能开发中</div>';
+  }
+  tree.innerHTML=h;
+}
+function renderContent(){
+  const tabs=document.getElementById('cTabs');
+  const pg=document.getElementById('pgContent');
+  const bc=document.getElementById('bcCur');
+
+  if(view==='api'){
+    tabs.innerHTML='';bc.textContent='接口管理';
+    pg.innerHTML=`<div class="api-pg">
+      <div class="api-list">
+        <div class="api-sec"><div class="api-sec-t">待开发 <span class="cnt">(${S.apis.length})</span></div>
+        ${S.apis.map(a=>`<div class="api-item" onclick="selectApi(${a.id})"><span class="mt ${a.method||'GET'}">${a.method||'GET'}</span><span class="nm">${a.name}</span><span class="pth">${a.path||'...'}</span><span class="st todo">待开发</span></div>`).join('')}
+        ${S.apis.length===0?'<div style="text-align:center;color:var(--text3);padding:40px;font-size:12px">暂无接口</div>':''}
+        </div>
+        <div class="api-sec"><div class="api-sec-t">已开发 <span class="cnt">(0)</span></div><div style="text-align:center;color:var(--text3);padding:20px;font-size:12px">暂无已开发接口</div></div>
+      </div>
+      <div style="width:400px;border-left:1px solid var(--border);display:flex;align-items:center;justify-content:center;background:#fff">
+        <div class="api-empty" style="height:auto">
+          <div class="ei"></div><h3>输入 URL 或命令以从服务加载</h3>
+          <p>支持的工具、提示词和资源</p>
+          <div class="btns">
+            <button class="pri" onclick="createApi()">新建 HTTP 接口</button>
+            <button>新建数据模型</button>
+            <button>新建 Markdown</button>
+            <button>快捷请求</button>
+          </div>
+          <p style="margin-top:12px;font-size:11px">支持导入 Swagger、Postman、cURL 等 20 多种格式数据</p>
+        </div>
+      </div>
+    </div>`;
+  } else if(view==='auto'){
+    if(sub==='scenario'){
+      if(selId){
+        tabs.innerHTML='<div class="ctab act">测试步骤</div><div class="ctab">测试数据</div><div class="ctab">测试报告</div><div class="ctab">CI/CD</div>';
+        renderTCDetail(pg);
+      } else {
+        tabs.innerHTML='<div class="ctab act">测试步骤</div><div class="ctab">测试数据</div><div class="ctab">测试报告</div><div class="ctab">CI/CD</div>';
+        renderSCList(pg);
+      }
+    } else if(sub==='single'){
+      tabs.innerHTML='';bc.textContent='单接口用例';
+      pg.innerHTML=`<div class="sc-pg"><div class="sc-tb"><button class="fb"> 筛选</button><button class="ab" onclick="createApi()">+ 新建用例</button></div>
+      <table class="dt"><thead><tr><th style="width:24px"><input type="checkbox"></th><th>用例名称</th><th>接口</th><th style="width:50px">优先级</th><th style="width:80px">操作</th></tr></thead><tbody>
+      ${S.apis.map(a=>`<tr><td class="cb"><input type="checkbox"></td><td><span class="sc-nm">${a.name}</span></td><td><span style="font-size:10px;padding:1px 5px;border-radius:2px;background:${a.method==='GET'?'var(--green)':'var(--blue)'};color:#fff">${a.method||'GET'}</span> <code style="font-size:11px;color:var(--text3)">${a.path||'-'}</code></td><td><span class="pb P2">P2</span></td><td><div class="ta2"><button>编辑</button><button class="dn">删除</button></div></td></tr>`).join('')}
+      ${S.apis.length===0?'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3)">暂无单接口用例</td></tr>':''}
+      </tbody></table></div>`;
+    } else if(sub==='suite'){
+      tabs.innerHTML='';bc.textContent='测试套件';
+      pg.innerHTML=`<div class="sc-pg"><div class="sc-tb"><button class="ab" onclick="createSuite()">+ 新建套件</button></div>
+      <table class="dt"><thead><tr><th style="width:24px"><input type="checkbox"></th><th>套件名称</th><th>用例数</th><th>操作</th></tr></thead><tbody>
+      ${S.suites.map(s=>`<tr><td class="cb"><input type="checkbox"></td><td><span class="sc-nm">${s.name}</span></td><td>${(s.cases||[]).length}</td><td><div class="ta2"><button>编辑</button><button class="dn">删除</button></div></td></tr>`).join('')}
+      ${S.suites.length===0?'<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text3)">暂无测试套件</td></tr>':''}
+      </tbody></table></div>`;
+    } else if(sub==='datamodel'){tabs.innerHTML='';bc.textContent='数据模型';renderModelPage(pg)} else if(sub==='datamodel'){tabs.innerHTML='';bc.textContent='数据模型';renderModelPage(pg)} else if(sub==='tdata'){
+      tabs.innerHTML='';bc.textContent='测试数据';
+      pg.innerHTML='<div class="sc-pg"><div class="sc-tb"><button class="ab" onclick="createTData()">+ 新增</button></div><div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">暂无测试数据</div></div>';
+    }
+  } else {
+    tabs.innerHTML='';
+    pg.innerHTML='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3)"><h3>功能开发中</h3></div>';
+  }
+}
+
+function renderSCList(pg){
+  document.getElementById('bcCur').textContent='场景用例';
+  pg.innerHTML=`<div class="sc-pg">
+    <div class="sc-tb">
+      <button class="fb">🔍 筛选</button><button class="fb">📁 模块</button><button class="fb">🏷️ 标签</button>
+      <button class="ab" onclick="createSc()">+ 新建用例</button>
+    </div>
+    <table class="dt">
+      <thead><tr><th style="width:24px"><input type="checkbox"></th><th>用例名称</th><th style="width:50px">优先级</th><th style="width:50px">步骤</th><th>描述</th><th style="width:60px">标签</th><th style="width:80px">操作</th></tr></thead>
+      <tbody>
+      ${S.scenarios.map(sc=>`<tr onclick="selectSc(${sc.id})">
+        <td class="cb"><input type="checkbox" onclick="event.stopPropagation()"></td>
+        <td><span class="sc-nm">${sc.name}</span></td>
+        <td><span class="pb ${sc.priority||'P2'}">${sc.priority||'P2'}</span></td>
+        <td style="color:var(--text3)">${countSteps(sc.steps)}</td>
+        <td><span class="sc-ds">${sc.description||'-'}</span></td>
+        <td><div class="tg"><span class="tag">默认</span></div></td>
+        <td><div class="ta2"><button onclick="event.stopPropagation();selectSc(${sc.id})">编辑</button><button class="dn" onclick="event.stopPropagation();delSc(${sc.id})">删除</button></div></td>
+      </tr>`).join('')}
+      ${S.scenarios.length===0?'<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3)">暂无场景用例</td></tr>':''}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderModelPage(pg){
+  document.getElementById('bcCur').textContent='数据模型';
+  const models=S.models||[];
+  pg.innerHTML=`<div class="sc-pg">
+    <div class="sc-tb"><button class="fb"> 筛选</button><button class="ab" onclick="createModel()">+ 新建数据模型</button></div>
+    <table class="dt">
+      <thead><tr><th style="width:24px"><input type="checkbox"></th><th>模型名称</th><th>字段数</th><th>描述</th><th style="width:80px">操作</th></tr></thead>
+      <tbody>${models.map(m=>`<tr onclick="selectModel(${m.id})"><td class="cb"><input type="checkbox" onclick="event.stopPropagation()"></td><td><span class="sc-nm">${m.name}</span></td><td style="color:var(--text3)">${Object.keys(m.schema?.properties||{}).length}</td><td><span class="sc-ds">${m.description||'-'}</span></td><td><div class="ta2"><button onclick="event.stopPropagation();selectModel(${m.id})">编辑</button><button class="dn" onclick="event.stopPropagation();delModel(${m.id})">删除</button></div></td></tr>`).join('')}${models.length===0?'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3)">暂无数据模型</td></tr>':''}</tbody>
+    </table>
+  </div>`;
+}
+function countSteps(s){let c=0;for(const x of s||[]){if(x.enabled!==false)c++;c+=countSteps(x.children)}return c}
+
+function renderTCDetail(pg){
+  const tc=S.scenarios.find(c=>c.id===selId);
+  if(!tc){pg.innerHTML='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3)">用例不存在</div>';return}
+  document.getElementById('bcCur').textContent=tc.name;
+
+  pg.innerHTML=`<div class="tc-d">
+    <div class="tc-m">
+      <div class="tc-h">
+        <div class="tc-pr" onclick="cyclePri(${tc.id})"><span class="bd ${tc.priority||'P2'}">${tc.priority||'P2'}</span><span>${tc.name}</span></div>
+        <h2>${tc.name}</h2>
+        <div class="tc-ds">${tc.description||'添加描述'}</div>
+        <div class="tc-me">${tc.author||'用户'} · 更新于 ${ago(tc.updatedAt)}</div>
+      </div>
+      <div class="tc-sel"><input type="checkbox" checked disabled style="accent-color:var(--primary)"> 已选 ${countSteps(tc.steps)} 项</div>
+      <div class="sl" id="sl">${renderSteps(tc.steps,tc.id)}</div>
+      <div class="asa" onclick="openStepModal(null,${tc.id})">+ 添加步骤</div>
+    </div>
+    <div class="tc-r">
+      <div class="rt"><div class="rtab act">功能测试</div><div class="rtab dis">性能测试</div></div>
+      <div class="rf"><label>运行环境</label><select onchange="upSet(${tc.id},'environment',this.value)">${S.envs.map(e=>`<option ${tc.settings?.environment===e.name?'selected':''}>${e.name}</option>`).join('')}</select></div>
+      <div class="rf"><label>测试数据</label><select onchange="upSet(${tc.id},'testData',this.value)"><option>不使用测试数据</option>${S.tdata.map(d=>`<option>${d.name}</option>`).join('')}</select></div>
+      <div class="rr">
+        <div class="rf"><label>循环次数</label><input type="number" value="${tc.settings?.loopCount||1}" min="1" onchange="upSet(${tc.id},'loopCount',+this.value)"></div>
+        <div class="rf"><label>线程数</label><input type="number" value="${tc.settings?.threadCount||1}" min="1" onchange="upSet(${tc.id},'threadCount',+this.value)"></div>
+      </div>
+      <div class="rf"><label>运行于</label><select onchange="upSet(${tc.id},'runOn',this.value)"><option ${tc.settings?.runOn==='本机'?'selected':''}>本机</option><option>云端</option></select></div>
+      <div class="rf"><label>通知</label><div class="tog" onclick="togNot(${tc.id})"><div class="sw2 ${(tc.settings?.notify)?'on':''}"></div></div></div>
+      <div class="ct" onclick="this.querySelector('.ar').classList.toggle('op')"><span>▶ 高级设置</span><div style="display:flex;align-items:center;gap:4px"><input type="checkbox" ${tc.settings?.shared?'checked':''} onchange="upSet(${tc.id},'shared',this.checked)" style="cursor:pointer"><span style="font-size:11px">共享</span></div></div>
+      <button class="br" onclick="runTC(${tc.id})">▶ 运行</button>
+      <button class="bs2" onclick="showToast('保存成功')">保存</button>
+    </div>
+  </div>`;
+}
+
+function renderSteps(steps,cid){
+  if(!steps||!steps.length)return '';
+  return steps.map(s=>{
+    const i=sti(s.type);
+    const hc=s.children&&s.children.length>0;
+    const exp=s._exp!==false;
+    return `<div class="si" data-sid="${s.id}">
+      <div class="sh" onclick="togStep(${s.id})">
+        <div class="sc2 ${(s.enabled!==false)?'on':''}" onclick="event.stopPropagation();togEn(${cid},${s.id})"></div>
+        <span class="sa ${exp?'op':''}">▶</span>
+        <span class="sic">${i.ico}</span>
+        <span class="stl ${i.c}">${i.lbl}</span>
+        <span class="sn">${s.name||i.lbl}</span>
+        ${s.warning?'<span class="sw">⚠️</span>':''}
+        <button class="sd" onclick="event.stopPropagation();delStep(${cid},${s.id})">✕</button>
+      </div>
+      ${hc?`<div class="sch" style="${exp?'':'display:none'}">${renderSteps(s.children,cid)}</div>`:''}
+      ${s.type==='group'&&!hc?'<div class="sch" style="padding:10px;text-align:center;color:var(--text3);font-size:11px;border-top:1px solid var(--border2)">拖入或 添加步骤</div>':''}
+    </div>`;
+  }).join('');
+}
+
+// CRUD
+async function createSc(){const n=prompt('用例名称:','新场景用例');if(!n)return;const tc=await ap('/api/v1/auto-test/scenario-cases',{name:n});if(tc){await refresh();selectSc(tc.id);showToast('用例已创建')}}
+async function delSc(id){if(!confirm('确认删除？'))return;await ad('/api/v1/auto-test/scenario-cases/'+id);selId=null;await refresh();showToast('已删除')}
+function selectSc(id){selId=id;renderSidebar();renderContent()}
+async function upSet(id,k,v){const tc=S.scenarios.find(c=>c.id===id);if(!tc)return;tc.settings=tc.settings||{};tc.settings[k]=v;await au('/api/v1/auto-test/scenario-cases/'+id,{settings:tc.settings})}
+function togNot(id){const tc=S.scenarios.find(c=>c.id===id);if(!tc)return;tc.settings=tc.settings||{};tc.settings.notify=!tc.settings.notify;au('/api/v1/auto-test/scenario-cases/'+id,{settings:tc.settings});renderContent()}
+function cyclePri(id){const tc=S.scenarios.find(c=>c.id===id);if(!tc)return;const L=['P0','P1','P2','P3','P4'];tc.priority=L[(L.indexOf(tc.priority||'P2')+1)%L.length];au('/api/v1/auto-test/scenario-cases/'+id,{priority:tc.priority});renderContent()}
+async function runTC(id){showToast('正在运行...');const r=await ap('/api/v1/auto-test/run',{caseId:id});if(r)showToast('运行中: '+r.runId)}
+async function createSuite(){const n=prompt('套件名称:','新测试套件');if(!n)return;await ap('/api/v1/auto-test/test-suites',{name:n});await refresh();showToast('套件已创建')}
+async function createTData(){const n=prompt('数据名称:','新测试数据');if(!n)return;await ap('/api/v1/auto-test/test-data',{name:n,rows:[]});await refresh();showToast('已创建')}
+async function createApi(){const n=prompt('接口名称:','新接口');if(!n)return;const m=(prompt('方法 (GET/POST):','GET')||'GET').toUpperCase();const p=prompt('路径:','/api/v1/'+n.toLowerCase().replace(/\s+/g,'-'));S.apis.push({id:Date.now(),name:n,method:m,path:p||'',status:'todo'});renderSidebar();renderContent();showToast('接口已创建')}
+
+// Steps
+function togStep(id){const it=document.querySelector(`[data-sid="${id}"]`);if(!it)return;const ch=it.querySelector('.sch');const ar=it.querySelector('.sa');if(ch){const h=ch.style.display==='none';ch.style.display=h?'':'none';if(ar)ar.classList.toggle('op',!h)}}
+function togEn(cid,sid){const tc=S.scenarios.find(c=>c.id===cid);if(!tc)return;function f(s){if(s.id===sid){s.enabled=s.enabled===false;return true}for(const c of s.children||[])if(f(c))return true;return false}for(const s of tc.steps)if(f(s))break;au('/api/v1/auto-test/scenario-cases/'+cid,{steps:tc.steps});renderContent()}
+async function delStep(cid,sid){if(!confirm('删除？'))return;const tc=S.scenarios.find(c=>c.id===cid);if(!tc)return;function fl(s){return s.filter(x=>x.id!==sid).map(x=>({...x,children:fl(x.children||[])}))};tc.steps=fl(tc.steps);await au('/api/v1/auto-test/scenario-cases/'+cid,{steps:tc.steps});renderContent();showToast('已删除')}
+
+function openStepModal(pid,cid){
+  stepPid=pid;stepCid=cid;
+  document.getElementById('stepGrid').innerHTML=STYPES.map(t=>`<div class="so" onclick="addStep('${t.type}')"><div class="si2 ${t.c}">${t.ico}</div><div><div class="sl2">${t.lbl}</div><div class="sd2">${t.desc}</div></div></div>`).join('');
+  document.getElementById('stepModal').classList.add('act');
+}
+function closeModal(id){document.getElementById(id).classList.remove('act')}
+
+async function addStep(type){
+  const i=sti(type);
+  const n=prompt('步骤名称:',i.lbl);if(!n)return;
+  const ns={id:Date.now(),type,name:n,enabled:true,children:[],config:{}};
+  if(type==='http')ns.config={method:'GET',url:'',headers:{},body:{}};
+  else if(type==='delay')ns.config={duration:1000};
+  else if(type==='database')ns.config={query:'',connection:''};
+
+  const tc=S.scenarios.find(c=>c.id===stepCid);if(!tc)return;
+  if(stepPid){function fp(s){for(const x of s){if(x.id===stepPid){x.children=x.children||[];x.children.push(ns);return true}if(fp(x.children||[]))return true}return false}fp(tc.steps)}
+  else tc.steps.push(ns);
+
+  await au('/api/v1/auto-test/scenario-cases/'+stepCid,{steps:tc.steps});
+  closeModal('stepModal');renderContent();showToast(`步骤 "${n}" 已添加`);
+}
+
+// Model CRUD
+async function createModel(){const n=prompt('模型名称:','NewModel');if(!n)return;const m=await ap('/api/v1/projects/'+PID+'/data-schemas',{name:n,description:'',schema:{type:'object',properties:{}}});if(m){S.models.push(m);renderSidebar();renderContent();showToast('模型已创建')}}
+async function delModel(id){if(!confirm('删除？'))return;await ad('/api/v1/projects/'+PID+'/data-schemas/'+id);S.models=(S.models||[]).filter(m=>m.id!==id);selModelId=null;renderSidebar();renderContent();showToast('已删除')}
+function selectModel(id){selModelId=id;sub='datamodel';renderSidebar();renderModelDetail(id)}
+async function renderModelDetail(id){
+  const m=(S.models||[]).find(x=>x.id===id);if(!m)return;
+  document.getElementById('bcCur').textContent=m.name;
+  const pg=document.getElementById('pgContent');
+  const fields=Object.entries(m.schema?.properties||[]);
+  const req=m.schema?.required||[];
+  pg.innerHTML=`<div class="tc-d"><div class="tc-m">
+    <div class="tc-h"><h2>📦 ${m.name}</h2><div class="tc-ds">${m.description||'暂无描述'}</div></div>
+    <div class="ctabs" style="margin-bottom:12px"><div class="ctab act">字段定义</div><div class="ctab">JSON Schema</div></div>
+    <table class="dt" style="background:#fff;border-radius:var(--r2)"><thead><tr><th>字段名</th><th>类型</th><th>必填</th><th>描述</th><th>示例值</th></tr></thead><tbody>
+    ${fields.map(([n,f])=>`<tr><td><code>${n}</code></td><td><span style="color:var(--primary);font-family:monospace;font-size:11px">${f.type||'string'}${f.format?' <'+f.format+'>':''}</span></td><td>${req.includes(n)?'<span style="color:var(--red);font-size:10px">是</span>':'否'}</td><td style="font-size:11px">${f.description||'-'}</td><td style="font-size:11px;color:var(--text3);font-family:monospace">${f.example||'-'}</td></tr>`).join('')}
+    ${fields.length===0?'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">暂无字段</td></tr>':''}
+    </tbody></table>
+    <div style="margin-top:12px;display:flex;gap:8px"><button class="bs2" style="width:auto;padding:6px 14px" onclick="addField(${m.id})">+ 添加字段</button><button class="bs2" style="width:auto;padding:6px 14px" onclick="editModelSchema(${m.id})">✏️ 编辑 Schema</button></div>
+    <div style="margin-top:16px"><h4 style="font-size:13px;margin-bottom:8px">完整 JSON Schema</h4><pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-size:11px;font-family:monospace;overflow-x:auto">${JSON.stringify(m.schema,null,2)}</pre></div>
+  </div></div>`;
+}
+async function addField(id){const m=(S.models||[]).find(x=>x.id===id);if(!m)return;const n=prompt('字段名:');if(!n)return;const t=prompt('类型 (string/number/boolean/object/array):','string')||'string';m.schema.properties=m.schema.properties||{};m.schema.properties[n]={type:t};await au('/api/v1/projects/'+PID+'/data-schemas/'+id,{schema:m.schema});renderModelDetail(id);showToast('字段已添加')}
+async function editModelSchema(id){const m=(S.models||[]).find(x=>x.id===id);if(!m)return;const t=prompt('编辑 JSON Schema:',JSON.stringify(m.schema,null,2));if(!t)return;try{m.schema=JSON.parse(t);await au('/api/v1/projects/'+PID+'/data-schemas/'+id,{schema:m.schema});renderModelDetail(id);showToast('Schema 已更新')}catch(e){showToast('JSON 格式错误')}}
+// Utils
+function ago(d){if(!d)return'刚刚';const diff=Date.now()-new Date(d),m=Math.floor(diff/60000);if(m<1)return'刚刚';if(m<60)return m+'分钟前';const h=Math.floor(m/60);if(h<24)return h+'小时前';return Math.floor(h/24)+'天前'}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+
+// Sidebar tree expand
+document.getElementById('sbTree').addEventListener('click',function(e){
+  const item=e.target.closest('.ti');if(!item)return;
+  const arr=item.querySelector('.arr');if(!arr||arr.style.visibility==='hidden')return;
+  const ch=item.nextElementSibling;if(ch&&ch.classList.contains('tc')){arr.classList.toggle('open');ch.style.display=ch.style.display==='none'?'':'none'}
+});
+
+load().then(()=>console.log('✅ 已加载'));
+</script>
+</body>
+</html>

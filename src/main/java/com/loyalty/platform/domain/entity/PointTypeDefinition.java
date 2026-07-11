@@ -13,6 +13,7 @@ public class PointTypeDefinition {
     @Column(name = "program_code", nullable = false, length = 100) private String programCode;
     @Column(name = "type_code", nullable = false, length = 50) private String typeCode;
     @Column(name = "type_name", length = 100) private String typeName;
+    @Column(name = "description", columnDefinition = "text") private String description;
     // 新增：积分分类 (ASSET / CONTRIBUTION / RECORD)
     @Column(name = "point_category", length = 20) @Builder.Default private String pointCategory = "ASSET";
     @Column(name = "is_redeemable") @Builder.Default private Boolean isRedeemable = true;
@@ -32,6 +33,8 @@ public class PointTypeDefinition {
     @Column(name = "overdraft_limit", precision = 20, scale = 4) @Builder.Default private java.math.BigDecimal overdraftLimit = java.math.BigDecimal.ZERO;
     // 新增：授信额度（默认值，实际每会员账户可覆盖）
     @Column(name = "credit_limit", precision = 20, scale = 4) @Builder.Default private java.math.BigDecimal creditLimit = java.math.BigDecimal.ZERO;
+
+    @Column(name = "sort_order") @Builder.Default private Integer sortOrder = 0;
 
     @Column(name = "config_json", columnDefinition = "jsonb")
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)

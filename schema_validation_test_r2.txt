@@ -1,0 +1,21 @@
+========== Schema字段校验测试(文件方式) ==========
+
+=== Test A: Schema定义字段创建(应成功) ===
+{"code":"SUCCESS","message":"创建成功","traceId":"a21cd41f34e24748a92829e388aa08e7","data":{"programCode":"PROG001","memberId":1782903517053104,"name":null,"gender":null,"birthday":null,"status":"ENROLLED","tierCode":"GOLD","tierEffectiveFrom":null,"tierExpiresAt":null,"schemaVersion":"MEMBER:vv4","extAttributes":{"mobile":"16600000001","name":"Schema合法字段","gender":"MALE","city":"Beijing","age":28,"email":"test@test.com","vip_level":"DIAMOND","total_spent":50000,"_schema_version":"MEMBER:vv4"},"mergedToMemberId":null,"createdAt":"2026-07-01T18:58:37.0552695","updatedAt":"2026-07-01T18:58:37.0552695"},"timestamp":"2026-07-01T10:58:37.075848700Z"}
+
+=== Test B: 未定义字段创建(应被拒绝) ===
+{"code":"ERR_INVALID_EXT_FIELD","message":"动态属性字段 'undefined_field' 未在 MEMBER schema 中定义，请先在 SchemaEditor 中添加该字段定义后重试","traceId":"3bde9218543144bc9b064c40dbcb1615","timestamp":"2026-07-01T10:58:37.164300500Z"}
+
+=== Test C: 仅系统字段(应成功) ===
+{"code":"SUCCESS","message":"创建成功","traceId":"4018aea2e74248ca8bfddc79032c47f9","data":{"programCode":"PROG001","memberId":1782903517301390,"name":null,"gender":null,"birthday":null,"status":"ENROLLED","tierCode":"BASE","tierEffectiveFrom":null,"tierExpiresAt":null,"schemaVersion":"MEMBER:vv4","extAttributes":{"mobile":"16600000003","name":"SystemFieldsOnly","phone":"16600000003","_schema_version":"MEMBER:vv4"},"mergedToMemberId":null,"createdAt":"2026-07-01T18:58:37.3030497","updatedAt":"2026-07-01T18:58:37.3030497"},"timestamp":"2026-07-01T10:58:37.319738100Z"}
+
+=== Test D: 空ext_attributes(应成功) ===
+{"code":"SUCCESS","message":"创建成功","traceId":"70162a7ce93a41f58ed4ad03f058efc8","data":{"programCode":"PROG001","memberId":1782903517444047,"name":null,"gender":null,"birthday":null,"status":"ENROLLED","tierCode":"BASE","tierEffectiveFrom":null,"tierExpiresAt":null,"schemaVersion":"MEMBER:vv4","extAttributes":{"_schema_version":"MEMBER:vv4"},"mergedToMemberId":null,"createdAt":"2026-07-01T18:58:37.4478448","updatedAt":"2026-07-01T18:58:37.4478448"},"timestamp":"2026-07-01T10:58:37.465172200Z"}
+
+=== Test E: 更新时用非法字段(应被拒绝) ===
+{"code":"ERR_INVALID_EXT_FIELD","message":"动态属性字段 'illegal_field' 未在 MEMBER schema 中定义，请先在 SchemaEditor 中添加该字段定义后重试","traceId":"74b6983957a0447f940df24cace099d1","timestamp":"2026-07-01T10:58:37.577863Z"}
+
+=== Test F: 再测schema字段 + 中文(应成功) ===
+{"code":"ERR_MEMBER_EXISTS","message":"手机号已注册: 17700000001 (memberId=1782902686693396)","traceId":"7a345ce5ba864a5488d1684d000f14bc","timestamp":"2026-07-01T10:58:37.685021800Z"}
+
+========== 完毕 ==========

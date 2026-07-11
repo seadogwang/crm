@@ -1,13 +1,15 @@
 package com.loyalty.platform.flow.components;
 
 import com.loyalty.platform.domain.entity.Member;
-import com.loyalty.platform.domain.entity.MemberAccount;
+import com.loyalty.platform.domain.entity.PointTypeDefinition;
+import com.loyalty.platform.domain.repository.AccountTransactionRepository;
 import com.loyalty.platform.flow.BaseLiteflowComponent;
 import com.loyalty.platform.flow.EventContext;
 import com.loyalty.platform.rules.drl.MemberFact;
 import com.yomahub.liteflow.annotation.LiteflowComponent;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -27,6 +29,9 @@ public class OneIdComponent extends BaseLiteflowComponent {
 
     @PersistenceContext
     private EntityManager em;
+
+    @Autowired
+    private AccountTransactionRepository txRepo;
 
     @Override
     protected void doProcess(EventContext ctx) throws Exception {
@@ -49,25 +54,27 @@ public class OneIdComponent extends BaseLiteflowComponent {
                         .setParameter("pc", pc).setParameter("mid", memberId)
                         .getSingleResult();
 
-                // 获取累计消费金额(TIER账户余额作为等级成长值)
+                // 获取累计消费金额和等级成长值，动态查询不硬编码类型
                 Double totalSpent = 0.0;
                 Double tierPoints = 0.0;
                 try {
-                    var tierAcc = em.createQuery(
-                        "SELECT a FROM MemberAccount a WHERE a.programCode=:pc AND a.memberId=:mid AND a.accountType='TIER'",
-                        MemberAccount.class)
-                        .setParameter("pc", pc).setParameter("mid", memberId)
-                        .getResultList();
-                    if (!tierAcc.isEmpty()) {
-                        tierPoints = tierAcc.get(0).getTotalAccrued().doubleValue();
+                    // 等级积分：查 isTierCalc=true 的类型
+                    var tierCalcTypes = em.createQuery(
+                        "SELECT p FROM PointTypeDefinition p WHERE p.programCode=:pc AND p.status='ACTIVE' AND p.isTierCalc=true",
+                        PointTypeDefinition.class)
+                        .setParameter("pc", pc).getResultList();
+                    for (var pt : tierCalcTypes) {
+                        BigDecimal balance = txRepo.sumAvailableBalance(pc, memberId, pt.getTypeCode());
+                        if (balance != null) tierPoints += balance.doubleValue();
                     }
-                    var rewardAcc = em.createQuery(
-                        "SELECT a FROM MemberAccount a WHERE a.programCode=:pc AND a.memberId=:mid AND a.accountType='REWARD'",
-                        MemberAccount.class)
-                        .setParameter("pc", pc).setParameter("mid", memberId)
-                        .getResultList();
-                    if (!rewardAcc.isEmpty()) {
-                        totalSpent = rewardAcc.get(0).getTotalAccrued().doubleValue();
+                    // 累计消费金额：查 isRedeemable=true 的类型
+                    var redeemableTypes = em.createQuery(
+                        "SELECT p FROM PointTypeDefinition p WHERE p.programCode=:pc AND p.status='ACTIVE' AND p.isRedeemable=true",
+                        PointTypeDefinition.class)
+                        .setParameter("pc", pc).getResultList();
+                    for (var pt : redeemableTypes) {
+                        BigDecimal accrued = txRepo.sumByType(pc, memberId, pt.getTypeCode(), "ACCRUAL");
+                        if (accrued != null) totalSpent += accrued.doubleValue();
                     }
                 } catch (Exception ignored) {}
 

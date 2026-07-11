@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, InputNumber, Button, Select, Space, Tag, message, Spin, Typography, Divider, Table, Radio } from 'antd';
-import { PlusOutlined, DeleteOutlined, SaveOutlined, CrownOutlined, ArrowUpOutlined, ArrowDownOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { SaveOutlined, CrownOutlined, ArrowUpOutlined, ArrowDownOutlined, ThunderboltOutlined } from '@ant-design/icons';
+
+const AddIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+    <circle cx="10" cy="10" r="9" stroke="#1a1a1a" strokeWidth="1.5" fill="white"/>
+    <path d="M6 10h8M10 6v8" stroke="#1a1a1a" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const DelIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+    <circle cx="10" cy="10" r="9" stroke="#1a1a1a" strokeWidth="1.5" fill="white"/>
+    <path d="M6.5 6.5L13.5 13.5M13.5 6.5L6.5 13.5" stroke="#1a1a1a" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
 import { useAppStore } from '../store';
 import api from '../api';
 
@@ -22,6 +35,7 @@ interface ConditionItem {
   dimension: string;
   operator: string;
   value: number;
+  connector: 'AND' | 'OR';
 }
 
 const OPERATOR_OPTIONS = [
@@ -98,7 +112,7 @@ const TierRuleConfig: React.FC = () => {
       if (i !== idx) return t;
       const criteria = t.upgradeCriteria || {};
       const rule = criteria.upgrade_rules || { dimension: 'TIER_POINTS', operator: '>=', requiredValue: 0, extra_conditions: [], conditionOperator: 'AND' };
-      const extra = [...(rule.extra_conditions || []), { dimension: 'ORDER_COUNT', operator: '>=', value: 0 }];
+      const extra = [...(rule.extra_conditions || []), { dimension: 'ORDER_COUNT', operator: '>=', value: 0, connector: 'AND' as const }];
       return { ...t, upgradeCriteria: { ...criteria, upgrade_rules: { ...rule, extra_conditions: extra } } };
     }));
   };
@@ -161,14 +175,9 @@ const TierRuleConfig: React.FC = () => {
       >
         <Spin spinning={loading}>
           <style>{`.tier-radio-group .ant-radio-button-wrapper-checked { background: #1a1a1a !important; border-color: #1a1a1a !important; color: #fff !important; } .tier-radio-group .ant-radio-button-wrapper-checked::before { background: #1a1a1a !important; }`}</style>
-          <Space style={{ marginBottom: 16 }}>
-            <Text>评估维度：</Text>
-            <Select size="small" value={upgradeRule.timeWindowUnit || 'DAY'} style={{ width: 90 }}
-              onChange={v => updateUpgradeRule(firstIdx, 'timeWindowUnit', v)}
-              options={[{ label: '天', value: 'DAY' }, { label: '自然月', value: 'MONTH' }, { label: '自然年', value: 'YEAR' }]} />
-            <InputNumber size="small" min={1} value={upgradeRule.timeWindowDays || 30} style={{ width: 80 }} onChange={v => updateUpgradeRule(firstIdx, 'timeWindowDays', v)} />
-            <Text type="secondary" style={{ fontSize: 12 }}>当前时间往前推</Text>
-          </Space>
+          <Text type="secondary" style={{ fontSize: 12, marginBottom: 16, display: 'block' }}>
+            评估周期根据等级设置中的有效期自动计算，无需手动配置。
+          </Text>
 
           <Divider style={{ margin: '4px 0' }} />
 
@@ -214,20 +223,28 @@ const TierRuleConfig: React.FC = () => {
                           <Select size="small" value={rule.dimension || 'TIER_POINTS'} style={{ width: 160 }} onChange={v => updateUpgradeRule(actualIdx, 'dimension', v)} options={dimensionOptions} />
                           <Select size="small" value={rule.operator || '>='} style={{ width: 60 }} onChange={v => updateUpgradeRule(actualIdx, 'operator', v)} options={OPERATOR_OPTIONS} />
                           <InputNumber size="small" value={rule.requiredValue || 0} style={{ width: 90 }} onChange={v => updateUpgradeRule(actualIdx, 'requiredValue', v ?? 0)} />
-                          <Button size="small" type="link" style={{ padding: 0 }} icon={<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#1a1a1a" strokeWidth="1.5" fill="white"/><path d="M6 10h8M10 6v8" stroke="#1a1a1a" strokeWidth="1.5" strokeLinecap="round"/></svg>} onClick={() => addExtraCondition(actualIdx)} />
+                          {extra.length === 0 && <Button size="small" type="text" icon={<AddIcon />} onClick={() => addExtraCondition(actualIdx)} />}
                         </Space>
                         {extra.map((c, ci) => (
-                          <Space key={ci} size={4}>
-                            <Select size="small" value={c.dimension} style={{ width: 160 }} onChange={v => updateExtraCondition(actualIdx, ci, 'dimension', v)} options={dimensionOptions} />
-                            <Select size="small" value={c.operator} style={{ width: 60 }} onChange={v => updateExtraCondition(actualIdx, ci, 'operator', v)} options={OPERATOR_OPTIONS} />
-                            <InputNumber size="small" value={c.value} style={{ width: 90 }} onChange={v => updateExtraCondition(actualIdx, ci, 'value', v ?? 0)} />
-                            <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => removeExtraCondition(actualIdx, ci)} />
-                          </Space>
+                          <div key={ci}>
+                            <div style={{ textAlign: 'center', margin: '2px 0' }}>
+                              <span onClick={() => updateExtraCondition(actualIdx, ci, 'connector', c.connector === 'AND' ? 'OR' : 'AND')}
+                                style={{
+                                  background: c.connector === 'AND' ? '#e6f4ff' : '#fff7e6',
+                                  color: c.connector === 'AND' ? '#1677ff' : '#fa8c16',
+                                  border: `1px solid ${c.connector === 'AND' ? '#91caff' : '#ffd591'}`,
+                                  borderRadius: 3, padding: '0 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                                }}>{c.connector}</span>
+                            </div>
+                            <Space size={4}>
+                              <Select size="small" value={c.dimension} style={{ width: 160 }} onChange={v => updateExtraCondition(actualIdx, ci, 'dimension', v)} options={dimensionOptions} />
+                              <Select size="small" value={c.operator} style={{ width: 60 }} onChange={v => updateExtraCondition(actualIdx, ci, 'operator', v)} options={OPERATOR_OPTIONS} />
+                              <InputNumber size="small" value={c.value} style={{ width: 90 }} onChange={v => updateExtraCondition(actualIdx, ci, 'value', v ?? 0)} />
+                              <Button size="small" type="text" danger icon={<DelIcon />} onClick={() => removeExtraCondition(actualIdx, ci)} />
+                              {ci === extra.length - 1 && <Button size="small" type="text" icon={<AddIcon />} onClick={() => addExtraCondition(actualIdx)} />}
+                            </Space>
+                          </div>
                         ))}
-                        {extra.length > 0 && (
-                          <Select size="small" value={rule.conditionOperator || 'AND'} style={{ width: 160 }} onChange={v => updateUpgradeRule(actualIdx, 'conditionOperator', v)}
-                            options={[{ label: '所有条件都满足', value: 'AND' }, { label: '任一条件满足', value: 'OR' }]} />
-                        )}
                       </Space>
                     );
                   },
@@ -261,15 +278,30 @@ const TierRuleConfig: React.FC = () => {
                           <Select size="small" value={dc.retention_dimension || 'TIER_POINTS'} style={{ width: 160 }} onChange={v => updateRetention(actualIdx, 'retention_dimension', v)} options={dimensionOptions} />
                           <Select size="small" value={dc.retention_operator || '>='} style={{ width: 60 }} onChange={v => updateRetention(actualIdx, 'retention_operator', v)} options={OPERATOR_OPTIONS} />
                           <InputNumber size="small" value={dc.retention_required_value || 0} style={{ width: 90 }} onChange={v => updateRetention(actualIdx, 'retention_required_value', v ?? 0)} />
-                          <Button size="small" type="link" style={{ padding: 0 }} icon={<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#1a1a1a" strokeWidth="1.5" fill="white"/><path d="M6 10h8M10 6v8" stroke="#1a1a1a" strokeWidth="1.5" strokeLinecap="round"/></svg>} onClick={() => {
+                          {extra.length === 0 && <Button size="small" type="text" icon={<AddIcon />} onClick={() => {
                             const n = [...tiers];
                             const existing = n[actualIdx].downgradeCriteria || {};
-                            const ext = [...(existing.retention_extra || []), { dimension: 'ORDER_COUNT', operator: '>=', value: 0 }];
+                            const ext = [...(existing.retention_extra || []), { dimension: 'ORDER_COUNT', operator: '>=', value: 0, connector: 'AND' as const }];
                             setTiers(prev => prev.map((t2, i2) => i2 === actualIdx ? { ...t2, downgradeCriteria: { ...existing, retention_extra: ext } } : t2));
-                          }} />
+                          }} />}
                         </Space>
                         {extra.map((c, ci) => (
-                          <Space key={ci} size={4}>
+                          <div key={ci}>
+                            <div style={{ textAlign: 'center', margin: '2px 0' }}>
+                              <span onClick={() => {
+                                const n = [...tiers];
+                                const ext = [...(n[actualIdx].downgradeCriteria?.retention_extra || [])];
+                                ext[ci] = { ...ext[ci], connector: (c as any).connector === 'AND' ? 'OR' : 'AND' };
+                                setTiers(prev => prev.map((t2, i2) => i2 === actualIdx ? { ...t2, downgradeCriteria: { ...(t2.downgradeCriteria || {}), retention_extra: ext } } : t2));
+                              }}
+                                style={{
+                                  background: (c as any).connector === 'OR' ? '#fff7e6' : '#e6f4ff',
+                                  color: (c as any).connector === 'OR' ? '#fa8c16' : '#1677ff',
+                                  border: `1px solid ${(c as any).connector === 'OR' ? '#ffd591' : '#91caff'}`,
+                                  borderRadius: 3, padding: '0 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                                }}>{(c as any).connector || 'AND'}</span>
+                            </div>
+                            <Space size={4}>
                             <Select size="small" value={c.dimension} style={{ width: 160 }} onChange={v => {
                               const n = [...tiers];
                               const ext = [...(n[actualIdx].downgradeCriteria?.retention_extra || [])];
@@ -288,17 +320,20 @@ const TierRuleConfig: React.FC = () => {
                               ext[ci] = { ...ext[ci], value: v ?? 0 };
                               setTiers(prev => prev.map((t2, i2) => i2 === actualIdx ? { ...t2, downgradeCriteria: { ...(t2.downgradeCriteria || {}), retention_extra: ext } } : t2));
                             }} />
-                            <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => {
+                            <Button size="small" type="text" danger icon={<DelIcon />} onClick={() => {
                               const n = [...tiers];
                               const ext = (n[actualIdx].downgradeCriteria?.retention_extra || []).filter((_: any, ci2: number) => ci2 !== ci);
                               setTiers(prev => prev.map((t2, i2) => i2 === actualIdx ? { ...t2, downgradeCriteria: { ...(t2.downgradeCriteria || {}), retention_extra: ext } } : t2));
                             }} />
+                            {ci === extra.length - 1 && <Button size="small" type="text" icon={<AddIcon />} onClick={() => {
+                              const n = [...tiers];
+                              const existing = n[actualIdx].downgradeCriteria || {};
+                              const ext2 = [...(existing.retention_extra || []), { dimension: 'ORDER_COUNT', operator: '>=', value: 0, connector: 'AND' as const }];
+                              setTiers(prev => prev.map((t2, i2) => i2 === actualIdx ? { ...t2, downgradeCriteria: { ...existing, retention_extra: ext2 } } : t2));
+                            }} />}
                           </Space>
+                          </div>
                         ))}
-                        {extra.length > 0 && (
-                          <Select size="small" value={dc.retention_conditionOperator || 'AND'} style={{ width: 160 }} onChange={v => updateRetention(actualIdx, 'retention_conditionOperator', v)}
-                            options={[{ label: '所有条件都满足', value: 'AND' }, { label: '任一条件满足', value: 'OR' }]} />
-                        )}
                       </Space>
                     );
                   },

@@ -60,6 +60,23 @@ public class ProgramSchema {
     @Column(name = "impact_report", columnDefinition = "jsonb")
     private Map<String, Object> impactReport;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "layout_position", columnDefinition = "jsonb")
+    private Map<String, Object> layoutPosition;
+
+    /** 映射的实体表名: member / transaction_event */
+    @Column(name = "table_name", length = 64)
+    private String tableName;
+
+    /** 固定字段映射: {"memberId":"member_id","name":"name",...} */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "fixed_field_mapping", columnDefinition = "jsonb")
+    private Map<String, Object> fixedFieldMapping;
+
+    /** 扩展属性存储列名，默认 ext_attributes */
+    @Column(name = "ext_column", length = 64)
+    private String extColumn;
+
     @Column(name = "created_by")
     private Long createdBy;
 

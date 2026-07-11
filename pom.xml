@@ -141,6 +141,13 @@
             <version>8.44.2.Final</version>
         </dependency>
 
+        <!-- Aviator 表达式引擎（用于变量表达式计算） -->
+        <dependency>
+            <groupId>com.googlecode.aviator</groupId>
+            <artifactId>aviator</artifactId>
+            <version>5.4.3</version>
+        </dependency>
+
         <!-- LiteFlow 2.12.4 流程编排引擎 -->
         <dependency>
             <groupId>com.yomahub</groupId>

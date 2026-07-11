@@ -1,0 +1,17 @@
+{
+  "https://api.apifox.cn/api/v1/projects/8076196": {
+    "success": false,
+    "errorCode": "403010",
+    "errorMessage": "No project guest privilege"
+  },
+  "https://api.apifox.cn/api/v1/projects/8076196/modules": {
+    "success": false,
+    "errorCode": "403010",
+    "errorMessage": "No project guest privilege"
+  },
+  "https://api.apifox.cn/api/v1/projects/8076196/settings": {
+    "success": false,
+    "errorCode": "403010",
+    "errorMessage": "No project guest privilege"
+  }
+}

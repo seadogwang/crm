@@ -38,6 +38,8 @@ public class CascadePersistenceService {
     /** 事件类型前缀 → 需提取到主表列的字段名集合 */
     private static final Map<String, Set<String>> EVENT_COLUMN_KEYS = new LinkedHashMap<>();
     static {
+        // 已废弃：列映射现在从 program_schema.fixed_field_mapping 动态读取
+        // 保留 ORDER 映射作为默认配置
         EVENT_COLUMN_KEYS.put("ORDER", Set.of("order_amount", "trade_status", "pay_time"));
     }
 
@@ -47,6 +49,11 @@ public class CascadePersistenceService {
     );
 
     @PersistenceContext private EntityManager em;
+    private final SchemaMappingResolver schemaResolver;
+
+    public CascadePersistenceService(SchemaMappingResolver schemaResolver) {
+        this.schemaResolver = schemaResolver;
+    }
 
     /**
      * 级联持久化事件。
@@ -73,23 +80,32 @@ public class CascadePersistenceService {
                 ? LocalDateTime.ofInstant(eventTime, ZoneId.systemDefault())
                 : LocalDateTime.now();
 
-        // 提取 transaction_event 共用列 — 按事件类型前缀从映射表读取
-        String eventTypePrefix = eventType.split("_")[0]; // ORDER_PAID → ORDER
-        Set<String> columnKeys = EVENT_COLUMN_KEYS.getOrDefault(eventTypePrefix, Set.of());
+        // 从 program_schema.fixed_field_mapping 动态提取主表列
+        String schemaType = schemaResolver.resolveSchemaType(eventType);
+        Map<String, Object> fixedMapping = schemaResolver.resolveFixedFieldMapping(programCode, schemaType);
+        Set<String> columnKeys = new LinkedHashSet<>();
+        if (fixedMapping != null) {
+            for (Object v : fixedMapping.values()) {
+                columnKeys.add(String.valueOf(v));
+            }
+        }
+        // 添加公共元数据键
+        columnKeys.addAll(COMMON_METADATA_KEYS);
 
+        // 清理 payload 中已提取到主表列的字段
+        Map<String, Object> extAttributes = new LinkedHashMap<>(payload);
+        Set<String> keysToRemove = new LinkedHashSet<>(columnKeys);
+        keysToRemove.forEach(extAttributes::remove);
+
+        // 校验 ext_attributes 与 program_schema 的一致性
+        validateExtAttributes(programCode, eventType, extAttributes);
+
+        // Step 1: 写主表 transaction_event — 固定列
         String orderAmount = columnKeys.contains("order_amount") ? extractString(payload, "order_amount") : null;
         String tradeStatus = columnKeys.contains("trade_status") ? extractString(payload, "trade_status") : null;
         String payTimeStr = columnKeys.contains("pay_time") ? extractString(payload, "pay_time") : null;
         LocalDateTime payTime = payTimeStr != null ? parseLocalDateTime(payTimeStr) : null;
 
-        // 清理 payload 中已提取到主表列的字段 — 从映射 + 公共元数据键列表构建移除集
-        Map<String, Object> extAttributes = new LinkedHashMap<>(payload);
-        Set<String> keysToRemove = new LinkedHashSet<>();
-        keysToRemove.addAll(columnKeys);
-        keysToRemove.addAll(COMMON_METADATA_KEYS);
-        keysToRemove.forEach(extAttributes::remove);
-
-        // Step 1: 写主表 transaction_event
         em.createNativeQuery(
                 "INSERT INTO transaction_event (event_id, program_code, member_id, event_type, "
                         + "event_time, channel, source_event_id, idempotency_key, "
@@ -175,5 +191,43 @@ public class CascadePersistenceService {
     private String toJson(Object obj) {
         try { return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj); }
         catch (Exception e) { return "{}"; }
+    }
+
+    /**
+     * 校验 ext_attributes 与 program_schema 定义的一致性。
+     * 通过 SchemaMappingResolver 根据 eventType 解析对应的 schema 类型，
+     * 校验 ext_attributes 的顶层字段是否在 schema 的 properties 中定义。
+     */
+    @SuppressWarnings("unchecked")
+    private void validateExtAttributes(String programCode, String eventType, Map<String, Object> extAttributes) {
+        if (extAttributes == null || extAttributes.isEmpty()) return;
+
+        // 通过 SchemaMappingResolver 解析 schema 类型（基于 program_schema 表定义）
+        String schemaType = schemaResolver.resolveSchemaType(eventType);
+        Map<String, Object> fieldSchema = schemaResolver.resolveSchema(programCode, schemaType);
+
+        if (fieldSchema == null) {
+            log.debug("[CascadePersistence] 未找到 schema 定义: program={}, schemaType={}", programCode, schemaType);
+            return;
+        }
+
+        Map<String, Object> properties = (Map<String, Object>) fieldSchema.get("properties");
+        if (properties == null || properties.isEmpty()) {
+            return;
+        }
+
+        Set<String> allowedFields = properties.keySet();
+        for (String key : extAttributes.keySet()) {
+            if (!allowedFields.contains(key)) {
+                log.warn("[CascadePersistence] ext_attributes 包含未在 program_schema.{} 中定义的字段: field={}, allowed={}",
+                        schemaType, key, allowedFields);
+            }
+        }
+
+        // 注入 schema 版本
+        String version = schemaResolver.resolveSchemaVersion(programCode, schemaType);
+        if (version != null) {
+            extAttributes.put("_schema_version", version);
+        }
     }
 }

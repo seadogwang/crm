@@ -1,0 +1,37 @@
+{
+  "entityType": "MEMBER",
+  "schema": {
+    "type": "object",
+    "title": "Member Ext Attributes",
+    "properties": {
+      "name": {"type": "string", "title": "会员姓名"},
+      "gender": {"enum": ["MALE", "FEMALE", "UNKNOWN"], "type": "string", "title": "性别"},
+      "birthday": {"type": "string", "title": "出生日期", "format": "date"},
+      "email": {"type": "string", "title": "电子邮箱", "format": "email"},
+      "phone": {"type": "string", "title": "手机号"},
+      "age": {"type": "number", "title": "年龄"},
+      "city": {"type": "string", "title": "所在城市"},
+
+      "vip_level": {"enum": ["REGULAR", "SILVER", "GOLD", "DIAMOND", "PLATINUM"], "type": "string", "title": "VIP等级"},
+      "membership_source": {"enum": ["APP", "WECHAT", "WEB", "OFFLINE", "TMALL", "JD"], "type": "string", "title": "注册来源"},
+      "annual_income": {"type": "number", "title": "年收入(元)"},
+      "preferred_channel": {"enum": ["SMS", "WECHAT", "APP_PUSH", "EMAIL", "PHONE"], "type": "string", "title": "偏好通知渠道"},
+      "tags": {"type": "array", "items": {"type": "string"}, "title": "会员标签"},
+      "hobbies": {"type": "array", "items": {"type": "string"}, "title": "兴趣爱好"},
+      "referral_code": {"type": "string", "title": "推荐码"},
+      "notes": {"type": "string", "title": "客服备注"},
+      "id_verified": {"type": "boolean", "title": "实名认证"},
+      "last_purchase_date": {"type": "string", "title": "最近购买日期", "format": "date"},
+      "total_points_earned": {"type": "number", "title": "累计获得积分"},
+      "member_tenure_months": {"type": "number", "title": "会员月数"},
+      "preferred_store": {"type": "string", "title": "偏好门店"},
+      "consent_marketing": {"type": "boolean", "title": "同意营销推送"},
+
+      "pet_name": {"type": "string", "title": "宠物名称"},
+      "shoe_size": {"type": "number", "title": "鞋码"},
+      "level": {"type": "number", "title": "Level"},
+      "total_spent": {"type": "number", "title": "累计消费"},
+      "total_orders": {"type": "number", "title": "累计订单数"}
+    }
+  }
+}

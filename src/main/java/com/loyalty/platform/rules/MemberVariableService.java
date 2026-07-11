@@ -80,48 +80,47 @@ public class MemberVariableService {
     }
 
     /**
-     * 获取会员等级积分 — 所有 is_tier_calc=true 的积分类型余额汇总。
-     *
-     * <p>等级积分 = Σ(每个 is_tier_calc 积分类型的 totalAccrued - totalRedeemed - totalExpired)
-     *
-     * @param programCode 租户代码
-     * @param memberId    会员 ID
-     * @return 等级积分汇总值
+     * 获取可用兑换积分 — 汇总所有 isRedeemable=true 的积分类型，过滤有效期。
      */
-    public BigDecimal getTierPoints(String programCode, Long memberId) {
-        // 查询所有 is_tier_calc = true 的积分类型
-        List<PointTypeDefinition> tierCalcTypes = pointTypeRepo.findByProgramCodeAndStatus(programCode, "ACTIVE")
+    public BigDecimal getRedeemableBalance(String programCode, Long memberId) {
+        List<PointTypeDefinition> redeemableTypes = pointTypeRepo.findByProgramCodeAndStatus(programCode, "ACTIVE")
                 .stream()
-                .filter(pt -> Boolean.TRUE.equals(pt.getIsTierCalc()))
+                .filter(pt -> Boolean.TRUE.equals(pt.getIsRedeemable()))
                 .toList();
 
-        if (tierCalcTypes.isEmpty()) {
-            log.debug("[Variable] 无 is_tier_calc 积分类型: program={}", programCode);
+        if (redeemableTypes.isEmpty()) {
             return BigDecimal.ZERO;
         }
 
-        // 获取会员所有账户
-        List<MemberAccount> accounts = accountRepo.findAllByMemberId(programCode, memberId);
-
         BigDecimal total = BigDecimal.ZERO;
-        for (PointTypeDefinition pt : tierCalcTypes) {
-            MemberAccount account = accounts.stream()
-                    .filter(a -> pt.getTypeCode().equals(a.getAccountType()))
-                    .findFirst().orElse(null);
-
-            if (account != null) {
-                BigDecimal accrued = account.getTotalAccrued() != null ? account.getTotalAccrued() : BigDecimal.ZERO;
-                BigDecimal redeemed = account.getTotalRedeemed() != null ? account.getTotalRedeemed() : BigDecimal.ZERO;
-                BigDecimal expired = account.getTotalExpired() != null ? account.getTotalExpired() : BigDecimal.ZERO;
-                BigDecimal balance = accrued.subtract(redeemed).subtract(expired);
-                total = total.add(balance);
-                log.debug("[Variable] 等级积分 {}: accrued={}, redeemed={}, expired={}, balance={}",
-                        pt.getTypeCode(), accrued, redeemed, expired, balance);
-            }
+        for (PointTypeDefinition pt : redeemableTypes) {
+            BigDecimal balance = txRepo.sumAvailableBalance(programCode, memberId, pt.getTypeCode());
+            total = total.add(balance != null ? balance : BigDecimal.ZERO);
         }
-
-        log.debug("[Variable] 等级积分汇总: member={}, total={}", memberId, total);
+        log.debug("[Variable] 可用兑换积分汇总: member={}, total={}", memberId, total);
         return total;
+    }
+
+    /**
+     * 获取等级积分 — 按积分类型单独汇总，不再混合。
+     * 每个 isTierCalc=true 的积分类型独立计算，供规则引擎按维度使用。
+     */
+    public BigDecimal getTierBalanceByType(String programCode, Long memberId, String accountType) {
+        BigDecimal balance = txRepo.sumAvailableBalance(programCode, memberId, accountType);
+        return balance != null ? balance : BigDecimal.ZERO;
+    }
+
+    /**
+     * 获取指定类型的累计值（发分或核销），实时查流水表。
+     */
+    public BigDecimal getAccruedByType(String programCode, Long memberId, String accountType) {
+        BigDecimal sum = txRepo.sumByType(programCode, memberId, accountType, "ACCRUAL");
+        return sum != null ? sum : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getRedeemedByType(String programCode, Long memberId, String accountType) {
+        BigDecimal sum = txRepo.sumByType(programCode, memberId, accountType, "REDEMPTION");
+        return sum != null ? sum : BigDecimal.ZERO;
     }
 
     /**
@@ -139,7 +138,7 @@ public class MemberVariableService {
 
         switch (dimension) {
             case "TIER_POINTS":
-                return getTierPoints(programCode, memberId);
+                return getTierBalanceByType(programCode, memberId, "TIER");
             case "ORDER_COUNT":
                 return getVariable(programCode, memberId, "order_count_total");
             case "ORDER_COUNT_DAYS":

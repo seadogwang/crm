@@ -4,14 +4,19 @@ import com.loyalty.platform.member.MemberMergeService;
 import com.loyalty.platform.accounting.PointGrantService;
 import com.loyalty.platform.accounting.PointRedeemService;
 import com.loyalty.platform.api.service.MemberService;
+import com.loyalty.platform.api.service.PageLayoutService;
+import com.loyalty.platform.api.service.LayoutToFormilyConverter;
 import com.loyalty.platform.api.service.ProgramSchemaService;
+import com.loyalty.platform.api.dto.FormilySchema;
 import com.loyalty.platform.campaign.consent.TermsService;
 import com.loyalty.platform.common.annotation.Idempotent;
 import com.loyalty.platform.common.context.TenantContext;
 import com.loyalty.platform.common.dto.ApiResponse;
 import com.loyalty.platform.common.exception.BusinessException;
 import com.loyalty.platform.domain.entity.*;
+import com.loyalty.platform.domain.entity.PageLayout;
 import com.loyalty.platform.domain.repository.*;
+import com.loyalty.platform.domain.repository.PointTypeDefinitionRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +47,10 @@ public class MemberController {
     private final AccountTransactionRepository txRepo;
     private final MergeTaskRepository mergeTaskRepo;
     private final TierDefinitionRepository tierDefRepo;
+    private final PointTypeDefinitionRepository pointTypeRepo;
     private final MemberMergeService memberMergeService;
+    private final PageLayoutService layoutService;
+    private final LayoutToFormilyConverter layoutConverter;
 
     public MemberController(MemberService memberService, TermsService termsService,
                             MemberRepository memberRepo,
@@ -50,7 +58,10 @@ public class MemberController {
                             ProgramSchemaService programSchemaService, AccountTransactionRepository txRepo,
                             MergeTaskRepository mergeTaskRepo,
                             TierDefinitionRepository tierDefRepo,
-                            MemberMergeService memberMergeService) {
+                            MemberMergeService memberMergeService,
+                            PointTypeDefinitionRepository pointTypeRepo,
+                            PageLayoutService layoutService,
+                            LayoutToFormilyConverter layoutConverter) {
         this.memberService = memberService;
         this.termsService = termsService;
         this.memberRepo = memberRepo;
@@ -61,6 +72,9 @@ public class MemberController {
         this.mergeTaskRepo = mergeTaskRepo;
         this.tierDefRepo = tierDefRepo;
         this.memberMergeService = memberMergeService;
+        this.pointTypeRepo = pointTypeRepo;
+        this.layoutService = layoutService;
+        this.layoutConverter = layoutConverter;
     }
 
     // ==================== 查询 ====================
@@ -96,7 +110,19 @@ public class MemberController {
         String pc = TenantContext.getRequired();
         Optional<Member> opt = memberRepo.findByMemberId(pc, memberId);
         if (opt.isEmpty()) return ResponseEntity.ok(ApiResponse.error("ERR_MEMBER_NOT_FOUND", "会员不存在"));
-        return ResponseEntity.ok(ApiResponse.success(toFullVO(opt.get(), pc)));
+        Map<String, Object> vo = toFullVO(opt.get(), pc);
+        // 注入页面布局和 Formily Schema
+        try {
+            PageLayout layout = layoutService.getLayout(pc, "MEMBER", "DETAIL");
+            vo.put("pageLayout", layout.getLayoutConfig());
+            vo.put("pageLayoutId", layout.getId());
+            vo.put("pageLayoutVersion", layout.getVersion());
+            FormilySchema formilySchema = layoutConverter.convert(layout.getLayoutConfig());
+            vo.put("formilySchema", formilySchema.getSchema());
+        } catch (Exception e) {
+            log.warn("[MemberController] 加载页面布局失败: {}", e.getMessage());
+        }
+        return ResponseEntity.ok(ApiResponse.success(vo));
     }
 
     @PostMapping
@@ -211,6 +237,14 @@ public class MemberController {
         StringBuilder jpql = new StringBuilder("FROM AccountTransaction t WHERE t.programCode=:pc AND t.memberId=:mid");
         StringBuilder cnt = new StringBuilder("SELECT COUNT(t) FROM AccountTransaction t WHERE t.programCode=:pc AND t.memberId=:mid");
 
+        // 只显示可兑换类型的积分流水（排除记录型和纯算等级的类型）
+        List<String> redeemableTypes = pointTypeRepo.findByProgramCodeAndIsRedeemableTrue(pc)
+                .stream().map(PointTypeDefinition::getTypeCode).collect(Collectors.toList());
+        if (!redeemableTypes.isEmpty()) {
+            jpql.append(" AND t.accountType IN :redeemableTypes");
+            cnt.append(" AND t.accountType IN :redeemableTypes");
+        }
+
         if (typeFilter != null && !typeFilter.isEmpty()) {
             jpql.append(" AND t.transactionType IN (:types)");
             cnt.append(" AND t.transactionType IN (:types)");
@@ -221,6 +255,11 @@ public class MemberController {
 
         var q = em.createQuery(jpql.toString(), AccountTransaction.class).setParameter("pc", pc).setParameter("mid", mid);
         var cq = em.createQuery(cnt.toString(), Long.class).setParameter("pc", pc).setParameter("mid", mid);
+
+        if (!redeemableTypes.isEmpty()) {
+            q.setParameter("redeemableTypes", redeemableTypes);
+            cq.setParameter("redeemableTypes", redeemableTypes);
+        }
 
         if (typeFilter != null && !typeFilter.isEmpty()) {
             String[] types = typeFilter.split(",");
@@ -298,16 +337,20 @@ public class MemberController {
     @GetMapping("/{memberId}/channel-bindings")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> channels(@PathVariable Long memberId) {
         String pc = TenantContext.getRequired();
-        List<MemberUniqueKey> keys = em.createQuery(
-            "FROM MemberUniqueKey k WHERE k.programCode=:pc AND k.memberId=:mid",
-            MemberUniqueKey.class).setParameter("pc", pc).setParameter("mid", memberId).getResultList();
+        List<MemberChannelBinding> bindings = em.createQuery(
+            "FROM MemberChannelBinding b WHERE b.programCode=:pc AND b.memberId=:mid",
+            MemberChannelBinding.class).setParameter("pc", pc).setParameter("mid", String.valueOf(memberId)).getResultList();
 
-        List<Map<String, Object>> result = keys.stream().map(k -> {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (MemberChannelBinding b : bindings) {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("keyCombination", k.getKeyCombination());
-            m.put("keyValue", mask(k.getKeyValue()));
-            return m;
-        }).collect(Collectors.toList());
+            m.put("channel", b.getChannel());
+            m.put("channelUserId", b.getChannelUserId());
+            m.put("channelNickname", b.getChannelNickname());
+            m.put("status", b.getStatus());
+            m.put("authorizedAt", b.getAuthorizedAt());
+            result.add(m);
+        }
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -318,14 +361,31 @@ public class MemberController {
         String pc = TenantContext.getRequired();
         @SuppressWarnings("unchecked")
         Map<String, Object> ext = (Map<String, Object>) body.getOrDefault("ext_attributes", Map.of());
-        return ResponseEntity.ok(ApiResponse.success("更新成功", memberService.updateMember(pc, memberId, ext)));
+        Member updated = memberService.updateMember(pc, memberId, ext);
+
+        // 处理固定字段更新
+        if (body.containsKey("birthday") && body.get("birthday") != null) {
+            try {
+                java.time.LocalDate bd = java.time.LocalDate.parse(body.get("birthday").toString());
+                updated.setBirthday(bd);
+            } catch (Exception ignored) {}
+        }
+        if (body.containsKey("name")) updated.setName((String) body.get("name"));
+        if (body.containsKey("gender")) updated.setGender((String) body.get("gender"));
+        memberRepo.save(updated);
+
+        return ResponseEntity.ok(ApiResponse.success("更新成功", updated));
     }
 
     @PostMapping("/{memberId}/points/adjust")
     @Transactional
     public ResponseEntity<ApiResponse<Void>> adjustPoints(@PathVariable Long memberId, @RequestBody Map<String, Object> body) {
         String pc = TenantContext.getRequired();
-        String type = (String) body.getOrDefault("accountType", "REWARD");
+        // 默认取第一个可兑换积分类型，不再硬编码 REWARD
+        String type = (String) body.getOrDefault("accountType",
+            pointTypeRepo.findByProgramCodeAndStatus(pc, "ACTIVE").stream()
+                .filter(pt -> Boolean.TRUE.equals(pt.getIsRedeemable()))
+                .findFirst().map(PointTypeDefinition::getTypeCode).orElse("REWARD"));
         BigDecimal amount = new BigDecimal(body.get("amount").toString());
         boolean incr = Boolean.TRUE.equals(body.getOrDefault("increase", true));
         if (incr) pointGrantService.grantPoints(pc, memberId, type, amount, "MANUAL_ADJUST", null);
@@ -423,6 +483,10 @@ public class MemberController {
     private Map<String, Object> toFullVO(Member m, String pc) {
         Map<String, Object> vo = new LinkedHashMap<>();
         vo.put("memberId", String.valueOf(m.getMemberId()));
+        vo.put("name", m.getName());
+        vo.put("gender", m.getGender());
+        vo.put("birthday", m.getBirthday());
+        vo.put("enroll_channel", m.getEnrollChannel());
         vo.put("tierCode", m.getTierCode());
         vo.put("tierEffectiveFrom", m.getTierEffectiveFrom());
         vo.put("tierExpiresAt", m.getTierExpiresAt());
@@ -432,27 +496,35 @@ public class MemberController {
         vo.put("extAttributes", m.getExtAttributes());
         String mid = String.valueOf(m.getMemberId());
 
-        // 积分账户 — 从 point_type_definition 读取类型名称
+        // 积分账户 — 实时汇总 account_transaction 表
         List<Map<String, Object>> accounts = new ArrayList<>();
         List<PointTypeDefinition> pointTypes = em.createQuery(
             "FROM PointTypeDefinition p WHERE p.programCode=:pc AND p.status='ACTIVE'",
-            PointTypeDefinition.class).setParameter("pc", pc).getResultList();
+            PointTypeDefinition.class).setParameter("pc", pc).getResultList()
+            .stream().filter(pt -> !"RECORD".equals(pt.getPointCategory()))
+            .collect(Collectors.toList());
 
         for (PointTypeDefinition pt : pointTypes) {
             String type = pt.getTypeCode();
             Map<String, Object> acc = new LinkedHashMap<>();
             acc.put("accountType", type);
             acc.put("typeName", pt.getTypeName());
+            // 实时余额
             BigDecimal balance = txRepo.sumAvailableBalance(pc, m.getMemberId(), type);
             acc.put("balance", balance != null ? balance : BigDecimal.ZERO);
+            // 实时累计发分
+            BigDecimal totalAccrued = txRepo.sumByType(pc, m.getMemberId(), type, "ACCRUAL");
+            acc.put("totalAccrued", totalAccrued != null ? totalAccrued : BigDecimal.ZERO);
+            // 实时累计核销
+            BigDecimal totalRedeemed = txRepo.sumByType(pc, m.getMemberId(), type, "REDEMPTION");
+            acc.put("totalRedeemed", totalRedeemed != null ? totalRedeemed : BigDecimal.ZERO);
+            // 信用额度仍从 member_account 读取（配置项）
             try {
                 var mas = em.createQuery(
                     "FROM MemberAccount a WHERE a.programCode=:pc AND a.memberId=:mid AND a.accountType=:t",
                     MemberAccount.class).setParameter("pc", pc).setParameter("mid", m.getMemberId()).setParameter("t", type).getResultList();
                 if (!mas.isEmpty()) {
                     MemberAccount ma = mas.get(0);
-                    acc.put("totalAccrued", ma.getTotalAccrued());
-                    acc.put("totalRedeemed", ma.getTotalRedeemed());
                     acc.put("creditLimit", ma.getCreditLimit());
                     acc.put("creditUsed", ma.getCreditUsed());
                 }
@@ -498,7 +570,7 @@ public class MemberController {
         // Schema
         try {
             Map<String, Object> schema = programSchemaService.getCurrentSchema(pc, "MEMBER");
-            if (schema != null) vo.put("fieldSchema", schema.get("fieldSchema"));
+            if (schema != null) vo.put("fieldSchema", schema);
         } catch (Exception ignored) {}
 
         return vo;

@@ -4,8 +4,10 @@ import com.loyalty.platform.domain.entity.ProgramSchema;
 import com.loyalty.platform.domain.entity.RuleDefinition;
 import com.loyalty.platform.domain.repository.ProgramSchemaRepository;
 import com.loyalty.platform.domain.repository.RuleDefinitionRepository;
+import com.loyalty.platform.api.event.SchemaChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -17,10 +19,13 @@ public class ProgramSchemaService {
 
     private final ProgramSchemaRepository schemaRepo;
     private final RuleDefinitionRepository ruleRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public ProgramSchemaService(ProgramSchemaRepository schemaRepo, RuleDefinitionRepository ruleRepo) {
+    public ProgramSchemaService(ProgramSchemaRepository schemaRepo, RuleDefinitionRepository ruleRepo,
+                                ApplicationEventPublisher eventPublisher) {
         this.schemaRepo = schemaRepo;
         this.ruleRepo = ruleRepo;
+        this.eventPublisher = eventPublisher;
     }
 
     public Map<String, Object> getCurrentSchema(String programCode, String entityType) {
@@ -59,52 +64,60 @@ public class ProgramSchemaService {
 
     public ProgramSchema saveSchema(String programCode, String entityType, Map<String, Object> fieldSchema) {
         ProgramSchema existing = schemaRepo.findByProgramCodeAndEntityType(programCode, entityType.toUpperCase()).orElse(null);
+        ProgramSchema saved;
         if (existing != null) {
-            // 已有记录则更新字段定义，递增版本号，重置状态为 DRAFT
             int currentVer = parseVersionNumber(existing.getVersion());
             existing.setVersion(String.valueOf(currentVer + 1));
             existing.setFieldSchema(fieldSchema);
-            existing.setStatus("DRAFT");
+            // 保持原有状态不变（PUBLISHED 保持 PUBLISHED，DRAFT 保持 DRAFT）
             existing.setUpdatedAt(java.time.LocalDateTime.now());
-            return schemaRepo.save(existing);
+            saved = schemaRepo.save(existing);
+        } else {
+            ProgramSchema ps = ProgramSchema.builder()
+                    .programCode(programCode)
+                    .entityType(entityType.toUpperCase())
+                    .entityCategory("SYSTEM")
+                    .version("1")
+                    .status("DRAFT")
+                    .fieldSchema(fieldSchema)
+                    .schemaCode(entityType.toLowerCase())
+                    .build();
+            saved = schemaRepo.save(ps);
         }
-        // 首次创建
-        ProgramSchema ps = ProgramSchema.builder()
-                .programCode(programCode)
-                .entityType(entityType.toUpperCase())
-                .entityCategory("SYSTEM")
-                .version("1")
-                .status("DRAFT")
-                .fieldSchema(fieldSchema)
-                .schemaCode(entityType.toLowerCase())
-                .build();
-        return schemaRepo.save(ps);
+        // 发布 Schema 变更事件
+        eventPublisher.publishEvent(new SchemaChangedEvent(this, programCode,
+                entityType.toUpperCase(), saved.getVersionTag()));
+        return saved;
     }
 
     public ProgramSchema publishSchema(String programCode, String entityType, Map<String, Object> fieldSchema) {
         ProgramSchema existing = schemaRepo.findByProgramCodeAndEntityType(programCode, entityType.toUpperCase()).orElse(null);
+        ProgramSchema published;
         if (existing != null) {
-            // 已有记录：更新字段定义、递增版本号、标记为 PUBLISHED
             int currentVer = parseVersionNumber(existing.getVersion());
             existing.setVersion(String.valueOf(currentVer + 1));
             existing.setFieldSchema(fieldSchema);
             existing.setStatus("PUBLISHED");
             existing.setPublishedAt(java.time.LocalDateTime.now());
             existing.setUpdatedAt(java.time.LocalDateTime.now());
-            return schemaRepo.save(existing);
+            published = schemaRepo.save(existing);
+        } else {
+            ProgramSchema ps = ProgramSchema.builder()
+                    .programCode(programCode)
+                    .entityType(entityType.toUpperCase())
+                    .entityCategory("SYSTEM")
+                    .version("1")
+                    .status("PUBLISHED")
+                    .fieldSchema(fieldSchema)
+                    .schemaCode(entityType.toLowerCase())
+                    .publishedAt(java.time.LocalDateTime.now())
+                    .build();
+            published = schemaRepo.save(ps);
         }
-        // 首次创建并发布
-        ProgramSchema ps = ProgramSchema.builder()
-                .programCode(programCode)
-                .entityType(entityType.toUpperCase())
-                .entityCategory("SYSTEM")
-                .version("1")
-                .status("PUBLISHED")
-                .fieldSchema(fieldSchema)
-                .schemaCode(entityType.toLowerCase())
-                .publishedAt(java.time.LocalDateTime.now())
-                .build();
-        return schemaRepo.save(ps);
+        // 发布 Schema 变更事件
+        eventPublisher.publishEvent(new SchemaChangedEvent(this, programCode,
+                entityType.toUpperCase(), published.getVersionTag()));
+        return published;
     }
 
     /**

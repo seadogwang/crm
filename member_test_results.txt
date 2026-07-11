@@ -1,0 +1,100 @@
+========== 会员功能API测试结果 ==========
+测试日期: 2026-07-01
+
+===== [TC01] 最小必填信息注册 =====
+请求: mobile=13900000001, name=张三, 默认BASE等级
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"366378ff00d644afad95b4f668672d6f","timestamp":"2026-07-01T08:14:04.123504100Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"b58bd0c580e4471588a38c04ac7d20a7","timestamp":"2026-07-01T08:14:04.195805800Z"}
+
+===== [TC02] 完整信息注册 =====
+请求: mobile=13900000002, name=李四, gender=MALE, birthday=1995-06-15, tier=GOLD
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"2c0334e5017747e68abce0e04ed85a4b","timestamp":"2026-07-01T08:14:04.278184700Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"055ceddc038a400e82033cac51df715a","timestamp":"2026-07-01T08:14:04.353800800Z"}
+
+===== [TC03] 女性会员注册 gender=FEMALE =====
+请求: mobile=13900000003, name=王芳, gender=FEMALE, tier=SILVER
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"1b3059f560ac410385c5808480efb56d","timestamp":"2026-07-01T08:14:04.451057700Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"0842df136720466683e17f22d4db8595","timestamp":"2026-07-01T08:14:04.524394500Z"}
+
+===== [TC04] 白金会员注册 tier=PLATINUM =====
+请求: mobile=13900000004, name=赵六, tier=PLATINUM
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"569e3eeb596949a58af2fd5a65724774","timestamp":"2026-07-01T08:14:04.619249400Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"22fe121cb4934c6ca93ca8e7e93a012b","timestamp":"2026-07-01T08:14:04.710677100Z"}
+
+===== [TC05] 无手机号注册 =====
+请求: 无mobile字段, name=无手机号会员
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"421b3fe77e43420bbf1b5175c83b36ad","timestamp":"2026-07-01T08:14:04.799834800Z"}
+--- 搜索验证(应返回未找到) ---
+<!doctype html><html lang="en"><head><title>HTTP Status 400 – Bad Request</title><style type="text/css">body {font-family:Tahoma,Arial,sans-serif;} h1, h2, h3, b {color:white;background-color:#525D76;} h1 {font-size:22px;} h2 {font-size:16px;} h3 {font-size:14px;} p {font-size:12px;} a {color:black;} .line {height:1px;background-color:#525D76;border:none;}</style></head><body><h1>HTTP Status 400 – Bad Request</h1></body></html>
+
+===== [TC06] 重复手机号注册(异常) =====
+请求: 使用TC01已注册的手机号 13900000001
+--- 创建响应(期望ERR_MEMBER_EXISTS) ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"7af0d7271341445197a3fd2a5447819c","timestamp":"2026-07-01T08:14:04.996730600Z"}
+
+===== [TC07] 不带terms_accepted注册(异常) =====
+请求: terms_accepted=false
+--- 创建响应(期望ERR_TERMS_NOT_ACCEPTED) ---
+{"code":"ERR_MISSING_IDEMPOTENCY_KEY","message":"请求头缺失 X-Idempotency-Key","traceId":"899e9dbe65ad42ce9a6000ad89af4d7d","timestamp":"2026-07-01T08:14:05.086568600Z"}
+
+===== [TC08] 中文+特殊字符 =====
+请求: name=赵氏·子龙·测试号, 含emoji
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"a28a98d9d8724a1d85a680f494b5d1ee","timestamp":"2026-07-01T08:14:05.183810600Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"353bb4229d274c8eae2a15540d76d01c","timestamp":"2026-07-01T08:14:05.261422600Z"}
+
+===== [TC09] name字段100字符边界 =====
+请求: name=100个字符(10x10)
+--- 创建响应 ---
+{"code":"ERR_MISSING_IDEMPOTENCY_KEY","message":"请求头缺失 X-Idempotency-Key","traceId":"e24ffeb217ec467e826b1518638f4847","timestamp":"2026-07-01T08:14:05.366098700Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"7b7f3b5a531b475b8135608bc99bfc86","timestamp":"2026-07-01T08:14:05.446153300Z"}
+
+===== [TC10] 自定义memberId注册 =====
+请求: member_id=9000000001
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"d64cadfdd39748e286881ee73df0fead","timestamp":"2026-07-01T08:14:05.523329400Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"c7c12fbc0932484ebec02f7d71d79d0e","timestamp":"2026-07-01T08:14:05.611758100Z"}
+--- 通过memberId搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"d2fa24b06be6405187f83c01beff86e3","timestamp":"2026-07-01T08:14:05.692780100Z"}
+
+===== [TC11] +86前缀手机号注册 =====
+请求: mobile=+8613900000011
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"d07950f11a554b70ae81ab642797fc7c","timestamp":"2026-07-01T08:14:05.772681200Z"}
+--- 搜索验证(用纯数字13900000011) ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"6d14b6f3120d44178e1b2d4d851e4c17","timestamp":"2026-07-01T08:14:05.840771Z"}
+
+===== [TC12] 丰富ext_attributes =====
+请求: 包含生日/邮箱/地址/标签等多字段
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"02044e01f56842ebb607b66465289f52","timestamp":"2026-07-01T08:14:05.923123800Z"}
+--- 搜索验证 ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"ef186cab5bad41deb925f205d3cfac63","timestamp":"2026-07-01T08:14:06.006792600Z"}
+
+===== [TC13a] 手机号含空格 =====
+请求: mobile=139 0000 0013
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"2247103e295c4d7badfe7f1484ccda89","timestamp":"2026-07-01T08:14:06.095444400Z"}
+--- 搜索验证(用13900000013) ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"5d07447e2cbf436b97d031be23862695","timestamp":"2026-07-01T08:14:06.182715200Z"}
+
+===== [TC13b] 手机号含横线 =====
+请求: mobile=139-0000-0014
+--- 创建响应 ---
+{"code":"ERR_INTERNAL","message":"系统繁忙，请稍后重试","traceId":"d30a179c328f4457b87479ba24954c68","timestamp":"2026-07-01T08:14:06.262199900Z"}
+--- 搜索验证(用13900000014) ---
+{"code":"SUCCESS","message":"未找到会员","traceId":"4f9a4bd195c746f69c2c6ada4062f468","timestamp":"2026-07-01T08:14:06.362959500Z"}
+
+========== 测试完毕 ==========

@@ -1,0 +1,37 @@
+{
+  "tables": [],
+  "buttons": [
+    {
+      "text": "邀请成员",
+      "class": "ui-btn ui-btn-link project-action-item-DWCeH_ nav-item-vertical-h5vtwb no-drag flex-col mt-3"
+    },
+    {
+      "text": "安装浏览器扩展",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm"
+    },
+    {
+      "text": "在桌面版打开",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm btn-i5W72u"
+    },
+    {
+      "text": "在线",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm flex items-center cursor-pointer undefined ml-2"
+    },
+    {
+      "text": "请求代理",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm flex items-center cursor-pointer item-vOGRPY ml-2 button-TS_P2M"
+    },
+    {
+      "text": "Cookie 管理",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm flex items-center cursor-pointer item-vOGRPY ml-2"
+    },
+    {
+      "text": "回收站",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm flex items-center cursor-pointer item-vOGRPY ml-2"
+    },
+    {
+      "text": "文档 & 交流群",
+      "class": "ui-btn ui-btn-text ui-btn-flex ui-btn-sm ui-dropdown-trigger flex items-center cursor-pointer ml-2"
+    }
+  ]
+}

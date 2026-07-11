@@ -231,18 +231,19 @@ public class PointGrantService {
             }
         }
 
-        // ==================== Step 3: 跨账户还信用——用当前资产偿还 CREDIT 账户欠款 ====================
-        // 设计文档 4.2.2: 信用欠款记录在独立的 CREDIT 账户上，需跨账户查询
-        if (remainingToGrant.compareTo(BigDecimal.ZERO) > 0) {
+        // ==================== Step 3: 跨账户还信用——用当前资产偿还信用账户欠款 ====================
+        // 动态查找信用账户类型，不再硬编码 CREDIT
+        String creditType = getCreditTypeCode(programCode);
+        if (remainingToGrant.compareTo(BigDecimal.ZERO) > 0 && creditType != null) {
             MemberAccount creditAccount = accountRepo.findByMemberIdAndTypeForUpdate(
-                    programCode, memberId, "CREDIT").orElse(null);
+                    programCode, memberId, creditType).orElse(null);
 
             if (creditAccount != null && creditAccount.getCreditUsed().compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal creditDebt = creditAccount.getCreditUsed();
                 BigDecimal offsetAmount = remainingToGrant.min(creditDebt);
 
-                // 在 CREDIT 账户生成 CREDIT_REPAY 流水（正向入账，偿还信用）
-                insertTransaction(programCode, memberId, "CREDIT", creditAccount.getAccountId(),
+                // 在信用账户生成 CREDIT_REPAY 流水
+                insertTransaction(programCode, memberId, creditType, creditAccount.getAccountId(),
                         "CREDIT_REPAY", offsetAmount, null, ruleCode, ruleSnapshotId, null);
 
                 // 扣减 CREDIT 账户的信用已用额度（乐观锁 version 保护）
@@ -300,13 +301,9 @@ public class PointGrantService {
                     accrualTx.getId(), step2Allocations.size());
         }
 
-        // ==================== Step 5: 更新累计统计 ====================
-        // R-PTS-06: totalAccrued 只统计实际入账部分（remainingToGrant），不含冲抵透支/信用的部分
-        account.setTotalAccrued(account.getTotalAccrued().add(remainingToGrant.compareTo(BigDecimal.ZERO) > 0 ? remainingToGrant : BigDecimal.ZERO));
-        accountRepo.save(account);
-
-        log.info("[Grant] 发分完成: member={}, type={}, originalRequest={}, actualAccrued={}, totalAccrued={}",
-                memberId, accountType, pointsToGrant, remainingToGrant, account.getTotalAccrued());
+        // ==================== Step 5: 更新累计统计（已废弃预计算，改为实时查询 account_transaction 表） ====================
+        log.info("[Grant] 发分完成: member={}, type={}, request={}, actualAccrued={}",
+                memberId, accountType, pointsToGrant, remainingToGrant);
     }
 
     // ==================== 辅助方法 ====================
@@ -382,26 +379,37 @@ public class PointGrantService {
         if (newLimit == null || newLimit.compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessException("ERR_INVALID_CREDIT", "授信额度不能为负数");
         }
+        String creditType = getCreditTypeCode(programCode);
+        if (creditType == null) {
+            throw new BusinessException("ERR_NO_CREDIT_TYPE", "未配置信用类型积分");
+        }
         MemberAccount creditAccount = accountRepo.findByMemberIdAndTypeForUpdate(
-                programCode, memberId, "CREDIT").orElse(null);
+                programCode, memberId, creditType).orElse(null);
 
         if (creditAccount == null) {
             creditAccount = MemberAccount.builder()
                     .programCode(programCode)
                     .memberId(memberId)
-                    .accountType("CREDIT")
+                    .accountType(creditType)
                     .creditLimit(BigDecimal.ZERO)
                     .creditUsed(BigDecimal.ZERO)
                     .overdraftLimit(BigDecimal.ZERO)
-                    .totalAccrued(BigDecimal.ZERO)
-                    .totalRedeemed(BigDecimal.ZERO)
-                    .totalExpired(BigDecimal.ZERO)
                     .build();
             creditAccount = accountRepo.save(creditAccount);
-            log.info("[Credit] CREDIT 账户已创建: member={}, accountId={}", memberId, creditAccount.getAccountId());
+            log.info("[Credit] 信用账户已创建: member={}, accountId={}", memberId, creditAccount.getAccountId());
         }
         creditAccount.setCreditLimit(newLimit);
         accountRepo.save(creditAccount);
         log.info("[Credit] 授信额度已设置: member={}, creditLimit={}", memberId, newLimit);
+    }
+
+    /** 动态获取信用类型代码，不再硬编码 CREDIT */
+    private String getCreditTypeCode(String programCode) {
+        return pointTypeRepo.findByProgramCodeAndStatus(programCode, "ACTIVE").stream()
+                .filter(pt -> Boolean.TRUE.equals(pt.getAllowNegative())
+                        || (pt.getCreditLimit() != null && pt.getCreditLimit().compareTo(BigDecimal.ZERO) > 0))
+                .findFirst()
+                .map(PointTypeDefinition::getTypeCode)
+                .orElse(null);
     }
 }

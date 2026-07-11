@@ -1,0 +1,100 @@
+{
+  "leftNav": [
+    {
+      "text": "接口管理",
+      "active": true,
+      "class": "nav-item-_p91dW no-drag nav-item-active-xLTAqS"
+    },
+    {
+      "text": "自动化测试",
+      "active": false,
+      "class": "nav-item-_p91dW no-drag"
+    },
+    {
+      "text": "分享文档",
+      "active": false,
+      "class": "nav-item-_p91dW no-drag"
+    },
+    {
+      "text": "请求历史",
+      "active": false,
+      "class": "nav-item-_p91dW no-drag"
+    },
+    {
+      "text": "项目设置",
+      "active": false,
+      "class": "nav-item-_p91dW no-drag"
+    }
+  ],
+  "sidebarTitle": "测试",
+  "sidebarTree": [
+    "默认模块",
+    "接口根目录",
+    "GET测试接口",
+    "数据模型",
+    "组件库",
+    "快捷请求"
+  ],
+  "sidebarFullText": "默认模块接口根目录GET测试接口数据模型组件库快捷请求",
+  "breadcrumb": "主窗口/测试/",
+  "tabs": [
+    {
+      "text": "请选择环境",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "请选择环境",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    },
+    {
+      "text": "",
+      "active": false
+    }
+  ],
+  "rightPanel": "请选择环境新建 HTTP 接口新建数据模型新建 Markdown快捷请求更多功能支持导入 Swagger、Postman、cURL 等 20 多种格式数据在线请求代理 Cookie 管理回收站文档 & 交流群",
+  "bottomBar": "支持导入 Swagger、Postman、cURL 等 20 多种格式数据",
+  "buttons": [
+    "邀请成员",
+    "安装浏览器扩展",
+    "在桌面版打开",
+    "在线",
+    "请求代理",
+    "Cookie 管理",
+    "回收站",
+    "文档 & 交流群"
+  ],
+  "tables": [],
+  "activeNav": "接口管理"
+}

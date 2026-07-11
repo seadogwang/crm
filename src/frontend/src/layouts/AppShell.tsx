@@ -8,7 +8,7 @@ import {
   SettingOutlined, UserOutlined, LogoutOutlined, ApartmentOutlined,
   SafetyCertificateOutlined, FileTextOutlined, WarningOutlined, RobotOutlined,
   BarChartOutlined, ProjectOutlined, ThunderboltOutlined, BranchesOutlined,
-  ExperimentOutlined,
+  ExperimentOutlined, FormOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import api from '../api';
@@ -41,18 +41,19 @@ function filterMenuByPermissions(items: MenuItemType[], permissions: string[]): 
 
 const menuItems: MenuItemType[] = [
   {
-    key: 'member', icon: <TeamOutlined />, label: '会员服务', requiredPermission: 'MEMBER_READ',
-    children: [
-      { key: 'member-list', icon: <TeamOutlined />, label: '会员列表', path: '/members', requiredPermission: 'MEMBER_READ' },
-    ],
+    key: 'member', icon: <TeamOutlined />, label: '会员服务', path: '/members', requiredPermission: 'MEMBER_READ',
   },
   {
-    key: 'tier-rule', icon: <CrownOutlined />, label: '规则引擎', requiredPermission: 'RULE_READ',
+    key: 'tier-rule', icon: <CrownOutlined />, label: '忠诚度', requiredPermission: 'RULE_READ',
     children: [
-      { key: 'rule-list', icon: <SettingOutlined />, label: '积分规则', path: '/rules', requiredPermission: 'RULE_READ' },
-      { key: 'tier-rule-list', icon: <CrownOutlined />, label: '等级规则', path: '/rules/tier', requiredPermission: 'RULE_READ' },
-      { key: 'rule-ai', icon: <RobotOutlined />, label: 'AI 规则助手', path: '/rules/ai', requiredPermission: 'RULE_READ' },
-      { key: 'flow-designer', icon: <ApartmentOutlined />, label: '流程设计器', path: '/flow-designer', requiredPermission: 'RULE_WRITE' },
+      { key: 'point-type', icon: <DollarOutlined />, label: '积分类型', path: '/points/type', requiredPermission: 'POINTS_GRANT' },
+      { key: 'tier-config', icon: <SettingOutlined />, label: '等级设置', path: '/tiers', requiredPermission: 'RULE_READ' },
+      { key: 'variable-mgmt', icon: <CodeOutlined />, label: '变量配置', path: '/variables', requiredPermission: 'RULE_READ' },
+      { key: 'rule-engine', icon: <ThunderboltOutlined />, label: '累积规则配置', path: '/rules', requiredPermission: 'RULE_READ' },
+      { key: 'tier-rule-list', icon: <CrownOutlined />, label: '等级评估配置', path: '/rules/tier', requiredPermission: 'RULE_READ' },
+      { key: 'flow-designer', icon: <ApartmentOutlined />, label: '计算流程配置', path: '/flow-designer', requiredPermission: 'RULE_WRITE' },
+      { key: 'oneid-strategy', icon: <SafetyCertificateOutlined />, label: 'One-ID 策略', path: '/system/oneid-strategy', requiredPermission: 'CHANNEL_READ' },
+      { key: 'campaign-terms', icon: <FileTextOutlined />, label: '条款管理', path: '/campaign/terms', requiredPermission: 'TENANT_WRITE' },
     ],
   },
   {
@@ -67,32 +68,30 @@ const menuItems: MenuItemType[] = [
       { key: 'campaign-opportunity', icon: <ThunderboltOutlined />, label: '机会智能', path: '/campaign/opportunity', requiredPermission: 'RULE_READ' },
       { key: 'campaign-simulation', icon: <BarChartOutlined />, label: '模拟优化', path: '/campaign/simulation', requiredPermission: 'RULE_READ' },
       { key: 'campaign-feedback', icon: <BellOutlined />, label: '反馈闭环', path: '/campaign/feedback', requiredPermission: 'AUDIT_READ' },
+      { key: 'campaign-calendar', icon: <BarChartOutlined />, label: '活动日历', path: '/campaign/calendar', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-consent', icon: <SafetyCertificateOutlined />, label: '偏好管理', path: '/campaign/consent', requiredPermission: 'MEMBER_WRITE' },
+      { key: 'campaign-strategy', icon: <ThunderboltOutlined />, label: '策略蓝图', path: '/campaign/strategy-blueprint', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-budget', icon: <DollarOutlined />, label: '预算节奏', path: '/campaign/budget-pacing', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-sharing', icon: <ApartmentOutlined />, label: '共享管理', path: '/campaign/sharing', requiredPermission: 'TENANT_WRITE' },
+      { key: 'campaign-recommendation', icon: <RobotOutlined />, label: '推荐管理', path: '/campaign/recommendation', requiredPermission: 'RULE_READ' },
+      { key: 'campaign-experiment', icon: <ExperimentOutlined />, label: '实验管理', path: '/campaign/experiment', requiredPermission: 'RULE_WRITE' },
     ],
   },
   {
-    key: 'settings', icon: <SettingOutlined />, label: '设置', requiredPermission: 'TENANT_READ',
+    key: 'system-mgmt', icon: <SafetyCertificateOutlined />, label: '系统设置', requiredPermission: 'TENANT_READ',
     children: [
-      { key: 'points-grant', icon: <DollarOutlined />, label: '积分类型', path: '/points/grant', requiredPermission: 'POINTS_GRANT' },
-      { key: 'tier-config', icon: <CrownOutlined />, label: '等级设置', path: '/tiers', requiredPermission: 'RULE_READ' },
-      { key: 'channel-list', icon: <ApiOutlined />, label: '渠道列表', path: '/channels', requiredPermission: 'CHANNEL_READ' },
-      { key: 'scripting', icon: <CodeOutlined />, label: '脚本工作台', path: '/channels/scripting', requiredPermission: 'CHANNEL_WRITE' },
+      { key: 'channel-pass', icon: <ApiOutlined />, label: '渠道会员通', path: '/system/channel-pass', requiredPermission: 'CHANNEL_READ' },
+      { key: 'master-data', icon: <SettingOutlined />, label: '主数据管理', path: '/system/master-data', requiredPermission: 'TENANT_READ' },
+      { key: 'page-designer', icon: <SettingOutlined />, label: '实体模型配置', path: '/entity-designer', requiredPermission: 'SCHEMA_WRITE' },
       { key: 'roles', icon: <SafetyCertificateOutlined />, label: '角色权限', path: '/system/roles', requiredPermission: 'TENANT_WRITE' },
       { key: 'users', icon: <UserOutlined />, label: '用户管理', path: '/system/users', requiredPermission: 'TENANT_WRITE' },
       { key: 'logs', icon: <FileTextOutlined />, label: '操作日志', path: '/system/logs', requiredPermission: 'AUDIT_READ' },
       { key: 'spi-logs', icon: <AuditOutlined />, label: 'SPI 日志', path: '/system/spi-logs', requiredPermission: 'AUDIT_READ' },
-      { key: 'audit', icon: <WarningOutlined />, label: '租户审计', path: '/system/audit', requiredPermission: 'AUDIT_READ' },
       { key: 'llm-config', icon: <RobotOutlined />, label: '大模型配置', path: '/system/llm-config', requiredPermission: 'TENANT_WRITE' },
-      // 从营销管理移入的二级菜单
-      { key: 'campaign-strategy', icon: <ThunderboltOutlined />, label: '策略蓝图', path: '/campaign/strategy-blueprint', requiredPermission: 'RULE_READ' },
-      { key: 'campaign-budget', icon: <DollarOutlined />, label: '预算节奏', path: '/campaign/budget-pacing', requiredPermission: 'RULE_READ' },
-      { key: 'campaign-calendar', icon: <BarChartOutlined />, label: '活动日历', path: '/campaign/calendar', requiredPermission: 'RULE_READ' },
       { key: 'campaign-dlq', icon: <WarningOutlined />, label: '死信队列', path: '/campaign/dlq', requiredPermission: 'AUDIT_READ' },
       { key: 'campaign-webhook', icon: <ApiOutlined />, label: 'Webhook 监控', path: '/campaign/webhook', requiredPermission: 'CHANNEL_READ' },
-      { key: 'campaign-consent', icon: <SafetyCertificateOutlined />, label: '偏好管理', path: '/campaign/consent', requiredPermission: 'MEMBER_WRITE' },
-      { key: 'campaign-sharing', icon: <ApartmentOutlined />, label: '共享管理', path: '/campaign/sharing', requiredPermission: 'TENANT_WRITE' },
-      { key: 'campaign-recommendation', icon: <RobotOutlined />, label: '推荐管理', path: '/campaign/recommendation', requiredPermission: 'RULE_READ' },
-      { key: 'campaign-experiment', icon: <ExperimentOutlined />, label: '实验管理', path: '/campaign/experiment', requiredPermission: 'RULE_WRITE' },
-      { key: 'campaign-terms', icon: <FileTextOutlined />, label: '条款管理', path: '/campaign/terms', requiredPermission: 'TENANT_WRITE' },
+      { key: 'channel-list', icon: <ApiOutlined />, label: '渠道列表', path: '/channels', requiredPermission: 'CHANNEL_READ' },
+      { key: 'audit', icon: <WarningOutlined />, label: '租户审计', path: '/system/audit', requiredPermission: 'AUDIT_READ' },
     ],
   },
 ];

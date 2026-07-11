@@ -1,0 +1,38 @@
+{
+  "project": {"id": 8076196, "name": "测试"},
+  "singleApiCases": [
+    {"id": 1, "name": "创建新用户", "method": "POST", "path": "/api/v1/users", "status": "todo"},
+    {"id": 2, "name": "创建积分活动", "method": "POST", "path": "/api/v1/campaigns", "status": "todo"},
+    {"id": 3, "name": "查询用户列表", "method": "GET", "path": "/api/v1/users", "status": "todo"},
+    {"id": 4, "name": "查询积分活动列表", "method": "GET", "path": "/api/v1/campaigns", "status": "todo"},
+    {"id": 5, "name": "积分兑换", "method": "POST", "path": "/api/v1/exchange", "status": "todo"},
+    {"id": 6, "name": "查看用户详情", "method": "GET", "path": "/api/v1/users/:id", "status": "todo"},
+    {"id": 7, "name": "查询用户积分余额", "method": "GET", "path": "/api/v1/users/:id/points", "status": "todo"}
+  ],
+  "scenarioCases": [
+    {
+      "id": 1, "name": "tesst", "priority": "P2", "description": "", "author": "狐友9VJQ",
+      "steps": [
+        {"id": 1, "type": "http", "name": "未命名", "enabled": true},
+        {"id": 2, "type": "if", "name": "If a 等于 b", "enabled": true, "condition": "a == b", "children": [
+          {"id": 3, "type": "foreach", "name": "ForEach 循环中的元素", "enabled": true, "warning": true, "children": [
+            {"id": 4, "type": "database", "name": "未命名", "enabled": true}
+          ]}
+        ]},
+        {"id": 5, "type": "else", "name": "Else", "enabled": true, "children": [
+          {"id": 6, "type": "group", "name": "Group 分组", "enabled": true, "children": []}
+        ]},
+        {"id": 7, "type": "delay", "name": "Delay 等待 1000 毫秒", "enabled": true}
+      ],
+      "settings": {"environment": "测试环境", "testData": "不使用测试数据", "loopCount": 1, "threadCount": 1, "runOn": "本机", "notify": false, "shared": false}
+    }
+  ],
+  "testSuites": [{"id": 1, "name": "y'y", "cases": []}],
+  "testData": [],
+  "environments": [
+    {"id": 1, "name": "开发环境", "url": "http://localhost:8080"},
+    {"id": 2, "name": "测试环境", "url": "http://test.example.com"},
+    {"id": 3, "name": "生产环境", "url": "https://api.example.com"}
+  ],
+  "nextId": 100
+}

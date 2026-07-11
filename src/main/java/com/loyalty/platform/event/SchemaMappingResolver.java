@@ -1,5 +1,6 @@
 package com.loyalty.platform.event;
 
+import com.loyalty.platform.common.context.TenantContext;
 import com.loyalty.platform.domain.repository.ProgramSchemaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,21 @@ public class SchemaMappingResolver {
 
     public String resolveSchemaType(String eventType) {
         if (eventType == null) return "TRANSACTION";
-        return EVENT_TO_SCHEMA.getOrDefault(eventType, "TRANSACTION");
+
+        // 从映射表查找（映射表由 program_schema 的 entity_type 定义驱动）
+        String mapped = EVENT_TO_SCHEMA.get(eventType);
+        if (mapped != null) return mapped;
+
+        // 动态匹配：提取事件类型前缀，查找 program_schema 中是否存在对应 entity_type
+        String prefix = eventType.split("_")[0];
+        if (!prefix.equals(eventType)) {
+            String pc = TenantContext.get();
+            if (pc != null && schemaRepo.findByProgramCodeAndEntityType(pc, prefix).isPresent()) {
+                return prefix;
+            }
+        }
+
+        return "TRANSACTION";
     }
 
     public String resolveSchemaVersion(String programCode, String schemaType) {
@@ -49,6 +64,27 @@ public class SchemaMappingResolver {
     public Map<String, Object> resolveSchema(String programCode, String schemaType) {
         return schemaRepo.findCurrentByType(programCode, schemaType)
                 .map(ps -> ps.getFieldSchema())
+                .orElse(null);
+    }
+
+    /** 获取固定字段映射 */
+    public Map<String, Object> resolveFixedFieldMapping(String programCode, String schemaType) {
+        return schemaRepo.findByProgramCodeAndEntityType(programCode, schemaType)
+                .map(ps -> ps.getFixedFieldMapping())
+                .orElse(null);
+    }
+
+    /** 获取扩展属性列名 */
+    public String resolveExtColumn(String programCode, String schemaType) {
+        return schemaRepo.findByProgramCodeAndEntityType(programCode, schemaType)
+                .map(ps -> ps.getExtColumn())
+                .orElse("ext_attributes");
+    }
+
+    /** 获取实体表名 */
+    public String resolveTableName(String programCode, String schemaType) {
+        return schemaRepo.findByProgramCodeAndEntityType(programCode, schemaType)
+                .map(ps -> ps.getTableName())
                 .orElse(null);
     }
 }

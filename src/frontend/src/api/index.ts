@@ -78,4 +78,98 @@ export async function testChannelTransform(sourceJson: string, mappings: any[], 
   return data.data;
 }
 
+// ---- Point Type API (积分类型管理) ----
+
+export interface PointTypeDefinition {
+  id?: number;
+  programCode: string;
+  typeCode: string;
+  typeName: string;
+  description?: string;
+  pointCategory?: string;
+  isRedeemable: boolean;
+  isTierCalc: boolean;
+  isTransferable: boolean;
+  allowNegative: boolean;
+  allowRepay: boolean;
+  expiryMode: string;
+  expiryValue: number;
+  isVisible: boolean;
+  sortOrder: number;
+  status?: string;
+}
+
+export async function getPointTypes(programCode: string) {
+  const { data } = await api.get<ApiResponse<PointTypeDefinition[]>>('/point-types', { params: { programCode } });
+  return data.data;
+}
+
+export async function getRedeemableTypes(programCode: string) {
+  const { data } = await api.get<ApiResponse<PointTypeDefinition[]>>('/point-types/redeemable', { params: { programCode } });
+  return data.data;
+}
+
+export async function createPointType(type: PointTypeDefinition) {
+  const { data } = await api.post<ApiResponse<PointTypeDefinition>>('/point-types', type);
+  return data.data;
+}
+
+export async function updatePointType(typeCode: string, programCode: string, type: PointTypeDefinition) {
+  const { data } = await api.put<ApiResponse<PointTypeDefinition>>(`/point-types/${typeCode}`, type, { params: { programCode } });
+  return data.data;
+}
+
+export async function deletePointType(typeCode: string, programCode: string) {
+  const { data } = await api.delete<ApiResponse<null>>(`/point-types/${typeCode}`, { params: { programCode } });
+  return data;
+}
+
+// ---- Variable API (变量管理) ----
+
+export interface RuleVariableDefinition {
+  id?: string;
+  programCode: string;
+  varCode: string;
+  varName: string;
+  varType: string;
+  expression: string;
+  description?: string;
+  status?: string;
+}
+
+export async function getVariables(programCode: string) {
+  const { data } = await api.get<ApiResponse<RuleVariableDefinition[]>>('/variables', { params: { programCode } });
+  return data.data;
+}
+
+export async function getAvailablePointTypes(programCode: string) {
+  const { data } = await api.get<ApiResponse<{ typeCode: string; typeName: string }[]>>('/variables/available-types', { params: { programCode } });
+  return data.data;
+}
+
+export async function createVariable(variable: RuleVariableDefinition) {
+  const { data } = await api.post<ApiResponse<RuleVariableDefinition>>('/variables', variable);
+  return data.data;
+}
+
+export async function updateVariable(varCode: string, programCode: string, variable: RuleVariableDefinition) {
+  const { data } = await api.put<ApiResponse<RuleVariableDefinition>>(`/variables/${varCode}`, variable, { params: { programCode } });
+  return data.data;
+}
+
+export async function deleteVariable(varCode: string, programCode: string) {
+  const { data } = await api.delete<ApiResponse<null>>(`/variables/${varCode}`, { params: { programCode } });
+  return data;
+}
+
+export async function validateExpression(programCode: string, expression: string) {
+  const { data } = await api.post<ApiResponse<{ valid: boolean; message: string; extractedTypes: string[] }>>('/variables/validate', { programCode, expression });
+  return data.data;
+}
+
+export async function calculateVariable(programCode: string, varCode: string, memberId: number, windowDays?: number) {
+  const { data } = await api.post<ApiResponse<{ varCode: string; value: number; expression: string; details: Record<string, number> }>>('/variables/calculate', { programCode, varCode, memberId, windowDays: windowDays ?? 365 });
+  return data.data;
+}
+
 export default api;

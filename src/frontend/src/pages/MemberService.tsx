@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col, ConfigProvider, AutoComplete, Popconfirm } from 'antd';
+import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col, ConfigProvider, AutoComplete, Popconfirm, Form } from 'antd';
 import { SearchOutlined, CopyOutlined, EditOutlined, DollarOutlined, CrownOutlined, LockOutlined, MergeCellsOutlined, HistoryOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store';
+import FieldLayoutEditor from '../components/FieldLayoutEditor';
 import api from '../api';
 import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
 
@@ -11,6 +12,8 @@ const { Text, Title } = Typography;
 
 interface MemberVO {
   memberId: string; tierCode: string; status: string;
+  name?: string; gender?: string; birthday?: string;
+  enroll_channel?: string;
   schemaVersion: string; createdAt: string;
   extAttributes?: Record<string, any>;
   accounts?: AccountVO[]; recentTransactions?: TxVO[];
@@ -265,6 +268,16 @@ const MemberService: React.FC = () => {
   // 模态框
   const [ptsModal, setPtsModal] = useState(false);
   const [tierModal, setTierModal] = useState(false);
+  const [editInfoModal, setEditInfoModal] = useState(false);
+  const [editBirthday, setEditBirthday] = useState(false);
+  const [birthdayValue, setBirthdayValue] = useState('');
+  const [editMobile, setEditMobile] = useState(false);
+  const [mobileValue, setMobileValue] = useState('');
+  const [layoutMode, setLayoutMode] = useState(false);
+  const [memberLayout, setMemberLayout] = useState<any>(null);
+  const [editInfoForm] = Form.useForm();
+  const [editInfoSaving, setEditInfoSaving] = useState(false);
+  const [editInfoFields, setEditInfoFields] = useState<string[]>([]);
 
   const performSearch = async (kw: string) => {
     const trimmed = kw.trim();
@@ -280,6 +293,10 @@ const MemberService: React.FC = () => {
         fetchOrders(0, memberData);
         fetchTransactions(0, memberData);
         fetchTierLogs(0, memberData);
+        // 加载布局配置
+        api.get('/members/layout', { params: { programCode: 'PROG001' } }).then(({ data: d }) => {
+          if (d?.data?.sections) setMemberLayout(d.data);
+        }).catch(() => setMemberLayout(null));
       } else {
         setError('未找到会员');
       }
@@ -360,6 +377,60 @@ const MemberService: React.FC = () => {
     } catch (e: any) { message.error('冻结失败'); }
   };
 
+  const openEditInfoModal = () => {
+    if (!member) return;
+    const ext = member.extAttributes || {};
+
+    // 从 schema 中获取所有定义的字段名（properties 的 key）
+    const schemaProperties = member.fieldSchema?.properties;
+    let fields: string[];
+    if (schemaProperties && typeof schemaProperties === 'object') {
+      fields = Object.keys(schemaProperties).filter(k => !k.startsWith('_'));
+    } else {
+      // 无 schema 时回退：只展示已有值的字段
+      fields = Object.keys(ext).filter(k => !k.startsWith('_'));
+    }
+
+    // 预填已有值
+    const fieldValues: Record<string, unknown> = {};
+    for (const f of fields) {
+      fieldValues[f] = (ext as Record<string, unknown>)[f] ?? '';
+    }
+
+    setEditInfoFields(fields);
+    editInfoForm.setFieldsValue(fieldValues);
+    setEditInfoModal(true);
+  };
+
+  const handleEditInfoSave = async () => {
+    if (!member) return;
+    try {
+      const values = await editInfoForm.validateFields();
+      setEditInfoSaving(true);
+      // 收集所有 ext_attributes 字段
+      const ext: Record<string, unknown> = {};
+      for (const field of editInfoFields) {
+        const v = values[field];
+        if (v !== undefined && v !== '') {
+          ext[field] = v;
+        }
+      }
+      // 保留系统字段
+      if (member.extAttributes?._schema_version) {
+        ext._schema_version = member.extAttributes._schema_version;
+      }
+      await api.put(`/members/${member.memberId}`, { ext_attributes: ext });
+      message.success('会员信息已更新');
+      setEditInfoModal(false);
+      refresh();
+    } catch (e: any) {
+      if (e.errorFields) return;
+      message.error(e.response?.data?.message || '保存失败');
+    } finally {
+      setEditInfoSaving(false);
+    }
+  };
+
   const refresh = () => search();
 
   function txTypeDesc(type: string): string {
@@ -419,9 +490,25 @@ const MemberService: React.FC = () => {
   ];
 
   const channelColumns = [
-    { title: '标识类型', dataIndex: 'keyCombination', width: 150 },
-    { title: '标识值', dataIndex: 'keyValue', width: 200 },
+    { title: '渠道', dataIndex: 'channel', width: 80, render: (v: string) => <Tag>{v}</Tag> },
+    { title: '用户ID', dataIndex: 'channelUserId', width: 150 },
+    { title: '昵称', dataIndex: 'channelNickname', width: 120 },
+    { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'ACTIVE' ? 'green' : 'default'}>{v === 'ACTIVE' ? '已绑定' : '已解绑'}</Tag> },
+    { title: '授权时间', dataIndex: 'authorizedAt', width: 160, render: (v: string) => v ? new Date(v).toLocaleString('zh-CN') : '—' },
   ];
+
+  const [channelBindings, setChannelBindings] = useState<any[]>([]);
+  const [channelBindingsLoading, setChannelBindingsLoading] = useState(false);
+
+  useEffect(() => {
+    if (member) {
+      setChannelBindingsLoading(true);
+      api.get(`/members/${member.memberId}/channel-bindings`)
+        .then(({ data }) => setChannelBindings(data?.data || []))
+        .catch(() => setChannelBindings([]))
+        .finally(() => setChannelBindingsLoading(false));
+    }
+  }, [member]);
 
   return (
     <div className="campaign-page" style={s.pageStyle}>
@@ -466,43 +553,46 @@ const MemberService: React.FC = () => {
         <Button onClick={search}>重新查询</Button>
       </Empty>}
 
-      {member && (
+      {layoutMode && member && (
+        <FieldLayoutEditor
+          member={member}
+          onSave={(layout) => { setMemberLayout(layout); setLayoutMode(false); }}
+          onCancel={() => setLayoutMode(false)}
+        />
+      )}
+
+      {!layoutMode && member && (
         <>
           {/* 会员摘要卡片 */}
           <Card style={{ marginBottom: 12 }} bodyStyle={{ padding: 20 }}>
             <Row gutter={24}>
-              <Col span={14}>
+              <Col span={18}>
                 <Space direction="vertical" size={4}>
-                  <Space>
+                  <Space size={12} wrap>
                     <Text strong style={{ fontSize: 16 }}>会员ID: {member.memberId}</Text>
                     <Tag color={STATUS_COLOR[member.status] || 'default'}>{enumName('member_status', member.status)}</Tag>
                     <Button size="small" type="text" icon={<CopyOutlined />}
                       onClick={() => { navigator.clipboard.writeText(String(member.memberId)); message.success('已复制'); }} />
                   </Space>
-                  <Space size={16}>
-                    {member.extAttributes?.name && <Text style={{ fontSize: 13 }}>姓名: {member.extAttributes.name}</Text>}
-                    {member.extAttributes?.gender && <Text style={{ fontSize: 13 }}>性别: {member.extAttributes.gender === 'MALE' ? '男' : '女'}</Text>}
-                    {member.extAttributes?.birthday && <Text style={{ fontSize: 13 }}>生日: {member.extAttributes.birthday}</Text>}
-                    {member.extAttributes?.mobile && <Text style={{ fontSize: 13 }}>手机: {member.extAttributes.mobile}</Text>}
+                  <Space size={16} wrap>
+                    <Text style={{ fontSize: 13 }}>姓名: {member.name || member.extAttributes?.name || '—'}</Text>
+                    <Text style={{ fontSize: 13 }}>性别: {member.gender || member.extAttributes?.gender || '—'}</Text>
+                    <Text style={{ fontSize: 13 }}>生日: {member.birthday || member.extAttributes?.birthday || '—'}</Text>
+                    <Text style={{ fontSize: 13 }}>手机: {member.extAttributes?.mobile || '—'}</Text>
+                    <Text style={{ fontSize: 13 }}>入会渠道: {member.enroll_channel || '—'}</Text>
                   </Space>
-                  <Text style={{ fontSize: 13, color: '#666' }}>等级: <Tag color="gold">{member.tierCode}</Tag></Text>
                   <Text style={{ fontSize: 12, color: '#999' }}>注册时间: {member.createdAt?.substring(0, 10)}</Text>
                 </Space>
               </Col>
-              <Col span={10} style={{ textAlign: 'right' }}>
-                <Text strong style={{ fontSize: 28 }}>
-                  {member.accounts?.reduce((s: number, a: AccountVO) => s + (a.accountType !== 'CREDIT' ? (a.balance || 0) : 0), 0).toLocaleString()}
-                </Text>
-                <div><Text style={{ fontSize: 12, color: '#999' }}>积分总余额</Text></div>
-                {member.accounts?.find((a: AccountVO) => a.accountType === 'CREDIT')?.creditLimit && (
-                  <div><Text style={{ fontSize: 12, color: '#999' }}>
-                    信用: {member.accounts.find((a: AccountVO) => a.accountType === 'CREDIT')?.creditLimit?.toLocaleString()}
-                  </Text></div>
-                )}
+              <Col span={6} style={{ textAlign: 'right' }}>
+                <div><Tag color="gold" style={{ fontSize: 16, padding: '4px 16px', marginTop: 4 }}>{member.tierCode || '—'}</Tag></div>
               </Col>
             </Row>
             <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button size="small" icon={<EditOutlined />}>信息修改</Button>
+              <Button size="small" icon={<EditOutlined />} onClick={openEditInfoModal}>信息修改</Button>
+              <Button size="small" onClick={() => { setBirthdayValue(member.birthday || ''); setEditBirthday(true); }}>修改生日</Button>
+              <Button size="small" onClick={() => { setMobileValue(member.extAttributes?.mobile || ''); setEditMobile(true); }}>修改手机</Button>
+              <Button size="small" onClick={() => setLayoutMode(true)}>字段排版</Button>
               <Button size="small" icon={<DollarOutlined />} onClick={() => setPtsModal(true)}>调整积分</Button>
               <Button size="small" icon={<CrownOutlined />} onClick={() => setTierModal(true)}>调整等级</Button>
               {member.status !== 'SUSPENDED' ? (
@@ -570,8 +660,9 @@ const MemberService: React.FC = () => {
                 {
                   key: 'channels', label: <Space><ApiOutlined />渠道绑定</Space>,
                   children: (
-                    <Table className="campaign-table" dataSource={member.channels || []} columns={channelColumns}
-                      rowKey={(r, i) => r.keyCombination + i} size="small"
+                    <Table className="campaign-table" dataSource={channelBindings} columns={channelColumns}
+                      rowKey="channel" size="small"
+                      loading={channelBindingsLoading}
                       pagination={false} scroll={{ x: 'max-content' }}
                       locale={{ emptyText: '暂无渠道绑定' }} />
                   ),
@@ -590,6 +681,44 @@ const MemberService: React.FC = () => {
           <AdjustTierModal open={tierModal} memberId={member.memberId}
             currentTier={member.tierCode} tiers={member.tiers || []}
             onClose={() => setTierModal(false)} onDone={refresh} />
+          {/* 信息修改弹窗 */}
+          <Modal
+            title="修改会员信息"
+            open={editInfoModal}
+            onCancel={() => setEditInfoModal(false)}
+            onOk={() => editInfoForm.submit()}
+            confirmLoading={editInfoSaving}
+            width={560}
+          >
+            <Form form={editInfoForm} layout="vertical" onFinish={handleEditInfoSave}>
+              {editInfoFields.map(field => (
+                <Form.Item key={field} name={field} label={field}>
+                  <Input placeholder={`请输入 ${field}`} />
+                </Form.Item>
+              ))}
+              {editInfoFields.length === 0 && (
+                <Text type="secondary">暂无扩展属性字段</Text>
+              )}
+            </Form>
+          </Modal>
+          {/* 修改生日弹窗 */}
+          <Modal title="修改生日" open={editBirthday} onCancel={() => setEditBirthday(false)} onOk={async () => {
+            try {
+              await api.put(`/members/${member.memberId}`, { birthday: birthdayValue });
+              message.success('生日已更新'); setEditBirthday(false); refresh();
+            } catch (e: any) { message.error(e?.response?.data?.message || '操作失败'); }
+          }}>
+            <Input placeholder="如 1990-01-01" value={birthdayValue} onChange={e => setBirthdayValue(e.target.value)} />
+          </Modal>
+          {/* 修改手机弹窗 */}
+          <Modal title="修改手机号码" open={editMobile} onCancel={() => setEditMobile(false)} onOk={async () => {
+            try {
+              await api.put(`/members/${member.memberId}`, { ext_attributes: { ...member.extAttributes, mobile: mobileValue } });
+              message.success('手机号已更新'); setEditMobile(false); refresh();
+            } catch (e: any) { message.error(e?.response?.data?.message || '操作失败'); }
+          }}>
+            <Input placeholder="请输入手机号" value={mobileValue} onChange={e => setMobileValue(e.target.value)} />
+          </Modal>
         </>
       )}
 

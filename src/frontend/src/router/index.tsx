@@ -24,12 +24,15 @@ const PointsTransactions = lazy(() => import('../pages/PointsTransactions'));
 const PointsGrant = lazy(() => import('../pages/PointsGrant'));
 const PointsRedeem = lazy(() => import('../pages/PointsRedeem'));
 const TierConfig = lazy(() => import('../pages/TierConfig'));
-const RuleList = lazy(() => import('../pages/RuleList'));
 const TierRuleConfig = lazy(() => import('../pages/TierRuleConfig'));
-const TierRuleList = lazy(() => import('../pages/TierRuleList'));
 const TierActivityEditor = lazy(() => import('../pages/TierActivityEditor'));
-const RuleEditor = lazy(() => import('../pages/RuleEditor'));
-const PromoEditor = lazy(() => import('../pages/PromoEditor'));
+const PointTypeManagement = lazy(() => import('../pages/PointTypeManagement'));
+const VariableManagement = lazy(() => import('../pages/VariableManagement'));
+const RuleEngineEditor = lazy(() => import('../pages/RuleEngineEditor'));
+const RuleListPage = lazy(() => import('../pages/RuleListPage'));
+const MasterDataManagement = lazy(() => import('../pages/MasterDataManagement'));
+const ChannelMemberPass = lazy(() => import('../pages/ChannelMemberPass'));
+const OneIdStrategyPage = lazy(() => import('../pages/OneIdStrategyPage'));
 const SandboxTest = lazy(() => import('../pages/SandboxTest'));
 const FlowDesigner = lazy(() => import('../pages/FlowDesigner'));
 const ChannelList = lazy(() => import('../pages/ChannelList'));
@@ -51,6 +54,7 @@ const SpiLogs = lazy(() => import('../pages/SpiLogs'));
 const TenantAudit = lazy(() => import('../pages/TenantAudit'));
 const AIRuleAssistant = lazy(() => import('../pages/AIRuleAssistant'));
 const LlmConfig = lazy(() => import('../pages/LlmConfig'));
+const PageDesigner = lazy(() => import('../pages/DesignerPage'));
 
 // Campaign 营销管理
 const CampaignWorkspaceList = lazy(() => import('../pages/campaign/CampaignWorkspaceList'));
@@ -154,6 +158,12 @@ export const router = createBrowserRouter([
         element: <SuspenseWrapper><AuthGuard permission="SCHEMA_READ"><SchemaEditor /></AuthGuard></SuspenseWrapper>,
       },
 
+      // 实体设计器
+      {
+        path: 'entity-designer',
+        element: <SuspenseWrapper><AuthGuard permission="SCHEMA_WRITE"><PageDesigner /></AuthGuard></SuspenseWrapper>,
+      },
+
       // ChartDB
       {
         path: 'chartdb',
@@ -177,6 +187,10 @@ export const router = createBrowserRouter([
       },
 
       // 积分管理
+      {
+        path: 'points/type',
+        element: <SuspenseWrapper><AuthGuard permission="POINTS_GRANT"><PointTypeManagement /></AuthGuard></SuspenseWrapper>,
+      },
       {
         path: 'points/accounts',
         element: <SuspenseWrapper><AuthGuard permission="POINTS_GRANT"><PointsAccounts /></AuthGuard></SuspenseWrapper>,
@@ -209,31 +223,26 @@ export const router = createBrowserRouter([
       },
       {
         path: 'rules/tier',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_READ"><TierRuleList /></AuthGuard></SuspenseWrapper>,
+        element: <SuspenseWrapper><AuthGuard permission="RULE_READ"><TierRuleConfig /></AuthGuard></SuspenseWrapper>,
       },
+      // 规则配置平台（新）
+      // 规则设计器（新 - point_rule_1.md）
+      // 规则引擎编辑器（u.md 三栏布局）
       {
         path: 'rules',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_READ"><RuleList /></AuthGuard></SuspenseWrapper>,
+        element: <SuspenseWrapper><AuthGuard permission="RULE_READ"><RuleListPage /></AuthGuard></SuspenseWrapper>,
       },
       {
-        path: 'rules/promo/new',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><PromoEditor /></AuthGuard></SuspenseWrapper>,
+        path: 'rules/engine',
+        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><RuleEngineEditor /></AuthGuard></SuspenseWrapper>,
       },
       {
-        path: 'rules/promo/:id/edit',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><PromoEditor /></AuthGuard></SuspenseWrapper>,
+        path: 'rules/engine/:id/edit',
+        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><RuleEngineEditor /></AuthGuard></SuspenseWrapper>,
       },
       {
-        path: 'rules/new',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><RuleEditor /></AuthGuard></SuspenseWrapper>,
-      },
-      {
-        path: 'rules/:id/edit',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><RuleEditor /></AuthGuard></SuspenseWrapper>,
-      },
-      {
-        path: 'rules/:id/test',
-        element: <SuspenseWrapper><AuthGuard permission="RULE_WRITE"><SandboxTest /></AuthGuard></SuspenseWrapper>,
+        path: 'variables',
+        element: <SuspenseWrapper><AuthGuard permission="RULE_READ"><VariableManagement /></AuthGuard></SuspenseWrapper>,
       },
       {
         path: 'rules/ai',
@@ -384,6 +393,21 @@ export const router = createBrowserRouter([
       {
         path: 'system/llm-config',
         element: <SuspenseWrapper><AuthGuard permission="TENANT_WRITE"><LlmConfig /></AuthGuard></SuspenseWrapper>,
+      },
+      // 主数据管理
+      // 渠道会员通
+      // One-ID 策略
+      {
+        path: 'system/oneid-strategy',
+        element: <SuspenseWrapper><AuthGuard permission="CHANNEL_READ"><OneIdStrategyPage /></AuthGuard></SuspenseWrapper>,
+      },
+      {
+        path: 'system/channel-pass',
+        element: <SuspenseWrapper><AuthGuard permission="CHANNEL_READ"><ChannelMemberPass /></AuthGuard></SuspenseWrapper>,
+      },
+      {
+        path: 'system/master-data',
+        element: <SuspenseWrapper><AuthGuard permission="TENANT_READ"><MasterDataManagement /></AuthGuard></SuspenseWrapper>,
       },
       {
         path: 'system/roles',

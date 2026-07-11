@@ -5,9 +5,11 @@ import com.loyalty.platform.common.event.EventBridge;
 import com.loyalty.platform.common.exception.BusinessException;
 import com.loyalty.platform.domain.entity.AccountTransaction;
 import com.loyalty.platform.domain.entity.MemberAccount;
+import com.loyalty.platform.domain.entity.PointTypeDefinition;
 import com.loyalty.platform.domain.entity.RedemptionAllocation;
 import com.loyalty.platform.domain.repository.AccountTransactionRepository;
 import com.loyalty.platform.domain.repository.MemberAccountRepository;
+import com.loyalty.platform.domain.repository.PointTypeDefinitionRepository;
 import com.loyalty.platform.domain.repository.RedemptionAllocationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,7 @@ public class PointRedeemService {
 
     private final AccountTransactionRepository txRepo;
     private final MemberAccountRepository accountRepo;
+    private final PointTypeDefinitionRepository pointTypeRepo;
     private final RedemptionAllocationRepository allocationRepo;
     private final EventBridge eventBridge;
 
@@ -56,10 +59,12 @@ public class PointRedeemService {
 
     public PointRedeemService(AccountTransactionRepository txRepo,
                                MemberAccountRepository accountRepo,
+                               PointTypeDefinitionRepository pointTypeRepo,
                                RedemptionAllocationRepository allocationRepo,
                                @Autowired(required = false) EventBridge eventBridge) {
         this.txRepo = txRepo;
         this.accountRepo = accountRepo;
+        this.pointTypeRepo = pointTypeRepo;
         this.allocationRepo = allocationRepo;
         this.eventBridge = eventBridge;
     }
@@ -101,9 +106,10 @@ public class PointRedeemService {
             throw new BusinessException("ERR_ACCOUNT_FROZEN", "账户已被冻结兑换权限");
         }
 
-        // 加载 CREDIT 账户（信用额度在独立账户上）
-        MemberAccount creditAccount = accountRepo.findByMemberIdAndTypeForUpdate(
-                programCode, memberId, "CREDIT").orElse(null);
+        // 动态查找信用账户
+        String creditType = getCreditTypeCode(programCode);
+        MemberAccount creditAccount = creditType != null ? accountRepo.findByMemberIdAndTypeForUpdate(
+                programCode, memberId, creditType).orElse(null) : null;
 
         final Long accountId = account.getAccountId();
 
@@ -193,17 +199,13 @@ public class PointRedeemService {
         // ---- Step 6: 自有余额不足 → 信用额度透支（CREDIT 账户） ----
         if (remainingToRedeem.compareTo(BigDecimal.ZERO) > 0 && creditAccount != null) {
             BigDecimal creditDrawn = processCreditDrawdown(programCode, memberId, creditAccount,
-                    redemptionTx, remainingToRedeem);
+                    redemptionTx, remainingToRedeem, creditType);
             actuallyRedeemed = actuallyRedeemed.add(creditDrawn);
         }
 
-        // ---- Step 7: 更新累计统计 ----
-        // R-PTS-05: totalRedeemed 只统计实际扣减金额（批次 + 信用），非请求金额
-        account.setTotalRedeemed(account.getTotalRedeemed().add(actuallyRedeemed));
-        accountRepo.save(account);
-
-        log.info("[Redeem] 核销完成: member={}, type={}, requested={}, actuallyRedeemed={}, totalRedeemed={}",
-                memberId, accountType, pointsToRedeem, actuallyRedeemed, account.getTotalRedeemed());
+        // ---- Step 7: 累计统计已废弃预计算，改为实时查询 account_transaction 表 ----
+        log.info("[Redeem] 核销完成: member={}, type={}, requested={}, actuallyRedeemed={}",
+                memberId, accountType, pointsToRedeem, actuallyRedeemed);
     }
 
     // ==================== 辅助方法 ====================
@@ -264,7 +266,7 @@ public class PointRedeemService {
      */
     private BigDecimal processCreditDrawdown(String programCode, Long memberId,
                                         MemberAccount creditAccount, AccountTransaction redemptionTx,
-                                        BigDecimal shortfall) {
+                                        BigDecimal shortfall, String creditType) {
         BigDecimal creditRemaining = creditAccount.getCreditLimit().subtract(creditAccount.getCreditUsed());
         if (creditRemaining.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("ERR_CREDIT_EXHAUSTED",
@@ -280,7 +282,7 @@ public class PointRedeemService {
                 .accountId(creditAccount.getAccountId())
                 .programCode(programCode)
                 .memberId(memberId)
-                .accountType("CREDIT")
+                .accountType(creditType)
                 .transactionType("CREDIT_DRAWDOWN")
                 .amount(drawdownAmount.negate().setScale(SCALE, RoundingMode.HALF_UP))
                 .remainingAmount(BigDecimal.ZERO)
@@ -303,5 +305,15 @@ public class PointRedeemService {
                             + ", 缺口: " + finalShortfall.toPlainString());
         }
         return drawdownAmount;
+    }
+
+    /** 动态获取信用类型代码，不再硬编码 CREDIT */
+    private String getCreditTypeCode(String programCode) {
+        return pointTypeRepo.findByProgramCodeAndStatus(programCode, "ACTIVE").stream()
+                .filter(pt -> Boolean.TRUE.equals(pt.getAllowNegative())
+                        || (pt.getCreditLimit() != null && pt.getCreditLimit().compareTo(BigDecimal.ZERO) > 0))
+                .findFirst()
+                .map(PointTypeDefinition::getTypeCode)
+                .orElse(null);
     }
 }
