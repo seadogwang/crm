@@ -45,6 +45,8 @@ interface FieldDef {
   name: string; type: string; title: string; component: string;
   dbType: string; isPrimaryKey: boolean; isForeignKey: boolean;
   isRequired: boolean; isFixed: boolean;
+  showInUI?: boolean; availableInRules?: boolean;
+  masterData?: any;
 }
 
 const DB_TYPE_OPTIONS = ['VARCHAR', 'INT', 'BIGINT', 'DECIMAL', 'DATE', 'TIMESTAMP', 'BOOLEAN', 'TEXT', 'JSON'];
@@ -159,16 +161,37 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({ name: '', title: '', dbType: 'VARCHAR', isPrimaryKey: false, isRequired: false });
+  const [editForm, setEditForm] = useState<any>({ name: '', title: '', dbType: 'VARCHAR', isPrimaryKey: false, isRequired: false, showInUI: true, availableInRules: true,
+    masterDataEnabled: false, masterDataCode: '', masterDataType: 'ENUM', masterValueField: 'code', masterLabelField: 'label', masterComponent: 'select' });
   const [isHovering, setIsHovering] = useState(false);
   const connection = useConnection();
+  const [masterDataOptions, setMasterDataOptions] = useState<{ label: string; value: string }[]>([]);
+
+  useEffect(() => {
+    api.get('/master-data/definitions').then(({ data }: any) => {
+      setMasterDataOptions((data?.data || []).map((d: any) => ({
+        label: `${d.dataName} (${d.dataCode})`, value: d.dataCode,
+      })));
+    }).catch(() => {
+      setMasterDataOptions([
+        { label: 'GENDER (性别)', value: 'GENDER' },
+        { label: 'CHANNEL (渠道)', value: 'CHANNEL' },
+        { label: 'ORDER_STATUS (订单状态)', value: 'ORDER_STATUS' },
+      ]);
+    });
+  }, []);
 
   const isTarget = connection.inProgress && connection.fromNode.id !== id && isHovering;
   const focused = selected || isHovering || isTarget;
 
   const startEdit = (f?: FieldDef) => {
-    setEditForm(f ? { name: f.name, title: f.title, dbType: f.dbType, isPrimaryKey: f.isPrimaryKey, isRequired: f.isRequired }
-      : { name: '', title: '', dbType: 'VARCHAR', isPrimaryKey: false, isRequired: false });
+    setEditForm(f ? { name: f.name, title: f.title, dbType: f.dbType, isPrimaryKey: f.isPrimaryKey, isRequired: f.isRequired,
+      showInUI: f.showInUI ?? true, availableInRules: f.availableInRules ?? true,
+      masterDataEnabled: !!f.masterData, masterDataCode: f.masterData?.dataCode || '', masterDataType: f.masterData?.dataType || 'ENUM',
+      masterValueField: f.masterData?.valueField || 'code', masterLabelField: f.masterData?.labelField || 'label',
+      masterComponent: f.masterData?.component || 'select' }
+      : { name: '', title: '', dbType: 'VARCHAR', isPrimaryKey: false, isRequired: false, showInUI: true, availableInRules: true,
+        masterDataEnabled: false, masterDataCode: '', masterDataType: 'ENUM', masterValueField: 'code', masterLabelField: 'label', masterComponent: 'select' });
     setEditingField(f ? f.name : '__new__');
   };
 
@@ -178,8 +201,17 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
     const fieldDef: any = {
       type: jsonType, title: editForm.title || editForm.name,
       'x-db-metadata': { dataType: editForm.dbType || 'VARCHAR', primaryKey: editForm.isPrimaryKey, nullable: !editForm.isRequired, foreignKey: false },
-      'x-ui-metadata': { label: editForm.title || editForm.name, component: 'Input' },
+      'x-ui-metadata': { label: editForm.title || editForm.name, component: 'Input', showInUI: editForm.showInUI ?? true, availableInRules: editForm.availableInRules ?? true },
     };
+    if (editForm.masterDataEnabled && editForm.masterDataCode) {
+      fieldDef['x-master-data'] = {
+        dataCode: editForm.masterDataCode,
+        dataType: editForm.masterDataType,
+        valueField: editForm.masterValueField,
+        labelField: editForm.masterLabelField,
+        component: editForm.masterComponent,
+      };
+    }
     onAddField(editForm.name, fieldDef);
     setEditingField(null);
   };
@@ -203,7 +235,7 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
       onDoubleClick={() => !editing && setEditing(true)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
-      style={{ minWidth: expanded ? 400 : 240, cursor: 'grab' }}
+      style={{ minWidth: expanded ? 520 : 240, cursor: 'grab' }}
     >
       <div className="h-1.5 rounded-t-md" style={{ backgroundColor: '#1677ff' }} />
       <div className="flex h-9 items-center justify-between bg-slate-100 px-2">
@@ -228,6 +260,17 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
         </div>
       </div>
 
+      {editing && (
+        <div className="flex items-center px-2 py-1 text-[10px] text-slate-400 bg-slate-50 border-b border-slate-200">
+          <span style={{ flex: '1 1 0' }}>字段</span>
+          <span style={{ flex: '1 1 0' }}>显示名称</span>
+          <span style={{ flex: '1.2 1.2 0' }}>类型</span>
+          <span style={{ width: 36, textAlign: 'center' }}>主键</span>
+          <span style={{ width: 36, textAlign: 'center' }}>界面</span>
+          <span style={{ width: 36, textAlign: 'center' }}>规则</span>
+          <span style={{ width: 48, textAlign: 'center' }}>操作</span>
+        </div>
+      )}
       <div>
         {fields.map(f => {
           const isEditingThis = editing && editingField === f.name;
@@ -238,28 +281,64 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
               <Handle type="target" position={Position.Left} id={`${LEFT_HANDLE_PREFIX}${f.name}`}
                 className={`!absolute !-left-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
                 isConnectable={true} />
-              {f.isPrimaryKey && <KeyOutlined style={{ color: '#faad14', fontSize: 10, marginRight: 4 }} />}
-              {f.isFixed && !f.isPrimaryKey && <LockOutlined style={{ color: '#999', fontSize: 10, marginRight: 4 }} />}
               {isEditingThis ? (
-                <div className="nodrag flex items-center gap-1 flex-1 bg-yellow-50 -mx-1 px-1 py-0.5 rounded">
-                  <Input size="small" className="!w-16 !text-[11px]" placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-                  <Input size="small" className="!w-14 !text-[11px]" placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
-                  <Select size="small" className="!w-20 !text-[11px]" value={editForm.dbType || 'VARCHAR'} onChange={v => setEditForm({ ...editForm, dbType: v })}
+                <>
+                <div className="nodrag flex items-center gap-0 flex-1 bg-yellow-50 -mx-1 px-1 py-0.5 rounded">
+                  <Input size="small" style={{ flex: '1 1 0', fontSize: 11 }} placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                  <Input size="small" style={{ flex: '1 1 0', fontSize: 11 }} placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+                  <Select size="small" style={{ flex: '1.2 1.2 0', fontSize: 11 }} value={editForm.dbType || 'VARCHAR'} onChange={v => setEditForm({ ...editForm, dbType: v })}
                     options={DB_TYPE_OPTIONS.map(t => ({ value: t, label: t }))}
                     getPopupContainer={() => document.body} />
-                  <Tooltip title="主键"><Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} /></Tooltip>
-                  <Button size="small" type="link" className="!h-5 !text-xs !p-0" onClick={handleSave}>✓</Button>
-                  <Button size="small" type="link" className="!h-5 !text-xs !p-0" onClick={() => setEditingField(null)}>✕</Button>
+                  <span style={{ width: 36, textAlign: 'center' }}>
+                    <Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} />
+                  </span>
+                  <span style={{ width: 36, textAlign: 'center' }}>
+                    <Switch size="small" checked={editForm.showInUI !== false} onChange={v => setEditForm({ ...editForm, showInUI: v })} />
+                  </span>
+                  <span style={{ width: 36, textAlign: 'center' }}>
+                    <Switch size="small" checked={editForm.availableInRules !== false} onChange={v => setEditForm({ ...editForm, availableInRules: v })} />
+                  </span>
+                  <span style={{ width: 48, textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
+                    <Button size="small" type="text" style={{ height: 20, padding: 0, color: '#1a1a1a' }} onClick={handleSave}>✓</Button>
+                    <Button size="small" type="text" style={{ height: 20, padding: 0, color: '#ff4d4f' }} onClick={() => setEditingField(null)}>✕</Button>
+                  </span>
                 </div>
+                <div className="nodrag bg-yellow-50 -mx-1 px-2 py-1 border-t border-yellow-200" style={{ fontSize: 11 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: editForm.masterDataEnabled ? 4 : 0 }}>
+                    <Switch size="small" checked={editForm.masterDataEnabled} onChange={v => setEditForm({ ...editForm, masterDataEnabled: v })} />
+                    <span style={{ color: '#666' }}>关联主数据</span>
+                  </div>
+                  {editForm.masterDataEnabled && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Select size="small" style={{ width: 130 }} placeholder="主数据集" value={editForm.masterDataCode || undefined}
+                        onChange={v => setEditForm({ ...editForm, masterDataCode: v })}
+                        options={masterDataOptions} />
+                      <Select size="small" style={{ width: 70 }} value={editForm.masterDataType}
+                        onChange={v => setEditForm({ ...editForm, masterDataType: v })}
+                        options={[{ label: '枚举', value: 'ENUM' }, { label: '层级', value: 'HIERARCHY' }]} />
+                      <Select size="small" style={{ width: 90 }} value={editForm.masterComponent}
+                        onChange={v => setEditForm({ ...editForm, masterComponent: v })}
+                        options={[{ label: '下拉选择', value: 'select' }, { label: '单选', value: 'radio' }, { label: '级联', value: 'cascade-select' }]} />
+                    </div>
+                  )}
+                </div>
+                </>
               ) : (
                 <>
-                  <span className="flex-1 truncate">{f.title || f.name}</span>
-                  <span className="text-[10px] text-slate-400 mr-1">{f.dbType}</span>
+                  <span style={{ flex: '1 1 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{f.name}</span>
+                  <span style={{ flex: '1 1 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: '#888' }}>{f.title || f.name}</span>
+                  <span style={{ flex: '1.2 1.2 0', fontSize: 10, color: '#999' }}>
+                    {f.dbType}
+                    {f.masterData && <Tag color="purple" style={{ fontSize: 9, marginLeft: 2, padding: '0 2px', lineHeight: '14px' }}>{f.masterData.dataCode}</Tag>}
+                  </span>
+                  <span style={{ width: 36, textAlign: 'center' }}>{f.isPrimaryKey ? <KeyOutlined style={{ color: '#faad14', fontSize: 10 }} /> : null}</span>
+                  <span style={{ width: 36, textAlign: 'center' }}>{f.showInUI !== false ? '✓' : '✕'}</span>
+                  <span style={{ width: 36, textAlign: 'center' }}>{f.availableInRules !== false ? '✓' : '✕'}</span>
                   {showEditBtn && (
-                    <div className="flex items-center gap-0.5" onMouseDownCapture={e => e.stopPropagation()}>
+                    <span style={{ width: 48, textAlign: 'center' }}>
                       <Button size="small" type="text" className="!h-5 !w-5 !p-0" onClick={() => startEdit(f)}>✎</Button>
                       <Button size="small" type="text" danger className="!h-5 !w-5 !p-0" onClick={() => handleDelete(f.name)}>✕</Button>
-                    </div>
+                    </span>
                   )}
                 </>
               )}
@@ -545,7 +624,10 @@ const EntityDesigner: React.FC = () => {
         <ReactFlow
           nodes={nodes} edges={edges}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-          onInit={setRfInstance}
+          onInit={(instance) => {
+            setRfInstance(instance);
+            setTimeout(() => instance.fitView({ padding: 0.2, duration: 300 }), 300);
+          }}
           onConnect={onConnect}
           onEdgeClick={onEdgeClick} onEdgeDoubleClick={onEdgeDoubleClick}
           onPaneClick={onPaneClick}
@@ -608,6 +690,8 @@ function parseFields(entity: EntityVO): FieldDef[] {
       component: uiMeta.component || 'Input', dbType: dbMeta.dataType || (def.type === 'number' ? 'INT' : 'VARCHAR'),
       isPrimaryKey: dbMeta.primaryKey || false, isForeignKey: dbMeta.foreignKey || false,
       isRequired: !dbMeta.nullable || false, isFixed: FIXED_FIELD_NAMES.has(name),
+      showInUI: uiMeta.showInUI ?? true, availableInRules: uiMeta.availableInRules ?? true,
+      masterData: def['x-master-data'] || null,
     };
   }).sort((a, b) => {
     if (a.isFixed !== b.isFixed) return a.isFixed ? -1 : 1;

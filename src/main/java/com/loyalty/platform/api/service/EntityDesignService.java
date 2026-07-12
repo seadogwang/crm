@@ -53,7 +53,8 @@ public class EntityDesignService {
 
     /** 获取实体（可编辑模式，DRAFT 或 PUBLISHED 均可） */
     public ProgramSchema getEntityForEdit(String programCode, String entityType) {
-        return schemaRepo.findByProgramCodeAndEntityType(programCode, entityType.toUpperCase())
+        return schemaRepo.findByProgramCodeAndEntityType(programCode, entityType)
+                .or(() -> schemaRepo.findByProgramCodeAndEntityType(programCode, entityType.toUpperCase()))
                 .orElseThrow(() -> new BusinessException("ERR_ENTITY_NOT_FOUND", "实体不存在: " + entityType));
     }
 
@@ -99,10 +100,9 @@ public class EntityDesignService {
     @SuppressWarnings("unchecked")
     public ProgramSchema addField(String programCode, String entityType, String fieldName,
                                    Map<String, Object> fieldDef) {
-        String et = entityType.toUpperCase();
-        ProgramSchema schema = getEntityForEdit(programCode, et);
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
 
-        if (isFixedField(et, fieldName)) {
+        if (isFixedField(entityType, fieldName)) {
             throw new BusinessException("ERR_FIXED_FIELD", "固定字段不可修改: " + fieldName);
         }
 
@@ -117,7 +117,7 @@ public class EntityDesignService {
 
         schema.setFieldSchema(fieldSchema);
         schema.setUpdatedAt(LocalDateTime.now());
-        log.info("[EntityDesign] 添加字段: entity={}, field={}", et, fieldName);
+        log.info("[EntityDesign] 添加字段: entity={}, field={}", entityType, fieldName);
         return schemaRepo.save(schema);
     }
 
@@ -125,10 +125,9 @@ public class EntityDesignService {
     @Transactional
     @SuppressWarnings("unchecked")
     public ProgramSchema deleteField(String programCode, String entityType, String fieldName) {
-        String et = entityType.toUpperCase();
-        ProgramSchema schema = getEntityForEdit(programCode, et);
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
 
-        if (isFixedField(et, fieldName)) {
+        if (isFixedField(entityType, fieldName)) {
             throw new BusinessException("ERR_FIXED_FIELD", "固定字段不可删除: " + fieldName);
         }
 
@@ -144,7 +143,7 @@ public class EntityDesignService {
         properties.remove(fieldName);
         schema.setFieldSchema(fieldSchema);
         schema.setUpdatedAt(LocalDateTime.now());
-        log.info("[EntityDesign] 删除字段: entity={}, field={}", et, fieldName);
+        log.info("[EntityDesign] 删除字段: entity={}, field={}", entityType, fieldName);
         return schemaRepo.save(schema);
     }
 
@@ -152,8 +151,7 @@ public class EntityDesignService {
     @Transactional
     public ProgramSchema updateFieldSchema(String programCode, String entityType,
                                             Map<String, Object> fieldSchemaUpdate) {
-        String et = entityType.toUpperCase();
-        ProgramSchema schema = getEntityForEdit(programCode, et);
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
         schema.setFieldSchema(fieldSchemaUpdate);
         schema.setUpdatedAt(LocalDateTime.now());
         return schemaRepo.save(schema);
@@ -164,8 +162,7 @@ public class EntityDesignService {
     @SuppressWarnings("unchecked")
     public ProgramSchema addRelation(String programCode, String entityType,
                                       Map<String, Object> relation) {
-        String et = entityType.toUpperCase();
-        ProgramSchema schema = getEntityForEdit(programCode, et);
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
 
         Map<String, Object> entityRelations = schema.getEntityRelations();
         if (entityRelations == null) entityRelations = new LinkedHashMap<>();
@@ -226,8 +223,7 @@ public class EntityDesignService {
     @SuppressWarnings("unchecked")
     public ProgramSchema deleteRelation(String programCode, String entityType,
                                          String sourceEntity, String relationId) {
-        String et = entityType.toUpperCase();
-        ProgramSchema schema = getEntityForEdit(programCode, et);
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
 
         Map<String, Object> entityRelations = schema.getEntityRelations();
         if (entityRelations != null) {
@@ -266,7 +262,7 @@ public class EntityDesignService {
     /** 更新实体位置 */
     @Transactional
     public void updatePosition(String programCode, String entityType, Map<String, Object> position) {
-        ProgramSchema schema = getEntityForEdit(programCode, entityType.toUpperCase());
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
         schema.setLayoutPosition(position);
         schemaRepo.save(schema);
     }
@@ -276,7 +272,7 @@ public class EntityDesignService {
     public ProgramSchema updateEntity(String programCode, String entityType,
                                        String description, String category,
                                        String tableName, Map<String, Object> fixedFieldMapping, String extColumn) {
-        ProgramSchema schema = getEntityForEdit(programCode, entityType.toUpperCase());
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
         if (description != null) schema.setDescription(description);
         if (category != null) schema.setEntityCategory(category);
         if (tableName != null) schema.setTableName(tableName);

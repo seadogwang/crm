@@ -1,6 +1,7 @@
 package com.loyalty.platform.api.controller;
 
 import com.loyalty.platform.member.MemberMergeService;
+import com.loyalty.platform.master.MasterDataRenderService;
 import com.loyalty.platform.accounting.PointGrantService;
 import com.loyalty.platform.accounting.PointRedeemService;
 import com.loyalty.platform.api.service.MemberService;
@@ -49,6 +50,7 @@ public class MemberController {
     private final TierDefinitionRepository tierDefRepo;
     private final PointTypeDefinitionRepository pointTypeRepo;
     private final MemberMergeService memberMergeService;
+    private final MasterDataRenderService masterDataService;
     private final PageLayoutService layoutService;
     private final LayoutToFormilyConverter layoutConverter;
 
@@ -59,6 +61,7 @@ public class MemberController {
                             MergeTaskRepository mergeTaskRepo,
                             TierDefinitionRepository tierDefRepo,
                             MemberMergeService memberMergeService,
+                            MasterDataRenderService masterDataService,
                             PointTypeDefinitionRepository pointTypeRepo,
                             PageLayoutService layoutService,
                             LayoutToFormilyConverter layoutConverter) {
@@ -72,6 +75,7 @@ public class MemberController {
         this.mergeTaskRepo = mergeTaskRepo;
         this.tierDefRepo = tierDefRepo;
         this.memberMergeService = memberMergeService;
+        this.masterDataService = masterDataService;
         this.pointTypeRepo = pointTypeRepo;
         this.layoutService = layoutService;
         this.layoutConverter = layoutConverter;
@@ -494,6 +498,19 @@ public class MemberController {
         vo.put("schemaVersion", m.getSchemaVersion());
         vo.put("createdAt", m.getCreatedAt());
         vo.put("extAttributes", m.getExtAttributes());
+        // 加载 MEMBER schema 并渲染主数据字段
+        try {
+            var memberSchema = em.createQuery(
+                "FROM ProgramSchema p WHERE p.programCode=:pc AND p.entityType='MEMBER' AND p.status='PUBLISHED'",
+                ProgramSchema.class).setParameter("pc", pc).getResultList().stream().findFirst();
+            if (memberSchema.isPresent() && memberSchema.get().getFieldSchema() != null) {
+                Map<String, Object> rendered = masterDataService.renderMemberFields(
+                    m.getExtAttributes(), memberSchema.get().getFieldSchema());
+                vo.put("extAttributes", rendered);
+            }
+        } catch (Exception e) {
+            log.warn("[Member] 主数据渲染失败: {}", e.getMessage());
+        }
         String mid = String.valueOf(m.getMemberId());
 
         // 积分账户 — 实时汇总 account_transaction 表

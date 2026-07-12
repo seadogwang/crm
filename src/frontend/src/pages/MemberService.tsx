@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Input, Button, Card, Tag, Space, Typography, Table, Tabs, Modal, Select, InputNumber, message, Empty, Spin, Progress, Row, Col, ConfigProvider, AutoComplete, Popconfirm, Form } from 'antd';
 import { SearchOutlined, CopyOutlined, EditOutlined, DollarOutlined, CrownOutlined, LockOutlined, MergeCellsOutlined, HistoryOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store';
+import DynamicField from '../components/DynamicField';
 import FieldLayoutEditor from '../components/FieldLayoutEditor';
 import api from '../api';
 import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
@@ -691,11 +692,15 @@ const MemberService: React.FC = () => {
             width={560}
           >
             <Form form={editInfoForm} layout="vertical" onFinish={handleEditInfoSave}>
-              {editInfoFields.map(field => (
-                <Form.Item key={field} name={field} label={field}>
-                  <Input placeholder={`请输入 ${field}`} />
-                </Form.Item>
-              ))}
+              {editInfoFields.map(field => {
+                const fieldDef = member?.fieldSchema?.properties?.[field] || {};
+                return (
+                  <Form.Item key={field} name={field} label={field}>
+                    <DynamicField fieldKey={field} fieldDef={fieldDef} value={editInfoForm.getFieldValue(field)}
+                      onChange={(k, v) => editInfoForm.setFieldsValue({ [k]: v })} />
+                  </Form.Item>
+                );
+              })}
               {editInfoFields.length === 0 && (
                 <Text type="secondary">暂无扩展属性字段</Text>
               )}

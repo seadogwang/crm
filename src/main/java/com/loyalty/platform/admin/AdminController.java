@@ -21,6 +21,7 @@ import com.loyalty.platform.rules.DroolsTestRunner;
 import com.loyalty.platform.rules.KieBaseCacheManager;
 import com.loyalty.platform.rules.RuleEngineService;
 import com.loyalty.platform.rules.RuleRegressionService;
+import com.loyalty.platform.rules.RuleDrlGenerator;
 import com.loyalty.platform.rules.action.Action;
 import com.loyalty.platform.rules.drl.MemberFact;
 import com.loyalty.platform.rules.regression.RegressionReport;
@@ -62,6 +63,8 @@ public class AdminController {
     private final RuleDefinitionRepository ruleRepo;
     private final RuleEngineService ruleEngine;
     private final RuleRegressionService regressionService;
+    @org.springframework.beans.factory.annotation.Autowired
+    private RuleDrlGenerator ruleDrlGenerator;
     private final KieBaseCacheManager kieBaseCacheManager;
     private final DroolsTestRunner droolsTestRunner;
     private final FlowDefinitionRepository flowDefRepo;
@@ -525,15 +528,22 @@ public class AdminController {
         if (ruleCode == null || ruleCode.isBlank()) {
             return ResponseEntity.ok(ApiResponse.error("ERR_INVALID", "rule_code 不能为空"));
         }
-        if (drlContent == null || drlContent.isBlank()) {
-            return ResponseEntity.ok(ApiResponse.error("ERR_INVALID", "drl_content 不能为空"));
-        }
 
         @SuppressWarnings("unchecked")
         Map<String, Object> metadata = (Map<String, Object>) body.get("metadata");
-
         String ruleGroup = (String) body.get("rule_group");
         Integer priority = body.get("priority") instanceof Number n ? n.intValue() : 0;
+
+        if (drlContent == null || drlContent.isBlank()) {
+            if (metadata != null && !metadata.isEmpty()) {
+                drlContent = ruleDrlGenerator.generate(RuleDefinition.builder()
+                    .ruleCode(ruleCode).ruleName((String) body.getOrDefault("rule_name", ruleCode))
+                    .ruleGroup(ruleGroup).priority(priority).metadata(metadata).build());
+            } else {
+                drlContent = "// auto-generated\nrule \"" + ruleCode.replaceAll("[^a-zA-Z0-9_]", "_") + "\"\nwhen\n  $event: EventFact()\nthen\n  System.out.println(\"rule fired\");\nend\n";
+            }
+        }
+
         String effectiveStartStr = (String) body.get("effective_start");
         String effectiveEndStr = (String) body.get("effective_end");
         LocalDateTime effectiveStart = effectiveStartStr != null && !effectiveStartStr.isBlank()
