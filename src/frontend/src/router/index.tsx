@@ -39,7 +39,6 @@ const ChannelList = lazy(() => import('../pages/ChannelList'));
 const MappingEditor = lazy(() => import('../pages/MappingEditor'));
 const ScriptingWorkbench = lazy(() => import('../components/ScriptingWorkbench/ScriptingWorkbench'));
 const SchemaEditor = lazy(() => import('../pages/SchemaEditor'));
-const ChartDBPage = lazy(() => import('../pages/ChartDBPage'));
 const ApiFlowDesigner = lazy(() => import('../pages/ApiFlowDesigner'));
 const DynamicRenderer = lazy(() => import('../components/DynamicRenderer/DynamicRenderer'));
 const ApiConfig = lazy(() => import('../pages/ApiConfig'));
@@ -164,11 +163,6 @@ export const router = createBrowserRouter([
         element: <SuspenseWrapper><AuthGuard permission="SCHEMA_WRITE"><PageDesigner /></AuthGuard></SuspenseWrapper>,
       },
 
-      // ChartDB
-      {
-        path: 'chartdb',
-        element: <SuspenseWrapper><AuthGuard permission="SCHEMA_WRITE"><ChartDBPage /></AuthGuard></SuspenseWrapper>,
-      },
 
       // API 流程设计器
       {

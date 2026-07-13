@@ -25,7 +25,6 @@ Loyalty Platform is a **omni-channel loyalty management platform** built for ent
 - **One-ID Enrollment** — Cross-channel member matching & deduplication (phone/UnionID/UserID)
 - **Points Accounting** — FIFO waterfall redemption, negative balance risk control, credit limits
 - **Drools Rule Engine** — DRL rules with hot-reload, AI-assisted generation, shadow sandbox regression testing
-- **AI Rule Assistant** — Conversational AI (V4) with streaming SSE, clarification forms, dynamic formSchema generation, multi-scenario coverage (base rules, promos, tiered, cyclic)
 - **LiteFlow Pipeline** — 7-component event processing chain with visual React Flow designer & hot-reload
 - **Schema-Driven UI** — Dynamic entity model (JSONB ext_attributes) with REST API auto-generation
 - **Cascade Recalculation** — Lock-free compensation for tier changes triggered by points adjustments
@@ -91,11 +90,6 @@ mvn test  # Full suite (requires PostgreSQL)
 | `POST` | `/api/admin/rules/{id}/publish` | Publish with regression test |
 | `POST` | `/api/admin/rules/validate-drl` | Validate DRL syntax |
 | `POST` | `/api/admin/rules/generate` | AI-assisted rule generation |
-| `POST` | `/api/rules/ai/start` | Start AI rule assistant session |
-| `POST` | `/api/rules/ai/clarify` | Streaming SSE clarification (text + question events) |
-| `POST` | `/api/rules/ai/clarify/submit` | Submit clarification answers, get formSchema |
-| `POST` | `/api/rules/ai/submit-form` | Submit form data, generate final rule |
-| `POST` | `/api/rules/ai/save` | Save generated rule (draft or publish) |
 | `GET`  | `/api/admin/llm-config` | Get LLM configuration |
 | `PUT`  | `/api/admin/llm-config` | Save LLM configuration |
 | `POST` | `/api/admin/llm-config/test` | Test LLM connection |
@@ -124,7 +118,6 @@ src/main/java/com/loyalty/platform/
 ├── member/             OneIdEnrollmentService, MemberMergeService
 ├── notification/       Outbox, SMS, WeChat providers
 ├── rules/              Drools rule engine (Action, DRL, regression)
-│   └── ai/             AI Rule Assistant (clarify, form generation, streaming)
 ├── security/           RBAC, JWT, QuotaBillingSentinel, AuditMonitor
 └── spi/                SPI gateway (TMALL, JD, DOUYIN, WECHAT handlers)
 ```
@@ -138,7 +131,6 @@ src/main/java/com/loyalty/platform/
 - **TenantKeyGenerator** — Tenant-aware Redis key generation
 - **Event Time Extraction** — Multi-format business event time parsing
 - **KieBase Draft Compilation** — `buildKieBaseWithDraft()` for shadow sandbox
-- **AI Rule Assistant V4** — Conversational AI with streaming SSE, clarification forms, dynamic formSchema, multi-scenario (base/promo/tiered/cyclic)
 
 ### v7.4 — Campaign Tools (New)
 
@@ -167,11 +159,6 @@ src/main/java/com/loyalty/platform/
 |-------------------|---------------------|
 | ![Rule Config](规则配置.png) | ![Rule Engine](规则引擎更新.png) |
 
-| AI Rule Assistant | AI Assistant Form |
-|-------------------|-------------------|
-| ![AI Assistant](AI辅助规则配置.png) | ![AI Form](AI辅助规则配置_1.png) |
-
-| AI Rule Preview | Member Service |
 |-----------------|---------------|
 | ![AI Preview](AI辅助规则配置_2.png) | ![Member](会员服务.png) |
 
@@ -364,11 +351,6 @@ mvn test  # 全部测试（需要 PostgreSQL 连接）
 | `POST` | `/api/admin/rules/{id}/publish` | 发布规则（回归测试 + 热更新） |
 | `POST` | `/api/admin/rules/validate-drl` | DRL 语法校验 |
 | `POST` | `/api/admin/rules/generate` | AI 辅助规则生成 |
-| `POST` | `/api/rules/ai/start` | 启动 AI 规则助手会话 |
-| `POST` | `/api/rules/ai/clarify` | 流式 SSE 澄清对话（text + question 事件） |
-| `POST` | `/api/rules/ai/clarify/submit` | 提交澄清答案，获取 formSchema |
-| `POST` | `/api/rules/ai/submit-form` | 提交表单数据，生成最终规则 |
-| `POST` | `/api/rules/ai/save` | 保存生成的规则（草稿或发布） |
 | `GET`  | `/api/admin/llm-config` | 获取大模型配置 |
 | `PUT`  | `/api/admin/llm-config` | 保存大模型配置 |
 | `POST` | `/api/admin/llm-config/test` | 测试大模型连接 |
