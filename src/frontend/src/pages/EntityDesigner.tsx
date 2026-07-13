@@ -49,7 +49,7 @@ interface FieldDef {
   masterData?: any;
 }
 
-const DB_TYPE_OPTIONS = ['VARCHAR', 'INT', 'BIGINT', 'DECIMAL', 'DATE', 'TIMESTAMP', 'BOOLEAN', 'TEXT', 'JSON'];
+const DB_TYPE_OPTIONS = ['VARCHAR', 'INT', 'BIGINT', 'DECIMAL', 'DATE', 'TIMESTAMP', 'BOOLEAN', 'TEXT', 'JSON', 'MASTER_DATA'];
 const FIXED_FIELD_NAMES = new Set(['memberId', 'name', 'gender', 'birthday', 'tierCode', 'status', 'schemaVersion', 'createdAt', 'orderId', 'totalAmount', 'id']);
 
 const RIGHT_HANDLE_PREFIX = 'rh_';
@@ -162,7 +162,7 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
   const [expanded, setExpanded] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({ name: '', title: '', dbType: 'VARCHAR', isPrimaryKey: false, isRequired: false, showInUI: true, availableInRules: true,
-    masterDataEnabled: false, masterDataCode: '', masterDataType: 'ENUM', masterValueField: 'code', masterLabelField: 'label', masterComponent: 'select' });
+    masterDataCode: '', masterDataType: 'ENUM', masterValueField: 'code', masterLabelField: 'label', masterComponent: 'select' });
   const [isHovering, setIsHovering] = useState(false);
   const connection = useConnection();
   const [masterDataOptions, setMasterDataOptions] = useState<{ label: string; value: string }[]>([]);
@@ -185,25 +185,27 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
   const focused = selected || isHovering || isTarget;
 
   const startEdit = (f?: FieldDef) => {
-    setEditForm(f ? { name: f.name, title: f.title, dbType: f.dbType, isPrimaryKey: f.isPrimaryKey, isRequired: f.isRequired,
+    setEditForm(f ? { name: f.name, title: f.title, dbType: f.masterData ? 'MASTER_DATA' : f.dbType, isPrimaryKey: f.isPrimaryKey, isRequired: f.isRequired,
       showInUI: f.showInUI ?? true, availableInRules: f.availableInRules ?? true,
-      masterDataEnabled: !!f.masterData, masterDataCode: f.masterData?.dataCode || '', masterDataType: f.masterData?.dataType || 'ENUM',
+      masterDataCode: f.masterData?.dataCode || '', masterDataType: f.masterData?.dataType || 'ENUM',
       masterValueField: f.masterData?.valueField || 'code', masterLabelField: f.masterData?.labelField || 'label',
       masterComponent: f.masterData?.component || 'select' }
       : { name: '', title: '', dbType: 'VARCHAR', isPrimaryKey: false, isRequired: false, showInUI: true, availableInRules: true,
-        masterDataEnabled: false, masterDataCode: '', masterDataType: 'ENUM', masterValueField: 'code', masterLabelField: 'label', masterComponent: 'select' });
+        masterDataCode: '', masterDataType: 'ENUM', masterValueField: 'code', masterLabelField: 'label', masterComponent: 'select' });
     setEditingField(f ? f.name : '__new__');
   };
 
   const handleSave = () => {
     if (!editForm.name.trim()) { message.warning('字段名不能为空'); return; }
+    if (editForm.dbType === 'MASTER_DATA' && !editForm.masterDataCode) { message.warning('请选择主数据集'); return; }
+    const isMaster = editForm.dbType === 'MASTER_DATA';
     const jsonType = editForm.dbType === 'INT' || editForm.dbType === 'BIGINT' || editForm.dbType === 'DECIMAL' ? 'number' : editForm.dbType === 'BOOLEAN' ? 'boolean' : 'string';
     const fieldDef: any = {
       type: jsonType, title: editForm.title || editForm.name,
-      'x-db-metadata': { dataType: editForm.dbType || 'VARCHAR', primaryKey: editForm.isPrimaryKey, nullable: !editForm.isRequired, foreignKey: false },
+      'x-db-metadata': { dataType: isMaster ? 'VARCHAR' : (editForm.dbType || 'VARCHAR'), primaryKey: editForm.isPrimaryKey, nullable: !editForm.isRequired, foreignKey: false },
       'x-ui-metadata': { label: editForm.title || editForm.name, component: 'Input', showInUI: editForm.showInUI ?? true, availableInRules: editForm.availableInRules ?? true },
     };
-    if (editForm.masterDataEnabled && editForm.masterDataCode) {
+    if (isMaster && editForm.masterDataCode) {
       fieldDef['x-master-data'] = {
         dataCode: editForm.masterDataCode,
         dataType: editForm.masterDataType,
@@ -261,14 +263,14 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
       </div>
 
       {editing && (
-        <div className="flex items-center px-2 py-1 text-[10px] text-slate-400 bg-slate-50 border-b border-slate-200">
-          <span style={{ flex: '1 1 0' }}>字段</span>
-          <span style={{ flex: '1 1 0' }}>显示名称</span>
-          <span style={{ flex: '1.2 1.2 0' }}>类型</span>
-          <span style={{ width: 36, textAlign: 'center' }}>主键</span>
-          <span style={{ width: 36, textAlign: 'center' }}>界面</span>
-          <span style={{ width: 36, textAlign: 'center' }}>规则</span>
-          <span style={{ width: 48, textAlign: 'center' }}>操作</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 36px 36px 36px 48px', alignItems: 'center', padding: '0 8px', height: 28, fontSize: 10, color: '#94a3b8', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <span>字段</span>
+          <span>显示名称</span>
+          <span>类型</span>
+          <span style={{ textAlign: 'center' }}>主键</span>
+          <span style={{ textAlign: 'center' }}>界面</span>
+          <span style={{ textAlign: 'center' }}>规则</span>
+          <span style={{ textAlign: 'center' }}>操作</span>
         </div>
       )}
       <div>
@@ -277,87 +279,120 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
           const showEditBtn = editing && !f.isFixed && !isEditingThis;
           const highlight = highlightedFields?.has(f.name);
           return (
-            <div key={f.name} className={`relative flex h-8 items-center px-2 text-xs border-b border-slate-200 transition-colors ${highlight ? 'bg-pink-100' : ''}`}>
+            <React.Fragment key={f.name}>
+            <div className="relative nodrag" style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 36px 36px 36px 48px',
+              alignItems: 'center', padding: '0 8px', fontSize: 12,
+              borderBottom: '1px solid #e2e8f0',
+              minHeight: 32,
+              background: highlight ? '#fdf2f8' : undefined,
+            }}>
               <Handle type="target" position={Position.Left} id={`${LEFT_HANDLE_PREFIX}${f.name}`}
                 className={`!absolute !-left-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
                 isConnectable={true} />
               {isEditingThis ? (
                 <>
-                <div className="nodrag flex items-center gap-0 flex-1 bg-yellow-50 -mx-1 px-1 py-0.5 rounded">
-                  <Input size="small" style={{ flex: '1 1 0', fontSize: 11 }} placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-                  <Input size="small" style={{ flex: '1 1 0', fontSize: 11 }} placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
-                  <Select size="small" style={{ flex: '1.2 1.2 0', fontSize: 11 }} value={editForm.dbType || 'VARCHAR'} onChange={v => setEditForm({ ...editForm, dbType: v })}
+                  <Input size="small" style={{ width: '100%', fontSize: 11, height: 24 }} placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                  <Input size="small" style={{ width: '100%', fontSize: 11, height: 24 }} placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+                  <Select size="small" style={{ width: '100%', fontSize: 11, height: 24 }} value={editForm.dbType || 'VARCHAR'} onChange={v => setEditForm({ ...editForm, dbType: v })}
                     options={DB_TYPE_OPTIONS.map(t => ({ value: t, label: t }))}
                     getPopupContainer={() => document.body} />
-                  <span style={{ width: 36, textAlign: 'center' }}>
-                    <Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} />
-                  </span>
-                  <span style={{ width: 36, textAlign: 'center' }}>
-                    <Switch size="small" checked={editForm.showInUI !== false} onChange={v => setEditForm({ ...editForm, showInUI: v })} />
-                  </span>
-                  <span style={{ width: 36, textAlign: 'center' }}>
-                    <Switch size="small" checked={editForm.availableInRules !== false} onChange={v => setEditForm({ ...editForm, availableInRules: v })} />
-                  </span>
-                  <span style={{ width: 48, textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
+                  <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} /></span>
+                  <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.showInUI !== false} onChange={v => setEditForm({ ...editForm, showInUI: v })} /></span>
+                  <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.availableInRules !== false} onChange={v => setEditForm({ ...editForm, availableInRules: v })} /></span>
+                  <span style={{ textAlign: 'center', display: 'flex', gap: 2, justifyContent: 'center' }}>
                     <Button size="small" type="text" style={{ height: 20, padding: 0, color: '#1a1a1a' }} onClick={handleSave}>✓</Button>
                     <Button size="small" type="text" style={{ height: 20, padding: 0, color: '#ff4d4f' }} onClick={() => setEditingField(null)}>✕</Button>
                   </span>
-                </div>
-                <div className="nodrag bg-yellow-50 -mx-1 px-2 py-1 border-t border-yellow-200" style={{ fontSize: 11 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: editForm.masterDataEnabled ? 4 : 0 }}>
-                    <Switch size="small" checked={editForm.masterDataEnabled} onChange={v => setEditForm({ ...editForm, masterDataEnabled: v })} />
-                    <span style={{ color: '#666' }}>关联主数据</span>
-                  </div>
-                  {editForm.masterDataEnabled && (
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <Select size="small" style={{ width: 130 }} placeholder="主数据集" value={editForm.masterDataCode || undefined}
-                        onChange={v => setEditForm({ ...editForm, masterDataCode: v })}
-                        options={masterDataOptions} />
-                      <Select size="small" style={{ width: 70 }} value={editForm.masterDataType}
-                        onChange={v => setEditForm({ ...editForm, masterDataType: v })}
-                        options={[{ label: '枚举', value: 'ENUM' }, { label: '层级', value: 'HIERARCHY' }]} />
-                      <Select size="small" style={{ width: 90 }} value={editForm.masterComponent}
-                        onChange={v => setEditForm({ ...editForm, masterComponent: v })}
-                        options={[{ label: '下拉选择', value: 'select' }, { label: '单选', value: 'radio' }, { label: '级联', value: 'cascade-select' }]} />
-                    </div>
-                  )}
-                </div>
                 </>
               ) : (
                 <>
-                  <span style={{ flex: '1 1 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{f.name}</span>
-                  <span style={{ flex: '1 1 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: '#888' }}>{f.title || f.name}</span>
-                  <span style={{ flex: '1.2 1.2 0', fontSize: 10, color: '#999' }}>
-                    {f.dbType}
-                    {f.masterData && <Tag color="purple" style={{ fontSize: 9, marginLeft: 2, padding: '0 2px', lineHeight: '14px' }}>{f.masterData.dataCode}</Tag>}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{f.name}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: '#888' }}>{f.title || f.name}</span>
+                  <span style={{ fontSize: 10, color: '#999' }}>{f.dbType}</span>
+                  <span style={{ textAlign: 'center' }}>{f.isPrimaryKey ? <KeyOutlined style={{ color: '#faad14', fontSize: 10 }} /> : null}</span>
+                  <span style={{ textAlign: 'center', fontSize: 10 }}>{f.showInUI !== false ? '✓' : '✕'}</span>
+                  <span style={{ textAlign: 'center', fontSize: 10 }}>{f.availableInRules !== false ? '✓' : '✕'}</span>
+                  <span style={{ textAlign: 'center' }}>
+                    {showEditBtn && (
+                      <span style={{ display: 'inline-flex', gap: 2 }}>
+                        <Button size="small" type="text" className="!h-5 !w-5 !p-0" onClick={() => startEdit(f)}>✎</Button>
+                        <Button size="small" type="text" danger className="!h-5 !w-5 !p-0" onClick={() => handleDelete(f.name)}>✕</Button>
+                      </span>
+                    )}
                   </span>
-                  <span style={{ width: 36, textAlign: 'center' }}>{f.isPrimaryKey ? <KeyOutlined style={{ color: '#faad14', fontSize: 10 }} /> : null}</span>
-                  <span style={{ width: 36, textAlign: 'center' }}>{f.showInUI !== false ? '✓' : '✕'}</span>
-                  <span style={{ width: 36, textAlign: 'center' }}>{f.availableInRules !== false ? '✓' : '✕'}</span>
-                  {showEditBtn && (
-                    <span style={{ width: 48, textAlign: 'center' }}>
-                      <Button size="small" type="text" className="!h-5 !w-5 !p-0" onClick={() => startEdit(f)}>✎</Button>
-                      <Button size="small" type="text" danger className="!h-5 !w-5 !p-0" onClick={() => handleDelete(f.name)}>✕</Button>
-                    </span>
-                  )}
                 </>
               )}
               <Handle type="source" position={Position.Right} id={`${RIGHT_HANDLE_PREFIX}${f.name}`}
                 className={`!absolute !-right-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
                 isConnectable={true} />
             </div>
+            {isEditingThis && editForm.dbType === 'MASTER_DATA' && (
+              <div className="nodrag" style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 36px 36px 36px 48px',
+                alignItems: 'center', padding: '0 8px', fontSize: 11,
+                background: '#f0f5ff', borderBottom: '1px solid #e2e8f0', minHeight: 28,
+              }}>
+                <div style={{ borderRight: '1px solid #fff', height: '100%' }} />
+                <div style={{ borderRight: '1px solid #fff', height: '100%' }} />
+                <div style={{ gridColumn: '3 / span 5', display: 'flex', gap: 4, alignItems: 'center', minHeight: 28 }}>
+                  <Select size="small" style={{ flex: 1, height: 22, fontSize: 10, minWidth: 0 }} placeholder="主数据集" value={editForm.masterDataCode || undefined}
+                    onChange={v => setEditForm({ ...editForm, masterDataCode: v })}
+                    options={masterDataOptions}
+                    getPopupContainer={() => document.body} />
+                  <Select size="small" style={{ flex: 1, height: 22, fontSize: 10, minWidth: 0 }} value={editForm.masterDataType}
+                    onChange={v => setEditForm({ ...editForm, masterDataType: v })}
+                    options={[{ label: '枚举', value: 'ENUM' }, { label: '层级', value: 'HIERARCHY' }]}
+                    getPopupContainer={() => document.body} />
+                  <Select size="small" style={{ flex: 1, height: 22, fontSize: 10, minWidth: 0 }} value={editForm.masterComponent}
+                    onChange={v => setEditForm({ ...editForm, masterComponent: v })}
+                    options={[{ label: '下拉选择', value: 'select' }, { label: '单选', value: 'radio' }, { label: '级联', value: 'cascade-select' }]}
+                    getPopupContainer={() => document.body} />
+                </div>
+              </div>
+            )}
+            </React.Fragment>
           );
         })}
         {editing && (
           <>
             {editingField === '__new__' && (
-              <div className="flex items-center gap-1 px-1 py-1 bg-yellow-50 border-b">
-                <Input size="small" className="!w-16 !text-[11px]" placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-                <Input size="small" className="!w-14 !text-[11px]" placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
-                <Select size="small" className="!w-16 !text-[11px]" value={editForm.dbType} onChange={v => setEditForm({ ...editForm, dbType: v })} options={DB_TYPE_OPTIONS.map(t => ({ value: t, label: t }))} />
-                <Tooltip title="主键"><Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} /></Tooltip>
-                <Button size="small" type="link" className="!h-5 !text-xs !p-0" onClick={handleSave}>✓</Button>
-                <Button size="small" type="link" className="!h-5 !text-xs !p-0" onClick={() => setEditingField(null)}>✕</Button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 36px 36px 36px 48px', alignItems: 'center', padding: '0 8px', background: '#fffbeb', borderBottom: '1px solid #e2e8f0', minHeight: 32 }}>
+                <Input size="small" style={{ width: '90%', fontSize: 11, height: 24 }} placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                <Input size="small" style={{ width: '90%', fontSize: 11, height: 24 }} placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+                <Select size="small" style={{ width: '95%', fontSize: 11, height: 24 }} value={editForm.dbType} onChange={v => setEditForm({ ...editForm, dbType: v })} options={DB_TYPE_OPTIONS.map(t => ({ value: t, label: t }))}
+                  getPopupContainer={() => document.body} />
+                <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} /></span>
+                <span></span>
+                <span></span>
+                <span style={{ textAlign: 'center', display: 'flex', gap: 2, justifyContent: 'center' }}>
+                  <Button size="small" type="text" style={{ height: 20, padding: 0, color: '#1a1a1a' }} onClick={handleSave}>✓</Button>
+                  <Button size="small" type="text" style={{ height: 20, padding: 0, color: '#ff4d4f' }} onClick={() => setEditingField(null)}>✕</Button>
+                </span>
+              </div>
+            )}
+            {editingField === '__new__' && editForm.dbType === 'MASTER_DATA' && (
+              <div className="nodrag" style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 36px 36px 36px 48px',
+                alignItems: 'center', padding: '0 8px', fontSize: 11,
+                background: '#f0f5ff', borderBottom: '1px solid #e2e8f0', minHeight: 28,
+              }}>
+                <div style={{ borderRight: '1px solid #fff', height: '100%' }} />
+                <div style={{ borderRight: '1px solid #fff', height: '100%' }} />
+                <div style={{ gridColumn: '3 / span 5', display: 'flex', gap: 4, alignItems: 'center', minHeight: 28 }}>
+                  <Select size="small" style={{ flex: 1, height: 22, fontSize: 10, minWidth: 0 }} placeholder="主数据集" value={editForm.masterDataCode || undefined}
+                    onChange={v => setEditForm({ ...editForm, masterDataCode: v })}
+                    options={masterDataOptions}
+                    getPopupContainer={() => document.body} />
+                  <Select size="small" style={{ flex: 1, height: 22, fontSize: 10, minWidth: 0 }} value={editForm.masterDataType}
+                    onChange={v => setEditForm({ ...editForm, masterDataType: v })}
+                    options={[{ label: '枚举', value: 'ENUM' }, { label: '层级', value: 'HIERARCHY' }]}
+                    getPopupContainer={() => document.body} />
+                  <Select size="small" style={{ flex: 1, height: 22, fontSize: 10, minWidth: 0 }} value={editForm.masterComponent}
+                    onChange={v => setEditForm({ ...editForm, masterComponent: v })}
+                    options={[{ label: '下拉选择', value: 'select' }, { label: '单选', value: 'radio' }, { label: '级联', value: 'cascade-select' }]}
+                    getPopupContainer={() => document.body} />
+                </div>
               </div>
             )}
             <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 border-t">

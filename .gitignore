@@ -22,16 +22,9 @@ Thumbs.db
 .env.local
 application-local.yml
 
-# DrawDB (self-hosted, cloned from github.com/drawdb-io/drawdb)
-drawdb/
-!drawdb/package.json
-!drawdb/vite.config.js
+# 设计文档、截图、测试报告等
+docs/
 
 # Frontend
 src/frontend/node_modules/
 src/frontend/dist/
-
-# 设计文档 (不提交)
-LoyaltyDesign*.md
-FRONTEND_DESIGN_SPEC.md
-prompt.md
