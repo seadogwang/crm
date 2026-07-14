@@ -704,10 +704,17 @@ const EntityDesigner: React.FC = () => {
       )}
 
       {/* 新建实体弹窗 */}
-      <Modal title="新建实体" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} onOk={handleCreateEntity} confirmLoading={saving} width={400}>
+      <Modal title="新建实体" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} onOk={handleCreateEntity} confirmLoading={saving} width={420}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div><Text style={{ fontSize: 12 }}>实体标识 *</Text><Input value={newEntity.entityType} onChange={e => setNewEntity({ ...newEntity, entityType: e.target.value.toUpperCase() })} placeholder="如: MEMBER, ORDER" /></div>
-          <div><Text style={{ fontSize: 12 }}>显示名称</Text><Input value={newEntity.displayName} onChange={e => setNewEntity({ ...newEntity, displayName: e.target.value })} placeholder="如: 会员" /></div>
+          <div><Text style={{ fontSize: 12 }}>实体标识 *</Text><Input value={newEntity.entityType} onChange={e => setNewEntity({ ...newEntity, entityType: e.target.value.toUpperCase() })} placeholder="如: PRODUCT" /></div>
+          <div><Text style={{ fontSize: 12 }}>显示名称</Text><Input value={newEntity.displayName} onChange={e => setNewEntity({ ...newEntity, displayName: e.target.value })} placeholder="如: 产品" /></div>
+          <div><Text style={{ fontSize: 12 }}>类别</Text>
+            <Select value={newEntity.category || 'BUSINESS'} onChange={v => setNewEntity({ ...newEntity, category: v })}
+              options={[
+                { label: 'BUSINESS - 业务实体（主数据维护）', value: 'BUSINESS' },
+                { label: 'SYSTEM - 系统实体', value: 'SYSTEM' },
+              ]} style={{ width: '100%' }} />
+          </div>
         </div>
       </Modal>
     </div>
