@@ -44,6 +44,38 @@ public class OneIdStrategyController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    /** 更新策略 */
+    @PutMapping
+    public ResponseEntity<ApiResponse<Map<String, Object>>> update(@RequestBody Map<String, Object> body) {
+        String pc = TenantContext.getRequired();
+        String strategyCode = (String) body.getOrDefault("strategyCode", "PHONE_PRIMARY");
+
+        OneIdStrategy strategy = strategyRepo.findByProgramCode(pc).stream()
+                .filter(s -> strategyCode.equals(s.getStrategyCode()))
+                .findFirst().orElse(null);
+
+        if (strategy == null) {
+            return ResponseEntity.ok(ApiResponse.error("ERR_NOT_FOUND", "策略不存在"));
+        }
+
+        if (body.containsKey("strategyName"))
+            strategy.setStrategyName((String) body.get("strategyName"));
+        if (body.containsKey("isDefault"))
+            strategy.setIsDefault((Boolean) body.get("isDefault"));
+        if (body.containsKey("status"))
+            strategy.setStatus((String) body.get("status"));
+        if (body.containsKey("priorityFields")) {
+            @SuppressWarnings("unchecked")
+            List<Object> fields = (List<Object>) body.get("priorityFields");
+            strategy.setPriorityFields(Map.of("priority_fields", fields));
+        }
+        strategy.setUpdatedAt(LocalDateTime.now());
+        strategyRepo.save(strategy);
+
+        log.info("[OneIdStrategy] 策略已更新: program={}, code={}", pc, strategyCode);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("updated", true)));
+    }
+
     /** 初始化默认策略 */
     @PostMapping("/init")
     public ResponseEntity<ApiResponse<Map<String, Object>>> init() {
