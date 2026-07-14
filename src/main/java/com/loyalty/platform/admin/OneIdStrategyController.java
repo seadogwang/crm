@@ -6,7 +6,9 @@ import com.loyalty.platform.domain.entity.OneIdStrategy;
 import com.loyalty.platform.domain.repository.OneIdStrategyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -46,6 +48,7 @@ public class OneIdStrategyController {
 
     /** 更新策略 */
     @PutMapping
+    @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> update(@RequestBody Map<String, Object> body) {
         String pc = TenantContext.getRequired();
         String strategyCode = (String) body.getOrDefault("strategyCode", "PHONE_PRIMARY");
@@ -55,7 +58,8 @@ public class OneIdStrategyController {
                 .findFirst().orElse(null);
 
         if (strategy == null) {
-            return ResponseEntity.ok(ApiResponse.error("ERR_NOT_FOUND", "策略不存在"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("ERR_NOT_FOUND", "策略不存在"));
         }
 
         if (body.containsKey("strategyName"))

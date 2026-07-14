@@ -72,10 +72,10 @@ const RuleList: React.FC = () => {
       title: '操作', width: 120,
       render: (_: any, r: any) => (
         <Space>
-          <Button size="small" type="link" icon={<EditOutlined />}
-            onClick={() => navigate(`/rules/engine/${r.id}/edit`)} />
-          <Button size="small" type="link" icon={<ExperimentOutlined />}
-            onClick={() => navigate(`/rules/engine/${r.id}/edit`)}>测试</Button>
+          <Button size="small" type="link" icon={<EditOutlined style={{ color: '#1a1a1a' }} />}
+            style={{ color: '#1a1a1a' }} onClick={() => navigate(`/rules/engine/${r.id}/edit`)} />
+          <Button size="small" type="link" icon={<ExperimentOutlined style={{ color: '#1a1a1a' }} />}
+            style={{ color: '#1a1a1a' }} onClick={() => navigate(`/rules/engine/${r.id}/edit`)} />
         </Space>
       ),
     },
