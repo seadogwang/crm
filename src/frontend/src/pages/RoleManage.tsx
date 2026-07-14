@@ -146,8 +146,8 @@ const RoleManage: React.FC = () => {
       title: '操作', width: 150,
       render: (_: any, record: SystemRoleEntity) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(String(record.id))}>删除</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(String(record.id))} />
         </Space>
       ),
     },

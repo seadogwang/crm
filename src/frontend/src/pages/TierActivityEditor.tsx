@@ -5,7 +5,7 @@ import {
   Typography, Divider, Row, Col, DatePicker, Checkbox,
 } from 'antd';
 import {
-  SaveOutlined, SendOutlined, PlusOutlined, DeleteOutlined,
+  SaveOutlined, SendOutlined, PlusOutlined, DeleteOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useCampaignStyles, TitleWithDesc, CampaignCard } from './campaign/styles/campaign-ui-standard';
@@ -146,7 +146,7 @@ const TierActivityEditor: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <TitleWithDesc title={isEdit ? '编辑等级活动' : '新建等级活动'} desc="配置等级升级活动，设置触发条件和直升目标等级" />
         <Space>
-          <Button onClick={() => navigate('/rules/tier')}>取消</Button>
+          <Button icon={<CloseOutlined />} onClick={() => navigate('/rules/tier')}>取消</Button>
           <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving}>保存</Button>
           <Button type="primary" icon={<SendOutlined />} loading={publishing} onClick={handlePublish}>发布</Button>
         </Space>

@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined, StopOutlined, MergeCellsOutlined, DollarOutlined,
-  PlusOutlined, HistoryOutlined, EditOutlined,
+  PlusOutlined, HistoryOutlined, EditOutlined, CloseOutlined, SaveOutlined,
 } from '@ant-design/icons';
 import DynamicRenderer from '../components/DynamicRenderer/DynamicRenderer';
 import LayoutRenderer from '../components/LayoutRenderer/LayoutRenderer';
@@ -276,8 +276,8 @@ const BasicInfoTab: React.FC<{ member: any; onRefresh: () => void }> = ({ member
       <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         {editing ? (
           <>
-            <Button onClick={() => setEditing(false)}>取消</Button>
-            <Button type="primary" onClick={handleSave} loading={saving}>保存</Button>
+            <Button icon={<CloseOutlined />} onClick={() => setEditing(false)}>取消</Button>
+            <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>保存</Button>
           </>
         ) : (
           <Button icon={<EditOutlined />} onClick={startEdit}>编辑</Button>

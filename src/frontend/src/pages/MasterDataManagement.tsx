@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Tabs, Table, Button, Input, InputNumber, Select, Space, Tag, message, Modal, Popconfirm, Tree, Form, Spin } from 'antd';
-import { PlusOutlined, SaveOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, ArrowUpOutlined, ArrowDownOutlined, UnorderedListOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import api from '../api';
 import { useAppStore } from '../store';
@@ -92,9 +92,9 @@ const EnumManagement: React.FC = () => {
     { title: '状态', dataIndex: 'status', width: 70, render: (v: string, r: any) => <Select size="small" value={v || 'ACTIVE'} style={{ width: 80 }} onChange={val => setDefs(prev => prev.map(d => d.dataCode === r.dataCode ? { ...d, status: val } : d))} options={[{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }]} /> },
     { title: '操作', width: 160, render: (_: any, r: any) => (
       <Space size={4}>
-        <Button size="small" type="link" style={{ padding: 0 }} onClick={() => { setItemsModal(r.dataCode); loadEnumItems(r.dataCode); }}>管理值</Button>
-        <Button size="small" type="link" style={{ padding: 0 }} onClick={() => api.put(`/master-data/types/${r.dataCode}`, r).then(() => message.success('已保存')).catch(() => {})}>保存</Button>
-        <Popconfirm title="确定删除？" onConfirm={() => handleDeleteDef(r.dataCode)}><Button size="small" type="link" danger style={{ padding: 0 }}>删除</Button></Popconfirm>
+        <Button size="small" type="link" icon={<UnorderedListOutlined style={{ color: '#1a1a1a' }} />} style={{ padding: 0, color: '#1a1a1a' }} onClick={() => { setItemsModal(r.dataCode); loadEnumItems(r.dataCode); }} />
+        <Button size="small" type="link" icon={<SaveOutlined style={{ color: '#1a1a1a' }} />} style={{ padding: 0, color: '#1a1a1a' }} onClick={() => api.put(`/master-data/types/${r.dataCode}`, r).then(() => message.success('已保存')).catch(() => {})} />
+        <Popconfirm title="确定删除？" onConfirm={() => handleDeleteDef(r.dataCode)}><Button size="small" type="link" icon={<DeleteOutlined style={{ color: '#1a1a1a' }} />} style={{ padding: 0, color: '#1a1a1a' }} /></Popconfirm>
       </Space>
     )},
   ];
@@ -119,7 +119,7 @@ const EnumManagement: React.FC = () => {
           { title: '值', dataIndex: 'enumValue', width: 80 },
           { title: '排序', dataIndex: 'sortOrder', width: 60 },
           { title: '状态', dataIndex: 'status', width: 70 },
-          { title: '', width: 50, render: (_: any, r: any) => <Popconfirm title="删除？" onConfirm={() => handleDeleteItem(r.id)}><Button size="small" type="text" danger>✕</Button></Popconfirm> },
+          { title: '', width: 50, render: (_: any, r: any) => <Popconfirm title="删除？" onConfirm={() => handleDeleteItem(r.id)}><Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#1a1a1a' }} />} /></Popconfirm> },
         ]} rowKey="id" loading={itemsLoading} pagination={false} size="small" />
       </Modal>
     </>
@@ -154,11 +154,11 @@ const HierarchyNode: React.FC<{
         </span>
       )}
       <span style={{ color: '#999', fontSize: 10, marginLeft: 4 }}>({code})</span>
-      <Button size="small" type="link" style={{ padding: '0 4px', marginLeft: 4, fontSize: 11 }}
-        onClick={(e) => { e.stopPropagation(); onAddChild(code, level + 1); }}>+子节点</Button>
+      <Button size="small" type="link" icon={<PlusOutlined style={{ color: '#1a1a1a', fontSize: 11 }} />} style={{ padding: '0 4px', marginLeft: 4, color: '#1a1a1a' }}
+        onClick={(e) => { e.stopPropagation(); onAddChild(code, level + 1); }} />
       {nodeId && (
         <Popconfirm title="删除此节点？" onConfirm={() => onDelete(nodeId!)}>
-          <Button size="small" type="text" danger style={{ padding: '0 4px', fontSize: 11 }}>✕</Button>
+          <Button size="small" type="text" style={{ padding: '0 4px', fontSize: 11, color: '#1a1a1a' }} icon={<DeleteOutlined style={{ fontSize: 11, color: '#1a1a1a' }} />} />
         </Popconfirm>
       )}
     </span>
@@ -247,14 +247,14 @@ const HierarchyManagement: React.FC = () => {
           { title: '编码', dataIndex: 'dataCode', width: 100 },
           { title: '名称', dataIndex: 'dataName', width: 120 },
           { title: '节点数', dataIndex: 'itemCount', width: 80, render: (v: number) => `${v ?? 0} 项` },
-          { title: '操作', width: 100, render: (_: any, r: any) => <Button size="small" type="link" onClick={() => { loadTree(r.dataCode); loadAllNodes(r.dataCode); }}>管理节点</Button> },
+          { title: '操作', width: 60, render: (_: any, r: any) => <Button size="small" type="link" icon={<UnorderedListOutlined style={{ color: '#1a1a1a' }} />} style={{ color: '#1a1a1a' }} onClick={() => { loadTree(r.dataCode); loadAllNodes(r.dataCode); }} /> },
         ]} rowKey="dataCode" loading={loading} pagination={false} size="small" />
       ) : (
         <div>
           <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontWeight: 600, flex: 1 }}>{selectedCode} 节点管理</span>
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { setNodeForm({ nodeCode: '', nodeName: '', parentCode: '', nodeLevel: 1 }); setAddModalOpen(true); }}>添加根节点</Button>
-            <Button size="small" onClick={() => setSelectedCode(null)}>← 返回</Button>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { setNodeForm({ nodeCode: '', nodeName: '', parentCode: '', nodeLevel: 1 }); setAddModalOpen(true); }} />
+            <Button size="small" icon={<ArrowLeftOutlined style={{ color: '#1a1a1a' }} />} style={{ color: '#1a1a1a' }} onClick={() => setSelectedCode(null)} />
           </div>
           <Tree
             treeData={treeData}
@@ -437,9 +437,9 @@ const RecordManagement: React.FC = () => {
       title: '', width: 100,
       render: (_: any, r: any) => (
         <Space size={4}>
-          <Button size="small" type="link" style={{ padding: 0 }} onClick={() => openEdit(r)}>编辑</Button>
+          <Button size="small" type="link" icon={<EditOutlined style={{ color: '#1a1a1a' }} />} style={{ padding: 0, color: '#1a1a1a' }} onClick={() => openEdit(r)} />
           <Popconfirm title="确定删除？" onConfirm={() => handleDelete(r._id)}>
-            <Button size="small" type="link" danger style={{ padding: 0 }}>删除</Button>
+            <Button size="small" type="link" icon={<DeleteOutlined style={{ color: '#1a1a1a' }} />} style={{ padding: 0, color: '#1a1a1a' }} />
           </Popconfirm>
         </Space>
       ),
@@ -500,7 +500,7 @@ const RecordManagement: React.FC = () => {
 
   return (
     <Card title={`${selectedEntity.entityType} - 数据维护`} size="small"
-      extra={<Space><Button size="small" onClick={() => setSelectedEntity(null)}>← 返回</Button><Button size="small" type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增</Button></Space>}>
+      extra={<Space><Button size="small" type="primary" icon={<PlusOutlined />} onClick={openCreate} /><Button size="small" icon={<ArrowLeftOutlined style={{ color: '#1a1a1a' }} />} style={{ color: '#1a1a1a' }} onClick={() => setSelectedEntity(null)} /></Space>}>
       <Table dataSource={records} columns={tableColumns} rowKey="_id" loading={recordsLoading}
         pagination={{ pageSize: 50, showTotal: (t) => `共 ${t} 条` }} size="small" scroll={{ x: 'max-content' }} />
 

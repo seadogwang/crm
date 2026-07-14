@@ -73,7 +73,7 @@ const RuleList: React.FC = () => {
       render: (_: any, r: any) => (
         <Space>
           <Button size="small" type="link" icon={<EditOutlined />}
-            onClick={() => navigate(`/rules/engine/${r.id}/edit`)}>编辑</Button>
+            onClick={() => navigate(`/rules/engine/${r.id}/edit`)} />
           <Button size="small" type="link" icon={<ExperimentOutlined />}
             onClick={() => navigate(`/rules/engine/${r.id}/edit`)}>测试</Button>
         </Space>

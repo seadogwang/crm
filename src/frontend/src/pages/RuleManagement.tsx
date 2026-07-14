@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, Table, Tag, message, Space } from 'antd';
-import { PlusOutlined, SaveOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import api from '../api';
 
@@ -72,7 +72,7 @@ const RuleManagement: React.FC = () => {
         </Space>
       </Card>
 
-      <Card title="规则列表" extra={<Button icon={<SaveOutlined />} onClick={fetchRules}>刷新</Button>}>
+      <Card title="规则列表" extra={<Button icon={<ReloadOutlined />} onClick={fetchRules}>刷新</Button>}>
         <Table dataSource={rules} columns={columns} loading={loading} rowKey="id" size="small" pagination={{ pageSize: 20 }} />
       </Card>
     </div>

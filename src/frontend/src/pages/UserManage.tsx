@@ -116,7 +116,7 @@ const UserManage: React.FC = () => {
       title: '操作', width: 200,
       render: (_: any, record: SystemUserEntity) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           <Button size="small" icon={<KeyOutlined />} onClick={() => {
             setResetTargetId(record.id || null);
             setPasswordModalOpen(true);
