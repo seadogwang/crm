@@ -154,28 +154,33 @@ src/main/java/com/loyalty/platform/
 - Workspace List/Detail, Opportunity Intelligence, Decision Engine, Simulation & Optimization, Canvas Editor, Execution Monitor, Content Management, Intervention Dashboard, Feedback Analysis
 
 ### Screenshots
-### Screenshots\
-\
-| 会员服务 |\
-|---------|\
-| ![会员服务](src/screenshots/会员服务/会员服务.png) |\
-\
-| 忠诚度配置 |\
-|-----------|\
-| ![积分类型配置](src/screenshots/忠诚度配置/积分类型配置.png) |\
-| ![积分累积规则配置](src/screenshots/忠诚度配置/积分累积规则配置.png) |\
-| ![规则变量配置](src/screenshots/忠诚度配置/规则变量配置.png) |\
-| ![等级积分配置](src/screenshots/忠诚度配置/等级积分配置.png) |\
-| ![等级划分配置](src/screenshots/忠诚度配置/等级划分配置.png) |\
-| ![等级评估配置](src/screenshots/忠诚度配置/等级评估配置.png) |\
-| ![One-ID策略配置](src/screenshots/忠诚度配置/One-ID策略配置.png) |\
-\
-| 系统管理 |\
-|---------|\
-| ![实体模型配置](src/screenshots/系统管理/实体模型配置.png) |\
-| ![主数据管理](src/screenshots/系统管理/主数据管理.png) |\
-| ![角色管理](src/screenshots/系统管理/角色管理.png) |\
-| ![用户管理](src/screenshots/系统管理/用户管理.png) |\
+
+**会员服务 / Member Service**
+
+| 截图 | 说明 |
+|------|------|
+| ![会员服务](src/screenshots/会员服务/会员服务.png) | **会员服务** / Member Service — 会员查询、积分账户、交易流水、渠道绑定 |
+
+**忠诚度配置 / Loyalty Configuration**
+
+| 截图 | 说明 |
+|------|------|
+| ![积分类型配置](src/screenshots/忠诚度配置/积分类型配置.png) | **积分类型配置** / Point Type Configuration |
+| ![积分累积规则配置](src/screenshots/忠诚度配置/积分累积规则配置.png) | **积分累积规则配置** / Point Earning Rule Configuration |
+| ![规则变量配置](src/screenshots/忠诚度配置/规则变量配置.png) | **规则变量配置** / Rule Variable Configuration |
+| ![等级积分配置](src/screenshots/忠诚度配置/等级积分配置.png) | **等级积分配置** / Tier Points Configuration |
+| ![等级划分配置](src/screenshots/忠诚度配置/等级划分配置.png) | **等级划分配置** / Tier Level Configuration |
+| ![等级评估配置](src/screenshots/忠诚度配置/等级评估配置.png) | **等级评估配置** / Tier Evaluation Configuration |
+| ![One-ID策略配置](src/screenshots/忠诚度配置/One-ID策略配置.png) | **One-ID策略配置** / One-ID Strategy Configuration |
+
+**系统管理 / System Administration**
+
+| 截图 | 说明 |
+|------|------|
+| ![实体模型配置](src/screenshots/系统管理/实体模型配置.png) | **实体模型配置** / Entity Model Configuration |
+| ![主数据管理](src/screenshots/系统管理/主数据管理.png) | **主数据管理** / Master Data Management |
+| ![角色管理](src/screenshots/系统管理/角色管理.png) | **角色管理** / Role Management |
+| ![用户管理](src/screenshots/系统管理/用户管理.png) | **用户管理** / User Management |
 
 ---
 
