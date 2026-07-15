@@ -37,17 +37,17 @@ const RuleList: React.FC = () => {
 
   const columns = [
     {
-      title: '规则名称', dataIndex: 'ruleName', width: 200,
+      title: '规则名称', dataIndex: 'rule_name', width: 200,
       render: (v: string, r: any) => (
-        <Text strong style={{ cursor: 'pointer' }} onClick={() => navigate(`/rules/engine/${r.id}/edit`)}>{v || r.ruleCode}</Text>
+        <Text strong style={{ cursor: 'pointer' }} onClick={() => navigate(`/rules/engine/${r.id}/edit`)}>{v || r.rule_code}</Text>
       ),
     },
     {
-      title: '规则代码', dataIndex: 'ruleCode', width: 140,
+      title: '规则代码', dataIndex: 'rule_code', width: 140,
       render: (v: string) => <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text>,
     },
     {
-      title: '规则组', dataIndex: 'ruleGroup', width: 80,
+      title: '规则组', dataIndex: 'rule_group', width: 80,
       render: (v: string) => <Tag>{v === 'promo' ? '促销' : '基础'}</Tag>,
     },
     {
@@ -65,7 +65,7 @@ const RuleList: React.FC = () => {
       render: (v: number) => <Text type="secondary">v{v || 1}</Text>,
     },
     {
-      title: '更新时间', dataIndex: 'updatedAt', width: 120,
+      title: '更新时间', dataIndex: 'updated_at', width: 120,
       render: (v: string) => v ? new Date(v).toLocaleDateString('zh-CN') : '-',
     },
     {
