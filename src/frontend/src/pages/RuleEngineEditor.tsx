@@ -306,7 +306,7 @@ const RuleEngineEditor: React.FC = () => {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <Select size="small" value={cond.field || undefined} style={{ width: 140 }} placeholder="选择字段" showSearch optionFilterProp="label"
+                  <Select size="small" value={cond.field || undefined} style={{ width: 220 }} placeholder="选择字段" showSearch optionFilterProp="label" dropdownMatchSelectWidth={false}
                     options={fields.map(f => ({ label: `${f.label} (${f.group})`, value: f.code }))}
                     onChange={v => onUpdate(updateInGroup(group, cond.id, { field: v }))} />
                   <Select size="small" value={cond.operator} style={{ width: 90 }} options={OPERATORS}
