@@ -83,7 +83,7 @@ const RuleList: React.FC = () => {
 
   return (
     <Card
-      title="积分规则"
+      title="规则配置"
       extra={
         <Space>
           <Input prefix={<SearchOutlined />} placeholder="搜索" value={search}
