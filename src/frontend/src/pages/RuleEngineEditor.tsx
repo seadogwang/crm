@@ -63,6 +63,20 @@ const ACTION_TYPES = [
 let idCounter = 0;
 const uid = () => `${Date.now()}_${idCounter++}`;
 
+// ==================== 主数据选择组件 ====================
+const MasterDataSelect: React.FC<{ masterData: any; value: string; onChange: (v: string) => void }> = ({ masterData, value, onChange }) => {
+  const [opts, setOpts] = useState<{ label: string; value: string }[]>([]);
+  useEffect(() => {
+    if (masterData?.dataCode && masterData.dataType !== 'HIERARCHY') {
+      api.get(`/master-data/${masterData.dataCode}/options`).then(({ data }) => {
+        setOpts((data?.data || []).map((o: any) => ({ label: o.label, value: o.code })));
+      }).catch(() => {});
+    }
+  }, [masterData?.dataCode]);
+  return <Select size="small" value={value || undefined} style={{ width: 140 }} placeholder="选择值" showSearch optionFilterProp="label"
+    options={opts} onChange={onChange} />;
+};
+
 const defaultConfig = (): RuleConfig => ({
   ruleId: '', name: '', category: 'base', priority: 20, enabled: true, version: '1.0.0',
   lhs: { id: uid(), type: 'group', connector: 'AND', logic: 'AND', items: [] },
@@ -125,10 +139,11 @@ const RuleEngineEditor: React.FC = () => {
   const [simAmount, setSimAmount] = useState(8900);
   const [varSearch, setVarSearch] = useState('');
   const [orderFields, setOrderFields] = useState<{ code: string; label: string; type: string; children?: { code: string; label: string; type: string }[] }[]>([]);
-  const [memberFields, setMemberFields] = useState<{ code: string; label: string; type: string }[]>([]);
+  const [memberFields, setMemberFields] = useState<{ code: string; label: string; type: string; masterData?: any }[]>([]);
   const [pointTypeOptions, setPointTypeOptions] = useState<{ label: string; value: string; pointCategory?: string; isTierCalc?: boolean }[]>([]);
   const [rulePurpose, setRulePurpose] = useState('EARN_POINTS'); // EARN_POINTS | TIER_UPGRADE
   const [variableOptions, setVariableOptions] = useState<{ label: string; value: string }[]>([]);
+  const [masterDataOptions, setMasterDataOptions] = useState<Record<string, { label: string; value: string }[]>>({});
 
   useEffect(() => {
     api.get('/schemas/ORDER').then(({ data }) => {
@@ -149,7 +164,10 @@ const RuleEngineEditor: React.FC = () => {
     }).catch(() => {});
     api.get('/schemas/MEMBER').then(({ data }) => {
       const s = data?.data?.schema || data?.data;
-      setMemberFields(Object.entries(s?.properties || {}).map(([k, v]: any) => ({ code: k, label: v.title || k, type: v.type || 'string' })));
+      setMemberFields(Object.entries(s?.properties || {}).map(([k, v]: any) => ({
+        code: k, label: v.title || k, type: v.type || 'string',
+        masterData: v['x-master-data'] || null,
+      })));
     }).catch(() => {});
     api.get('/point-types', { params: { programCode: PROG } }).then(({ data }) => {
       setPointTypeOptions((data?.data || []).map((p: any) => ({ label: `${p.typeName} (${p.typeCode})`, value: p.typeCode, pointCategory: p.pointCategory, isTierCalc: p.isTierCalc })));
@@ -178,7 +196,7 @@ const RuleEngineEditor: React.FC = () => {
   }, [id, isNew, PROG]);
 
   const allFields = useMemo(() => {
-    const fields: { code: string; label: string; group: string; isCollection?: boolean }[] = [];
+    const fields: { code: string; label: string; group: string; isCollection?: boolean; masterData?: any }[] = [];
     orderFields.forEach(f => {
       if (f.type !== 'array') fields.push({ code: f.code, label: f.label, group: '订单' });
       (f.children || []).forEach(c => fields.push({ code: c.code, label: `${f.label} › ${c.label}`, group: '订单' }));
@@ -312,8 +330,16 @@ const RuleEngineEditor: React.FC = () => {
                   <Select size="small" value={cond.operator} style={{ width: 90 }} options={OPERATORS}
                     onChange={v => onUpdate(updateInGroup(group, cond.id, { operator: v }))} />
                   {!['IS_NULL', 'IS_NOT_NULL'].includes(cond.operator) && (
-                    <Input size="small" placeholder="值" style={{ width: 100 }} value={cond.value}
-                      onChange={e => onUpdate(updateInGroup(group, cond.id, { value: e.target.value }))} />
+                    cond.field && allFields.find((f: any) => f.code === cond.field)?.masterData ? (
+                      <MasterDataSelect
+                        masterData={allFields.find((f: any) => f.code === cond.field)?.masterData}
+                        value={cond.value}
+                        onChange={v => onUpdate(updateInGroup(group, cond.id, { value: v }))}
+                      />
+                    ) : (
+                      <Input size="small" placeholder="值" style={{ width: 100 }} value={cond.value}
+                        onChange={e => onUpdate(updateInGroup(group, cond.id, { value: e.target.value }))} />
+                    )
                   )}
                   <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => onUpdate(removeFromGroup(group, cond.id))} />
                 </div>
