@@ -154,13 +154,28 @@ src/main/java/com/loyalty/platform/
 - Workspace List/Detail, Opportunity Intelligence, Decision Engine, Simulation & Optimization, Canvas Editor, Execution Monitor, Content Management, Intervention Dashboard, Feedback Analysis
 
 ### Screenshots
-
-| Rule Configuration | Rule Engine Update |
-|-------------------|---------------------|
-| ![Rule Config](规则配置.png) | ![Rule Engine](规则引擎更新.png) |
-
-|-----------------|---------------|
-| ![AI Preview](AI辅助规则配置_2.png) | ![Member](会员服务.png) |
+### Screenshots\
+\
+| 会员服务 |\
+|---------|\
+| ![会员服务](src/screenshots/会员服务/会员服务.png) |\
+\
+| 忠诚度配置 |\
+|-----------|\
+| ![积分类型配置](src/screenshots/忠诚度配置/积分类型配置.png) |\
+| ![积分累积规则配置](src/screenshots/忠诚度配置/积分累积规则配置.png) |\
+| ![规则变量配置](src/screenshots/忠诚度配置/规则变量配置.png) |\
+| ![等级积分配置](src/screenshots/忠诚度配置/等级积分配置.png) |\
+| ![等级划分配置](src/screenshots/忠诚度配置/等级划分配置.png) |\
+| ![等级评估配置](src/screenshots/忠诚度配置/等级评估配置.png) |\
+| ![One-ID策略配置](src/screenshots/忠诚度配置/One-ID策略配置.png) |\
+\
+| 系统管理 |\
+|---------|\
+| ![实体模型配置](src/screenshots/系统管理/实体模型配置.png) |\
+| ![主数据管理](src/screenshots/系统管理/主数据管理.png) |\
+| ![角色管理](src/screenshots/系统管理/角色管理.png) |\
+| ![用户管理](src/screenshots/系统管理/用户管理.png) |\
 
 ---
 

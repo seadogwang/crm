@@ -23,6 +23,8 @@ const OneIdStrategyPage: React.FC = () => {
     { field: 'email', weight: 5, required: false },
     { field: 'channel_user_id', weight: 3, required: false },
   ]);
+  const [currentStrategy, setCurrentStrategy] = useState<any>(null);
+  const [strategyList, setStrategyList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -31,9 +33,14 @@ const OneIdStrategyPage: React.FC = () => {
     try {
       const { data } = await api.get('/admin/one-id/strategy', { params: { programCode: PROG } });
       const list = data?.data || [];
-      const primary = list.find((s: any) => s.strategyCode === 'PHONE_PRIMARY') || list[0];
-      if (primary) {
-        setFields(primary.priorityFields || []);
+      setStrategyList(list);
+      // 默认选中第一个策略，或保留当前选中的策略
+      const target = currentStrategy
+        ? list.find((s: any) => s.strategyCode === currentStrategy.strategyCode) || list[0]
+        : list[0];
+      if (target) {
+        setCurrentStrategy(target);
+        setFields(target.priorityFields || []);
       }
     } catch {} finally { setLoading(false); }
   };
@@ -54,17 +61,19 @@ const OneIdStrategyPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!currentStrategy) { message.warning('请先选择策略'); return; }
     setSaving(true);
     try {
       await api.put('/admin/one-id/strategy', {
         programCode: PROG,
-        strategyCode: 'PHONE_PRIMARY',
-        strategyName: '手机号优先',
+        strategyCode: currentStrategy.strategyCode,
+        strategyName: currentStrategy.strategyName,
         priorityFields: fields,
-        isDefault: true,
-        status: 'ACTIVE',
+        isDefault: currentStrategy.isDefault ?? false,
+        status: currentStrategy.status || 'ACTIVE',
       });
       message.success('已保存');
+      loadStrategy(); // 保存后重新加载，确认数据
     } catch (e: any) { message.error(e?.response?.data?.message || '保存失败'); }
     finally { setSaving(false); }
   };
@@ -74,6 +83,15 @@ const OneIdStrategyPage: React.FC = () => {
       title="One-ID 策略配置"
       extra={<Space><Button icon={<ReloadOutlined />} onClick={loadStrategy}>刷新</Button><Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>保存</Button></Space>}
     >
+      <div style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <span style={{ color: '#888', fontSize: 12 }}>策略：</span>
+        <Select size="small" value={currentStrategy?.strategyCode} style={{ width: 180 }}
+          onChange={(code) => {
+            const s = strategyList.find((s: any) => s.strategyCode === code);
+            if (s) { setCurrentStrategy(s); setFields(s.priorityFields || []); }
+          }}
+          options={strategyList.map((s: any) => ({ label: s.strategyName || s.strategyCode, value: s.strategyCode }))} />
+      </div>
       <div style={{ marginBottom: 12, color: '#888', fontSize: 12 }}>
         匹配优先级从上到下依次降低，系统按此顺序匹配会员身份
       </div>
