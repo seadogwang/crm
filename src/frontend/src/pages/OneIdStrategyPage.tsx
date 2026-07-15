@@ -31,8 +31,9 @@ const OneIdStrategyPage: React.FC = () => {
     try {
       const { data } = await api.get('/admin/one-id/strategy', { params: { programCode: PROG } });
       const list = data?.data || [];
-      if (list.length > 0) {
-        setFields(list[0].priorityFields || []);
+      const primary = list.find((s: any) => s.strategyCode === 'PHONE_PRIMARY') || list[0];
+      if (primary) {
+        setFields(primary.priorityFields || []);
       }
     } catch {} finally { setLoading(false); }
   };
