@@ -165,13 +165,9 @@ src/main/java/com/loyalty/platform/
 
 | 截图 | 说明 |
 |------|------|
-| ![积分类型配置](src/screenshots/忠诚度配置/积分类型配置.png) | **积分类型配置** / Point Type Configuration |
-| ![积分累积规则配置](src/screenshots/忠诚度配置/积分累积规则配置.png) | **积分累积规则配置** / Point Earning Rule Configuration |
-| ![规则变量配置](src/screenshots/忠诚度配置/规则变量配置.png) | **规则变量配置** / Rule Variable Configuration |
-| ![等级积分配置](src/screenshots/忠诚度配置/等级积分配置.png) | **等级积分配置** / Tier Points Configuration |
-| ![等级划分配置](src/screenshots/忠诚度配置/等级划分配置.png) | **等级划分配置** / Tier Level Configuration |
-| ![等级评估配置](src/screenshots/忠诚度配置/等级评估配置.png) | **等级评估配置** / Tier Evaluation Configuration |
-| ![One-ID策略配置](src/screenshots/忠诚度配置/One-ID策略配置.png) | **One-ID策略配置** / One-ID Strategy Configuration |
+| ![积分类型配置](src/screenshots/忠诚度配置/积分类型配置.png) | **1. 积分类型配置** / Point Type Configuration |
+| ![等级划分配置](src/screenshots/忠诚度配置/等级划分配置.png) | **2. 等级划分配置** / Tier Level Configuration |
+| ![规则变量配置](src/screenshots/忠诚度配置/规则变量配置.png) | **3. 变量配置** / Variable Configuration |
 
 **系统管理 / System Administration**
 
