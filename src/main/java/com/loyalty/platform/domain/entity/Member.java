@@ -81,6 +81,10 @@ public class Member implements Serializable {
     @Column(name = "enroll_channel", length = 50)
     private String enrollChannel;
 
+    /** 入会时间 */
+    @Column(name = "enroll_time")
+    private LocalDateTime enrollTime;
+
     /** 当前等级代码 */
     @Column(name = "tier_code", length = 16)
     private String tierCode;
