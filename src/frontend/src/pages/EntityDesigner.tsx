@@ -468,17 +468,7 @@ const EntityDesigner: React.FC = () => {
         }
       }
       setEdges(rfedges);
-      // 恢复视口
-      setTimeout(() => {
-        if (rfInstance) {
-          const savedViewport = sessionStorage.getItem('entity-designer-viewport');
-          if (savedViewport) {
-            try { rfInstance.setViewport(JSON.parse(savedViewport)); } catch {}
-          } else {
-            rfInstance.fitView({ padding: 0.2 });
-          }
-        }
-      }, 300);
+      // fitView 由 FitViewOnLoad 组件自动处理
     } catch { setEntities([]); }
     finally { setLoading(false); }
   }, []);
@@ -656,12 +646,12 @@ const EntityDesigner: React.FC = () => {
       </div>
 
       <ReactFlowProvider>
+        <FitViewOnLoad />
         <ReactFlow
           nodes={nodes} edges={edges}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
           onInit={(instance) => {
             setRfInstance(instance);
-            setTimeout(() => instance.fitView({ padding: 0.2, duration: 300 }), 300);
           }}
           onConnect={onConnect}
           onEdgeClick={onEdgeClick} onEdgeDoubleClick={onEdgeDoubleClick}
