@@ -26,4 +26,5 @@ public class OneIdStrategy {
     @Column(name = "description", columnDefinition = "text") private String description;
     @Column(name = "created_at", updatable = false) @Builder.Default private LocalDateTime createdAt = LocalDateTime.now();
     @Column(name = "updated_at") @Builder.Default private LocalDateTime updatedAt = LocalDateTime.now();
+
 }

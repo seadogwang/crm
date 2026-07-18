@@ -58,4 +58,5 @@ public class LlmConfig {
     @Column(name = "updated_at")
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
+
 }

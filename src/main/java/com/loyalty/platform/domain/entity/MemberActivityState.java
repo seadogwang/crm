@@ -31,4 +31,5 @@ public class MemberActivityState {
     @Column(name = "last_updated_at")
     @Builder.Default
     private LocalDateTime lastUpdatedAt = LocalDateTime.now();
+
 }

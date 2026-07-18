@@ -16,6 +16,7 @@ class MemberTierId implements Serializable {
         return Objects.equals(programCode, that.programCode) && Objects.equals(memberId, that.memberId);
     }
     @Override public int hashCode() { return Objects.hash(programCode, memberId); }
+
 }
 
 @Entity
@@ -48,4 +49,5 @@ public class MemberTier implements Serializable {
     @Column(name = "updated_at")
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
+
 }

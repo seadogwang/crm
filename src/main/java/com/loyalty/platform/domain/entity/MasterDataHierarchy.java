@@ -21,4 +21,5 @@ public class MasterDataHierarchy {
     @Column(name = "ext_attributes", columnDefinition = "text") private String extAttributes;
     @Column(name = "created_at", updatable = false) @Builder.Default private LocalDateTime createdAt = LocalDateTime.now();
     @Column(name = "updated_at") @Builder.Default private LocalDateTime updatedAt = LocalDateTime.now();
+
 }

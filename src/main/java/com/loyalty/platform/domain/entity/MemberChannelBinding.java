@@ -37,4 +37,5 @@ public class MemberChannelBinding {
     @Column(name = "unbind_reason", length = 255) private String unbindReason;
     @Column(name = "created_at", updatable = false) @Builder.Default private LocalDateTime createdAt = LocalDateTime.now();
     @Column(name = "updated_at") @Builder.Default private LocalDateTime updatedAt = LocalDateTime.now();
+
 }

@@ -82,4 +82,5 @@ public class Program {
     @Column(name = "updated_at")
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
+
 }

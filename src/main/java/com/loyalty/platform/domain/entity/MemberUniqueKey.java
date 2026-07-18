@@ -19,6 +19,7 @@ class MemberUniqueKeyId implements Serializable {
             && Objects.equals(keyValue, that.keyValue);
     }
     @Override public int hashCode() { return Objects.hash(programCode, keyCombination, keyValue); }
+
 }
 
 @Entity
@@ -60,4 +61,5 @@ public class MemberUniqueKey implements Serializable {
     @Builder.Default
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
+
 }

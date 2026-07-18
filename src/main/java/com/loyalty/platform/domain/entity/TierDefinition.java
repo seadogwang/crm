@@ -61,4 +61,5 @@ public class TierDefinition {
 
     @Column(name = "created_by")
     private Long createdBy;
+
 }
