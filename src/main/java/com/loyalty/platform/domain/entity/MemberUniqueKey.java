@@ -21,16 +21,7 @@ class MemberUniqueKeyId implements Serializable {
     @Override public int hashCode() { return Objects.hash(programCode, keyCombination, keyValue); }
 
 
-    @PrePersist
-    public void prePersist() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
 
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
 
 @Entity
@@ -78,14 +69,5 @@ public class MemberUniqueKey implements Serializable {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
 
-    @PrePersist
-    public void prePersist() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
 
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
