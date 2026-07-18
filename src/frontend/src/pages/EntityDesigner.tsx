@@ -50,7 +50,7 @@ interface FieldDef {
 }
 
 const DB_TYPE_OPTIONS = ['VARCHAR', 'INT', 'BIGINT', 'DECIMAL', 'DATE', 'TIMESTAMP', 'BOOLEAN', 'TEXT', 'JSON', 'MASTER_DATA'];
-const FIXED_FIELD_NAMES = new Set(['memberId', 'name', 'gender', 'birthday', 'tierCode', 'status', 'schemaVersion', 'createdAt', 'orderId', 'totalAmount', 'id']);
+const FIXED_FIELD_NAMES = new Set(['memberId', 'member_id', 'name', 'gender', 'birthday', 'enroll_channel', 'enroll_time', 'tierCode', 'tier_code', 'status', 'schemaVersion', 'createdAt', 'orderId', 'totalAmount', 'id']);
 
 const RIGHT_HANDLE_PREFIX = 'rh_';
 const LEFT_HANDLE_PREFIX = 'lh_';
