@@ -41,4 +41,19 @@ public class PointTypeDefinition {
     private Map<String, Object> configJson;
     @Column(name = "status", length = 20) @Builder.Default private String status = "ACTIVE";
     @Column(name = "created_at", updatable = false) @Builder.Default private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

@@ -56,6 +56,21 @@ public class EventOutbox {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "updated_at")
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

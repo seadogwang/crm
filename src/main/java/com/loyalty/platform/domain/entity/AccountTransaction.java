@@ -17,11 +17,17 @@ import java.util.Objects;
 class AccountTransactionId implements Serializable {
     private Long id;
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
     @Override public boolean equals(Object o) {
         if (!(o instanceof AccountTransactionId that)) return false;
         return Objects.equals(id, that.id) && Objects.equals(createdAt, that.createdAt);
     }
     @Override public int hashCode() { return Objects.hash(id, createdAt); }
+
+
 }
 
 /**
@@ -59,5 +65,7 @@ public class AccountTransaction implements Serializable {
     /** 变动金额（正入负出） */
     @Column(name = "amount", nullable = false, precision = 18, scale = 4)
     private BigDecimal amount;
+
+
 
 }

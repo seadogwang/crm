@@ -86,6 +86,10 @@ public class TransactionEvent {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "updated_at")
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
     @Column(name = "trade_time")
     private LocalDateTime tradeTime;
 
@@ -97,4 +101,15 @@ public class TransactionEvent {
 
     @Column(name = "trade_status", length = 30)
     private String tradeStatus;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
