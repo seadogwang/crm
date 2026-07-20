@@ -115,6 +115,7 @@ src/main/java/com/loyalty/platform/
 | ![积分累积规则配置](src/screenshots/忠诚度配置/积分累积规则配置.png) | **4. 积分累积规则配置** / Point Earning Rule Configuration |
 | ![等级积分配置](src/screenshots/忠诚度配置/等级积分配置.png) | **5. 等级积分配置** / Tier Points Configuration |
 | ![等级评估配置](src/screenshots/忠诚度配置/等级评估配置.png) | **6. 等级评估配置** / Tier Evaluation Configuration |
+| ![One-ID策略配置](src/screenshots/忠诚度配置/One-ID策略配置.png) | **7. One-ID 策略配置** / One-ID Strategy Configuration |
 
 **系统管理 / System Administration**
 
