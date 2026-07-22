@@ -39,7 +39,7 @@ public class SystemAdminController {
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listUsers(
             @RequestParam(required = false) String programCode) {
-        String pc = programCode != null ? programCode : TenantContext.getRequired();
+        String pc = TenantContext.getRequired();
         List<Map<String, Object>> users = userService.listUsers(pc);
         return ResponseEntity.ok(ApiResponse.success(users));
     }
@@ -89,7 +89,7 @@ public class SystemAdminController {
     @GetMapping("/roles")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listRoles(
             @RequestParam(required = false) String programCode) {
-        String pc = programCode != null ? programCode : TenantContext.getRequired();
+        String pc = TenantContext.getRequired();
         List<Map<String, Object>> roles = roleService.listRoles(pc);
         return ResponseEntity.ok(ApiResponse.success(roles));
     }

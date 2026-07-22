@@ -108,9 +108,51 @@ loyalty:
       - tier_activity
       - member_tier_activity_log
       - tenant
+      - sys_user
+      - sys_role
+      - sys_user_role
+      - sys_role_permission
+      - campaign_plan
+      - campaign_workspace
+      - campaign_goal
+      - campaign_initiative
+      - campaign_portfolio
+      - campaign_execution_master
+      - campaign_decision_result
+      - campaign_intervention_command
+      - campaign_content_asset
+      - campaign_approval_record
+      - campaign_node_definition
+      - campaign_zeebe_instance
+      - campaign_event_trigger
+      - strategy_blueprint
+      - experiment
+      - experiment_variant
+      - experiment_assignment
+      - recommendation_strategy
+      - budget_pacing
+      - budget_consumption
+      - budget_alert
+      - terms_master
+      - terms_acceptance
+      - user_consent
+      - consent_change_log
+      - gdpr_request
+      - sharing_policy
+      - cross_program_relation
+      - global_blacklist
+      - campaign_global_control
+      - campaign_prompt_template
+      - campaign_variable_binding
+      - campaign_webhook_log
+      - external_signal
+      - calendar_cache
+      - conflict_record
   security:
     # 查询哨兵模式：true=强制所有查询携带 programCode
     query-sentinel-enabled: true
+    # JWT 签名密钥 — 生产环境必须通过环境变量 JWT_SECRET 注入
+    jwt-secret: ${JWT_SECRET:loyalty-saas-jwt-secret-key-2026-dev-only}
 
 # Springdoc OpenAPI 配置
 springdoc:

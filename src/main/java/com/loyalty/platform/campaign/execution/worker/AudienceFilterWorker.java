@@ -3,6 +3,7 @@ package com.loyalty.platform.campaign.execution.worker;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loyalty.platform.campaign.intervention.service.InterventionService;
+import com.loyalty.platform.common.context.TenantContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -45,7 +46,13 @@ public class AudienceFilterWorker extends BaseCampaignWorker {
     public Map<String, Object> handle(Map<String, Object> variables) {
         String planId = getString(variables, "planId");
         String nodeId = getString(variables, "nodeId");
-        String programCode = getString(variables, "programCode");
+        String programCode = TenantContext.get();
+        if (programCode == null || programCode.isBlank() || "*".equals(programCode)) {
+            programCode = getString(variables, "programCode");
+        }
+        if (programCode == null || programCode.isBlank() || "*".equals(programCode)) {
+            return errorResult("Missing tenant programCode");
+        }
         String logic = getString(variables, "logic");
         if (logic == null) logic = "AND";
         Integer limit = getInt(variables, "limit");
@@ -58,8 +65,8 @@ public class AudienceFilterWorker extends BaseCampaignWorker {
                 programCode, logic, conditions != null ? conditions.size() : 0, limit);
 
         try {
-            List<String> staticConds = new ArrayList<>();
-            List<String> subQueries = new ArrayList<>();
+            List<DynamicStatSqlGenerator.SqlFragment> staticConds = new ArrayList<>();
+            List<DynamicStatSqlGenerator.GeneratedSql> subQueries = new ArrayList<>();
 
             if (conditions != null) {
                 for (Map<String, Object> cond : conditions) {
@@ -81,8 +88,8 @@ public class AudienceFilterWorker extends BaseCampaignWorker {
                         Object value = cond.get("value");
 
                         if (dataSource != null && aggFunc != null && ALLOWED_AGG_FUNCS.contains(aggFunc)) {
-                            String subQuery = sqlGenerator.generateSubQuery(
-                                    dataSource, aggFunc, aggField, twType, twDays, operator, value);
+                            DynamicStatSqlGenerator.GeneratedSql subQuery = sqlGenerator.generateSubQuery(
+                                    programCode, dataSource, aggFunc, aggField, twType, twDays, operator, value);
                             subQueries.add(subQuery);
                         }
                     }
@@ -90,15 +97,14 @@ public class AudienceFilterWorker extends BaseCampaignWorker {
             }
 
             if (staticConds.isEmpty() && subQueries.isEmpty()) {
-                staticConds.add("ma.status = 'ACTIVE'");
+                staticConds.add(sqlGenerator.buildStaticCondition("status", "eq", "ACTIVE"));
             }
-            // 添加 program 过滤
-            staticConds.add(0, "ma.program_code = '" + programCode + "'");
+            DynamicStatSqlGenerator.GeneratedSql finalSql =
+                    sqlGenerator.buildFinalSql(programCode, staticConds, subQueries, logic, excludeBlacklist, limit);
+            log.debug("AudienceFilter SQL: {}", finalSql.sql());
 
-            String finalSql = sqlGenerator.buildFinalSql(staticConds, subQueries, logic, excludeBlacklist, limit);
-            log.debug("AudienceFilter SQL: {}", finalSql);
-
-            List<String> memberIds = jdbcTemplate.queryForList(finalSql, String.class);
+            List<String> memberIds = jdbcTemplate.queryForList(
+                    finalSql.sql(), String.class, finalSql.parameters().toArray());
             log.info("AudienceFilter result: {} members (queryTime={})", memberIds.size(), Instant.now());
 
             return Map.of(

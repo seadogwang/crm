@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined,
-  KeyOutlined, LockOutlined, TableOutlined,
+  KeyOutlined, LockOutlined, TableOutlined, AimOutlined,
 } from '@ant-design/icons';
 import {
   ReactFlow, ReactFlowProvider, Background, Controls, MiniMap,
@@ -19,13 +19,15 @@ import api from '../api';
 
 const { Text } = Typography;
 
-// 节点加载后自动适配视图
-const FitViewOnLoad: React.FC = () => {
+// 节点加载后自动适配视图 — 居中显示所有实体
+const FitViewOnLoad: React.FC<{ nodeCount: number }> = ({ nodeCount }) => {
   const { fitView } = useReactFlow();
-  const nodeCount = useStore((s: any) => s.nodeInternals?.size || 0);
   useEffect(() => {
     if (nodeCount > 0) {
-      const timer = setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 200);
+      // 延迟确保节点完成渲染后再居中
+      const timer = setTimeout(() => {
+        fitView({ padding: 0.3, duration: 500, maxDuration: 1000 });
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [nodeCount, fitView]);
@@ -50,40 +52,36 @@ interface FieldDef {
 }
 
 const DB_TYPE_OPTIONS = ['VARCHAR', 'INT', 'BIGINT', 'DECIMAL', 'DATE', 'TIMESTAMP', 'BOOLEAN', 'TEXT', 'JSON', 'MASTER_DATA'];
-const FIXED_FIELD_NAMES = new Set(['memberId', 'member_id', 'name', 'gender', 'birthday', 'enroll_channel', 'enroll_time', 'tierCode', 'tier_code', 'status', 'schemaVersion', 'createdAt', 'orderId', 'totalAmount', 'id']);
+const FIXED_FIELD_NAMES = new Set(['memberId', 'member_id', 'name', 'gender', 'birthday', 'enroll_channel', 'enroll_time', 'tierCode', 'tier_code', 'status', 'schemaVersion', 'createdAt', 'created_at', 'updated_at', 'phone', 'email', 'orderId', 'totalAmount', 'id']);
 
-const RIGHT_HANDLE_PREFIX = 'rh_';
 const LEFT_HANDLE_PREFIX = 'lh_';
+const RIGHT_HANDLE_PREFIX = 'rh_';
+// 左右两侧各有 source 和 target handle，支持连线方向自动翻转
+const LEFT_SOURCE_PREFIX = 'ls_';
+const RIGHT_TARGET_PREFIX = 'rt_';
 
 // ==================== 自定义 Edge（参考 ChartDB） ====================
 
 const EntityEdge: React.FC<any> = React.memo(
-  ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, selected, data, sourceHandleId, targetHandleId }: any) => {
+  ({ id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, selected, data }: any) => {
     const relationship = data?.relationship;
     const isSelected = selected || data?.highlighted;
     const relationType = relationship?.relationType || 'ONE_TO_MANY';
 
-    // 使用 React Flow 提供的 sourceHandleId/targetHandleId 计算偏移
-    const handleKey = `${sourceHandleId || ''}-${targetHandleId || ''}`;
-    const edgeIndex = Math.abs(handleKey.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)) % 8;
-    const offset = (edgeIndex + 1) * 16;
-
     const [edgePath, labelX, labelY] = getSmoothStepPath({
       sourceX, sourceY, targetX, targetY,
-      borderRadius: 14,
       sourcePosition: sourcePosition || Position.Right,
       targetPosition: targetPosition || Position.Left,
-      offset,
+      borderRadius: 14,
     });
 
-    const sourceCardinality = relationType === 'ONE_TO_MANY' ? '1' : relationType === 'MANY_TO_MANY' ? 'N' : '1';
-    const targetCardinality = relationType === 'ONE_TO_MANY' ? 'N' : relationType === 'MANY_TO_MANY' ? 'N' : '1';
+    const sourceCardinality = relationType === 'ONE_TO_MANY' || relationType === 'ONE_TO_ONE' ? '1' : 'N';
+    const targetCardinality = relationType === 'MANY_TO_ONE' || relationType === 'ONE_TO_ONE' ? '1' : 'N';
 
-    // 标记放在端点处，固定偏移（不依赖连线方向）
-    const markerStartX = sourceX + 20;
-    const markerStartY = sourceY - 18;
-    const markerEndX = targetX - 20;
-    const markerEndY = targetY - 18;
+    const markerStartX = sourceX + (sourcePosition === Position.Right ? 18 : -18);
+    const markerStartY = sourceY;
+    const markerEndX = targetX + (targetPosition === Position.Right ? 18 : -18);
+    const markerEndY = targetY;
 
     return (
       <>
@@ -92,25 +90,31 @@ const EntityEdge: React.FC<any> = React.memo(
         <path d={edgePath} fill="none" strokeOpacity={0} strokeWidth={20}
           className="react-flow__edge-interaction" />
 
-        {/* 基数标记 - 起点 */}
         <g transform={`translate(${markerStartX}, ${markerStartY})`}>
-          <circle r={10} fill={isSelected ? '#db2777' : '#94a3b8'} />
-          <text textAnchor="middle" dy="0.35em" fontSize={11} fontWeight="bold" fill="#fff">{sourceCardinality}</text>
+          <circle r={9} fill={isSelected ? '#db2777' : '#94a3b8'} />
+          <text textAnchor="middle" dy="0.35em" fontSize={10} fontWeight="bold" fill="#fff">{sourceCardinality}</text>
         </g>
 
-        {/* 基数标记 - 终点 */}
         <g transform={`translate(${markerEndX}, ${markerEndY})`}>
-          <circle r={10} fill={isSelected ? '#db2777' : '#94a3b8'} />
-          <text textAnchor="middle" dy="0.35em" fontSize={11} fontWeight="bold" fill="#fff">{targetCardinality}</text>
+          <circle r={9} fill={isSelected ? '#db2777' : '#94a3b8'} />
+          <text textAnchor="middle" dy="0.35em" fontSize={10} fontWeight="bold" fill="#fff">{targetCardinality}</text>
         </g>
 
-        {/* 编辑按钮 - 仅选中时显示 */}
         {isSelected && (
           <foreignObject width={24} height={24} x={labelX - 12} y={labelY - 12}
             className="overflow-visible" style={{ pointerEvents: 'all' }}>
-            <button className="flex size-6 items-center justify-center rounded-full border-2 border-pink-600 bg-white shadow-lg hover:scale-110 transition-transform"
-              title="编辑关系">
-              <EditOutlined className="text-pink-600" style={{ fontSize: 12 }} />
+            <button className="relative flex size-6 items-center justify-center rounded-full border-2 border-pink-600 bg-white shadow-lg transition-all hover:scale-110 hover:bg-pink-50"
+              title="编辑关系"
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => {
+                e.stopPropagation();
+                const rect = (e.target as HTMLElement).closest('button')?.getBoundingClientRect();
+                if (rect) {
+                  const evt = new CustomEvent('edge-button-click', { bubbles: true, detail: { edgeId: id, x: rect.left, y: rect.bottom + 4 } });
+                  window.dispatchEvent(evt);
+                }
+              }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4 text-pink-600" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
             </button>
           </foreignObject>
         )}
@@ -128,9 +132,12 @@ const FieldRow: React.FC<{
 }> = ({ field, focused, tableId, highlighted }) => {
   return (
     <div className={`relative flex h-8 items-center px-2 text-xs border-b border-slate-200 dark:border-slate-800 transition-colors ${highlighted ? 'bg-pink-100' : ''}`}>
-      {/* 左侧 Handle */}
+      {/* 左侧：target + source */}
       <Handle type="target" position={Position.Left} id={`${LEFT_HANDLE_PREFIX}${field.name}`}
-        className={`!absolute !left-0 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
+        className={`!absolute !left-0 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-blue-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
+        isConnectable={true} />
+      <Handle type="source" position={Position.Left} id={`${LEFT_SOURCE_PREFIX}${field.name}`}
+        className={`!absolute !left-0 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-green-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
         isConnectable={true} />
       {/* 图标 */}
       <span className="mr-1.5 shrink-0">
@@ -139,9 +146,12 @@ const FieldRow: React.FC<{
       </span>
       <span className="flex-1 truncate">{field.title || field.name}</span>
       <span className="ml-2 shrink-0 text-[10px] text-slate-400">{field.dbType || field.type}</span>
-      {/* 右侧 Handle */}
+      {/* 右侧：source + target */}
       <Handle type="source" position={Position.Right} id={`${RIGHT_HANDLE_PREFIX}${field.name}`}
-        className={`!absolute !right-0 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
+        className={`!absolute !right-0 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-green-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
+        isConnectable={true} />
+      <Handle type="target" position={Position.Right} id={`${RIGHT_TARGET_PREFIX}${field.name}`}
+        className={`!absolute !right-0 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-blue-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
         isConnectable={true} />
     </div>
   );
@@ -197,21 +207,20 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
 
   const handleSave = () => {
     if (!editForm.name.trim()) { message.warning('字段名不能为空'); return; }
-    if (editForm.dbType === 'MASTER_DATA' && !editForm.masterDataCode) { message.warning('请选择主数据集'); return; }
-    const isMaster = editForm.dbType === 'MASTER_DATA';
+    const isMaster = editForm.dbType === 'MASTER_DATA' || !!editForm.masterDataCode;
     const jsonType = editForm.dbType === 'INT' || editForm.dbType === 'BIGINT' || editForm.dbType === 'DECIMAL' ? 'number' : editForm.dbType === 'BOOLEAN' ? 'boolean' : 'string';
     const fieldDef: any = {
       type: jsonType, title: editForm.title || editForm.name,
-      'x-db-metadata': { dataType: isMaster ? 'VARCHAR' : (editForm.dbType || 'VARCHAR'), primaryKey: editForm.isPrimaryKey, nullable: !editForm.isRequired, foreignKey: false },
-      'x-ui-metadata': { label: editForm.title || editForm.name, component: 'Input', showInUI: editForm.showInUI ?? true, availableInRules: editForm.availableInRules ?? true },
+      'x-db-metadata': { dataType: editForm.dbType === 'MASTER_DATA' ? 'VARCHAR' : (editForm.dbType || 'VARCHAR'), primaryKey: editForm.isPrimaryKey, nullable: !editForm.isRequired, foreignKey: false },
+      'x-ui-metadata': { label: editForm.title || editForm.name, component: isMaster ? (editForm.masterComponent || 'select') : 'Input', showInUI: editForm.showInUI ?? true, availableInRules: editForm.availableInRules ?? true },
     };
-    if (isMaster && editForm.masterDataCode) {
+    if (editForm.masterDataCode) {
       fieldDef['x-master-data'] = {
         dataCode: editForm.masterDataCode,
-        dataType: editForm.masterDataType,
-        valueField: editForm.masterValueField,
-        labelField: editForm.masterLabelField,
-        component: editForm.masterComponent,
+        dataType: editForm.masterDataType || 'ENUM',
+        valueField: editForm.masterValueField || 'code',
+        labelField: editForm.masterLabelField || 'label',
+        component: editForm.masterComponent || 'select',
       };
     }
     onAddField(editForm.name, fieldDef);
@@ -228,8 +237,8 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
     onExitEdit?.();
   };
 
-  const extList = fields.filter(f => !f.isFixed);
-  const fixedList = fields.filter(f => f.isFixed);
+  const extList = fields.filter(f => !f.isFixed && f.showInUI !== false);
+  const fixedList = fields.filter(f => f.isFixed && f.showInUI !== false);
 
   return (
     <div
@@ -274,9 +283,9 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
         </div>
       )}
       <div>
-        {fields.map(f => {
+        {fields.filter(f => f.showInUI !== false).map(f => {
           const isEditingThis = editing && editingField === f.name;
-          const showEditBtn = editing && !f.isFixed && !isEditingThis;
+          const showEditBtn = editing && !isEditingThis;
           const highlight = highlightedFields?.has(f.name);
           return (
             <React.Fragment key={f.name}>
@@ -288,16 +297,19 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
               background: highlight ? '#fdf2f8' : undefined,
             }}>
               <Handle type="target" position={Position.Left} id={`${LEFT_HANDLE_PREFIX}${f.name}`}
-                className={`!absolute !-left-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
+                className={`!absolute !-left-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-blue-400 !opacity-100`}
+                isConnectable={true} />
+              <Handle type="source" position={Position.Left} id={`${LEFT_SOURCE_PREFIX}${f.name}`}
+                className={`!absolute !-left-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-green-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
                 isConnectable={true} />
               {isEditingThis ? (
                 <>
-                  <Input size="small" style={{ width: '100%', fontSize: 11, height: 24 }} placeholder="字段名" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                  <Input size="small" style={{ width: '100%', fontSize: 11, height: 24 }} placeholder="字段名" value={editForm.name} disabled={f.isFixed} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
                   <Input size="small" style={{ width: '100%', fontSize: 11, height: 24 }} placeholder="显示名" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
-                  <Select size="small" style={{ width: '100%', fontSize: 11, height: 24 }} value={editForm.dbType || 'VARCHAR'} onChange={v => setEditForm({ ...editForm, dbType: v })}
+                  <Select size="small" style={{ width: '100%', fontSize: 11, height: 24 }} value={editForm.dbType || 'VARCHAR'} disabled={f.isFixed} onChange={v => setEditForm({ ...editForm, dbType: v })}
                     options={DB_TYPE_OPTIONS.map(t => ({ value: t, label: t }))}
                     getPopupContainer={() => document.body} />
-                  <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} /></span>
+                  <span style={{ textAlign: 'center' }}><Switch size="small" disabled={f.isFixed} checked={editForm.isPrimaryKey} onChange={v => setEditForm({ ...editForm, isPrimaryKey: v })} /></span>
                   <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.showInUI !== false} onChange={v => setEditForm({ ...editForm, showInUI: v })} /></span>
                   <span style={{ textAlign: 'center' }}><Switch size="small" checked={editForm.availableInRules !== false} onChange={v => setEditForm({ ...editForm, availableInRules: v })} /></span>
                   <span style={{ textAlign: 'center', display: 'flex', gap: 2, justifyContent: 'center' }}>
@@ -324,10 +336,13 @@ const EntityNode: React.FC<NodeProps> = React.memo(({ id, selected, data }) => {
                 </>
               )}
               <Handle type="source" position={Position.Right} id={`${RIGHT_HANDLE_PREFIX}${f.name}`}
-                className={`!absolute !-right-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-slate-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
+                className={`!absolute !-right-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-green-400 !opacity-100`}
+                isConnectable={true} />
+              <Handle type="target" position={Position.Right} id={`${RIGHT_TARGET_PREFIX}${f.name}`}
+                className={`!absolute !-right-1.5 !top-1/2 !-translate-y-1/2 !w-3 !h-3 !rounded-full !border-2 !border-white !bg-blue-400 transition-all duration-150 ${focused ? '!opacity-100' : '!opacity-0'}`}
                 isConnectable={true} />
             </div>
-            {isEditingThis && editForm.dbType === 'MASTER_DATA' && (
+            {isEditingThis && (editForm.dbType === 'MASTER_DATA' || editForm.masterDataCode) && (
               <div className="nodrag" style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 36px 36px 36px 48px',
                 alignItems: 'center', padding: '0 8px', fontSize: 11,
@@ -427,6 +442,8 @@ const EntityDesigner: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [rfInstance, setRfInstance] = useState<any>(null);
+  const rfRef = React.useRef<any>(null);
+  useEffect(() => { rfRef.current = rfInstance; }, [rfInstance]);
 
   const fetchEntities = useCallback(async () => {
     setLoading(true);
@@ -450,16 +467,44 @@ const EntityDesigner: React.FC = () => {
       setNodes(rfnodes);
 
       const rfedges: Edge[] = [];
+      const seenEdgeKeys = new Set<string>();
+      // 构建位置映射，用于初始化连线方向
+      const posMap = new Map<string, {x: number, y: number}>();
+      for (const e of list) {
+        if (e.layoutPosition?.x != null) {
+          posMap.set(e.entityType, {x: e.layoutPosition.x, y: e.layoutPosition.y});
+        }
+      }
       for (const e of list) {
         if (!e.entityRelations) continue;
         for (const [, relList] of Object.entries(e.entityRelations)) {
           if (Array.isArray(relList)) {
             for (const r of relList as any[]) {
+              const key = `${r.sourceEntity}|${r.targetEntity}|${r.sourceField}|${r.targetField}`;
+              if (seenEdgeKeys.has(key)) continue;
+              seenEdgeKeys.add(key);
+              // 根据存储位置计算连线方向
+              const sp = posMap.get(r.sourceEntity);
+              const tp = posMap.get(r.targetEntity);
+              let srcH = `${RIGHT_HANDLE_PREFIX}${r.sourceField}`;
+              let tgtH = `${LEFT_HANDLE_PREFIX}${r.targetField}`;
+              if (sp && tp) {
+                const ddx = tp.x - sp.x;
+                const ddy = tp.y - sp.y;
+                const vertical = Math.abs(ddy) > Math.abs(ddx);
+                if (vertical) {
+                  srcH = ddx >= 0 ? `${RIGHT_HANDLE_PREFIX}${r.sourceField}` : `${LEFT_SOURCE_PREFIX}${r.sourceField}`;
+                  tgtH = ddx >= 0 ? `${RIGHT_TARGET_PREFIX}${r.targetField}` : `${LEFT_HANDLE_PREFIX}${r.targetField}`;
+                } else {
+                  srcH = ddx >= 0 ? `${RIGHT_HANDLE_PREFIX}${r.sourceField}` : `${LEFT_SOURCE_PREFIX}${r.sourceField}`;
+                  tgtH = ddx >= 0 ? `${LEFT_HANDLE_PREFIX}${r.targetField}` : `${RIGHT_TARGET_PREFIX}${r.targetField}`;
+                }
+              }
               rfedges.push({
                 id: r.id || `${r.sourceEntity}-${r.targetEntity}-${r.sourceField}`,
                 source: r.sourceEntity, target: r.targetEntity,
-                sourceHandle: `${RIGHT_HANDLE_PREFIX}${r.sourceField}`,
-                targetHandle: `${LEFT_HANDLE_PREFIX}${r.targetField}`,
+                sourceHandle: srcH,
+                targetHandle: tgtH,
                 type: 'entityEdge',
                 data: { relationship: { ...r, sourceField: r.sourceField, targetField: r.targetField, relationType: r.relationType || 'ONE_TO_MANY' } },
               });
@@ -540,7 +585,6 @@ const EntityDesigner: React.FC = () => {
       message.success('关系已创建');
       const newEdge: Edge = {
         id: `rel_${Date.now()}`, source: connection.source, target: connection.target,
-        sourceHandle: connection.sourceHandle || '', targetHandle: connection.targetHandle || '',
         type: 'entityEdge', data: { relationship: { ...rel, id: `rel_${Date.now()}` } },
       };
       setEdges(prev => [...prev, newEdge]);
@@ -551,8 +595,13 @@ const EntityDesigner: React.FC = () => {
     setSelectedEdge(edge.id === selectedEdge ? null : edge.id);
   }, [selectedEdge]);
 
-  const onEdgeDoubleClick = useCallback((_: any, edge: any) => {
-    setEditRelPopover({ edgeId: edge.id, pos: { x: _.clientX, y: _.clientY } });
+  // 监听 edge 按钮点击事件
+  useEffect(() => {
+    const handler = (e: any) => {
+      setEditRelPopover({ edgeId: e.detail.edgeId, pos: { x: e.detail.x, y: e.detail.y } });
+    };
+    window.addEventListener('edge-button-click', handler);
+    return () => window.removeEventListener('edge-button-click', handler);
   }, []);
 
   const [editModeKey, setEditModeKey] = useState(0);
@@ -579,13 +628,32 @@ const EntityDesigner: React.FC = () => {
   };
 
   const handleNodeDragStop = useCallback((_: any, node: any) => {
-    const pos = { x: node.position.x, y: node.position.y };
-    api.put(`/entity-designer/entities/${node.id}/position`, pos).catch(() => {});
-    // 保存视口
-    if (rfInstance) {
-      sessionStorage.setItem('entity-designer-viewport', JSON.stringify(rfInstance.getViewport()));
+    api.put(`/entity-designer/entities/${node.id}/position`, { x: node.position.x, y: node.position.y }).catch(() => {});
+    const rf = rfRef.current;
+    if (rf) {
+      sessionStorage.setItem('entity-designer-viewport', JSON.stringify(rf.getViewport()));
+      const nodes = rf.getNodes();
+      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+      setEdges(prev => prev.map(e => {
+        const sn = nodeMap.get(e.source);
+        const tn = nodeMap.get(e.target);
+        if (!sn || !tn) return e;
+        const ddx = tn.position.x - sn.position.x;
+        const ddy = tn.position.y - sn.position.y;
+        const vertical = Math.abs(ddy) > Math.abs(ddx);
+        const rel = (e.data as any)?.relationship;
+        if (!rel?.sourceField) return e;
+        // 垂直同侧，水平异侧
+        const srcH = vertical
+          ? (ddx >= 0 ? `${RIGHT_HANDLE_PREFIX}${rel.sourceField}` : `${LEFT_SOURCE_PREFIX}${rel.sourceField}`)
+          : (ddx >= 0 ? `${RIGHT_HANDLE_PREFIX}${rel.sourceField}` : `${LEFT_SOURCE_PREFIX}${rel.sourceField}`);
+        const tgtH = vertical
+          ? (ddx >= 0 ? `${RIGHT_TARGET_PREFIX}${rel.targetField}` : `${LEFT_HANDLE_PREFIX}${rel.targetField}`)
+          : (ddx >= 0 ? `${LEFT_HANDLE_PREFIX}${rel.targetField}` : `${RIGHT_TARGET_PREFIX}${rel.targetField}`);
+        return { ...e, sourceHandle: srcH, targetHandle: tgtH };
+      }));
     }
-  }, [rfInstance]);
+  }, [setEdges]);
 
   // 加载后打印节点位置
   useEffect(() => {
@@ -602,11 +670,34 @@ const EntityDesigner: React.FC = () => {
     finally { setSaving(false); }
   };
 
-  const handleRelationTypeChange = (relType: string) => {
+  const handleSwitchDirection = useCallback(async () => {
     if (!editRelPopover) return;
+    const edge = edges.find(e => e.id === editRelPopover.edgeId);
+    if (!edge) return;
+    const rel = (edge.data as any)?.relationship;
+    // 不翻转 source/target，只翻转基数标记：1:N ↔ N:1
+    const newType = rel.relationType === 'ONE_TO_MANY' ? 'MANY_TO_ONE' : 'ONE_TO_MANY';
+    try {
+      await api.put(`/entity-designer/entities/${edge.source}/relations/${edge.source}/${edge.id}`, { relationType: newType });
+    } catch {}
     setEdges(prev => prev.map(e => {
       if (e.id !== editRelPopover.edgeId) return e;
-      return { ...e, data: { ...e.data, relationship: { ...(e.data?.relationship as any || {}), relationType: relType } } };
+      return { ...e, data: { ...e.data, relationship: { ...rel, relationType: newType } } };
+    }));
+    setEditRelPopover(null);
+  }, [editRelPopover, edges, setEdges]);
+
+  const handleRelationTypeChange = async (relType: string) => {
+    if (!editRelPopover) return;
+    const edge = edges.find(e => e.id === editRelPopover.edgeId);
+    if (!edge) return;
+    const rel = (edge.data as any)?.relationship;
+    try {
+      await api.put(`/entity-designer/entities/${edge.source}/relations/${edge.source}/${edge.id}`, { relationType: relType });
+    } catch {}
+    setEdges(prev => prev.map(e => {
+      if (e.id !== editRelPopover.edgeId) return e;
+      return { ...e, data: { ...e.data, relationship: { ...(rel || {}), relationType: relType } } };
     }));
     setEditRelPopover(null);
   };
@@ -637,6 +728,8 @@ const EntityDesigner: React.FC = () => {
         <Tooltip title="新建实体"><Button icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)} type="text" /></Tooltip>
         <Divider type="vertical" style={{ margin: '0 4px' }} />
         <Text type="secondary" style={{ fontSize: 12 }}>{entities.length} 个实体</Text>
+        <Divider type="vertical" style={{ margin: '0 4px' }} />
+        <Tooltip title="居中显示"><Button icon={<AimOutlined />} onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 500 })} type="text" /></Tooltip>
         {selectedEdge && (
           <>
             <Divider type="vertical" style={{ margin: '0 4px' }} />
@@ -646,15 +739,17 @@ const EntityDesigner: React.FC = () => {
       </div>
 
       <ReactFlowProvider>
-        <FitViewOnLoad />
+        <FitViewOnLoad nodeCount={nodes.length} />
         <ReactFlow
           nodes={nodes} edges={edges}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
           onInit={(instance) => {
             setRfInstance(instance);
+            // 初始化后延迟适配视图
+            setTimeout(() => instance.fitView({ padding: 0.3, duration: 500 }), 500);
           }}
           onConnect={onConnect}
-          onEdgeClick={onEdgeClick} onEdgeDoubleClick={onEdgeDoubleClick}
+          onEdgeClick={onEdgeClick}
           onPaneClick={onPaneClick}
           onNodeDragStop={handleNodeDragStop}
           nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -669,29 +764,39 @@ const EntityDesigner: React.FC = () => {
         </ReactFlow>
       </ReactFlowProvider>
 
-      {/* 关系编辑 Popover */}
-      {editRelPopover && (
-        <div style={{ position: 'fixed', left: editRelPopover.pos.x, top: editRelPopover.pos.y, zIndex: 1000, background: '#fff', border: '1px solid #e8e8e8', borderRadius: 8, padding: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: 200 }}>
-          <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>关系类型</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {['ONE_TO_ONE', 'ONE_TO_MANY', 'MANY_TO_MANY'].map(t => (
-              <Button key={t} type="text" size="small" style={{ textAlign: 'left', fontWeight: (edges.find(e => e.id === editRelPopover.edgeId)?.data as any)?.relationship?.relationType === t ? 600 : 400 }}
-                onClick={() => handleRelationTypeChange(t)}>
-                {t === 'ONE_TO_ONE' ? '1 : 1 (一对一)' : t === 'ONE_TO_MANY' ? '1 : N (一对多)' : 'N : N (多对多)'}
-              </Button>
-            ))}
+      {/* 关系编辑 Popover — ChartDB 风格 */}
+      {editRelPopover && (() => {
+        const edge = edges.find(e => e.id === editRelPopover.edgeId);
+        const rel = (edge?.data as any)?.relationship;
+        const relType = rel?.relationType || 'ONE_TO_MANY';
+        return (
+          <div style={{ position: 'fixed', left: editRelPopover.pos.x, top: editRelPopover.pos.y, zIndex: 1000, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={() => handleRelationTypeChange('ONE_TO_ONE')}
+              style={{ border: '1px solid #e2e8f0', background: relType === 'ONE_TO_ONE' ? '#334155' : '#fff', color: relType === 'ONE_TO_ONE' ? '#fff' : '#334155', borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', height: 28, minWidth: 44 }}>
+              1:1
+            </button>
+            <button onClick={() => handleRelationTypeChange('ONE_TO_MANY')}
+              style={{ border: '1px solid #e2e8f0', background: relType === 'ONE_TO_MANY' ? '#334155' : '#fff', color: relType === 'ONE_TO_MANY' ? '#fff' : '#334155', borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', height: 28, minWidth: 44 }}>
+              1:N
+            </button>
+            <div style={{ width: 1, height: 24, background: '#e2e8f0', margin: '0 4px' }} />
+            <button title="互换方向" onClick={() => handleSwitchDirection()}
+              style={{ border: 'none', background: 'transparent', color: '#0ea5e9', cursor: 'pointer', padding: 4, borderRadius: 4, height: 28, width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+            </button>
+            <button title="删除关系" onClick={() => {
+              if (edge) {
+                api.delete(`/entity-designer/entities/${edge.source}/relations/${edge.source}/${edge.id}`).catch(() => {});
+                setEdges(prev => prev.filter(e => e.id !== editRelPopover.edgeId));
+              }
+              setEditRelPopover(null);
+            }}
+              style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', padding: 4, borderRadius: 4, height: 28, width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
           </div>
-          <Divider style={{ margin: '8px 0' }} />
-          <Button size="small" danger block onClick={() => {
-            const edge = edges.find(e => e.id === editRelPopover.edgeId);
-            if (edge) {
-              api.delete(`/entity-designer/entities/${edge.source}/relations/${edge.source}/${edge.id}`).catch(() => {});
-              setEdges(prev => prev.filter(e => e.id !== editRelPopover.edgeId));
-            }
-            setEditRelPopover(null);
-          }}>删除关系</Button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 新建实体弹窗 */}
       <Modal title="新建实体" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} onOk={handleCreateEntity} confirmLoading={saving} width={420}>
@@ -701,7 +806,8 @@ const EntityDesigner: React.FC = () => {
           <div><Text style={{ fontSize: 12 }}>类别</Text>
             <Select value={newEntity.category || 'BUSINESS'} onChange={v => setNewEntity({ ...newEntity, category: v })}
               options={[
-                { label: 'BUSINESS - 业务实体（主数据维护）', value: 'BUSINESS' },
+                { label: 'BUSINESS - 主数据', value: 'BUSINESS' },
+                { label: 'HIERARCHY - 分类', value: 'HIERARCHY' },
                 { label: 'SYSTEM - 系统实体', value: 'SYSTEM' },
               ]} style={{ width: '100%' }} />
           </div>

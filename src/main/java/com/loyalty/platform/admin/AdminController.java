@@ -1360,8 +1360,17 @@ public class AdminController {
                                                     Map<String, Object> source,
                                                     Map<String, Object> base) {
         String pc = TenantContext.get();
+        // 脚本大小限制：防止 OOM
+        if (script.length() > 64_000) {
+            throw new IllegalArgumentException("Script too large (max 64KB)");
+        }
         try (Context ctx = Context.newBuilder("js")
                 .option("engine.WarnInterpreterOnly", "false")
+                // Sandbox 资源限制：防止无限循环/深度递归/内存耗尽
+                .option("sandbox.MaxCPUTime", "5000")       // 5秒 CPU 时间上限
+                .option("sandbox.MaxASTDepth", "200")       // AST 深度上限
+                .option("sandbox.MaxStatements", "100000")  // 最多 10 万条语句
+                .option("sandbox.MaxMemory", "16MB")        // 内存上限 16MB
                 .allowHostAccess(org.graalvm.polyglot.HostAccess.NONE)
                 .allowIO(org.graalvm.polyglot.io.IOAccess.NONE)
                 .allowCreateThread(false)
@@ -1384,6 +1393,11 @@ public class AdminController {
                 return base;
             }
             return (Map<String, Object>) valueToObject(jsResult);
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("sandbox")) {
+                log.warn("[Admin] JS脚本超过资源限制: {}", e.getMessage());
+            }
+            throw new RuntimeException("JS transform execution failed: " + e.getMessage(), e);
         }
     }
 

@@ -4,6 +4,12 @@ import { FileTextOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { getActiveTerms, acceptTerms, checkTermsAccepted, type TermsMaster } from '../../api/campaign';
 import dayjs from 'dayjs';
 
+const renderTermsText = (content?: string) => {
+  if (!content) return '';
+  const doc = new DOMParser().parseFromString(content, 'text/html');
+  return doc.body.textContent || '';
+};
+
 /**
  * 条款同意页面（会员端） — 展示当前生效条款并允许会员接受。
  *
@@ -139,10 +145,11 @@ const TermsConsentPage: React.FC = () => {
             marginBottom: 24,
             lineHeight: 1.8,
             fontSize: 14,
+            whiteSpace: 'pre-wrap',
           }}
         >
           {terms.termsContent ? (
-            <div dangerouslySetInnerHTML={{ __html: terms.termsContent }} />
+            <div>{renderTermsText(terms.termsContent)}</div>
           ) : (
             <div style={{ color: '#8c8c8c', textAlign: 'center', padding: 40 }}>
               <p>暂无条款详细内容</p>

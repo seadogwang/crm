@@ -12,6 +12,8 @@ public interface SysRoleRepository extends BaseRepository<SysRole, Long> {
 
     List<SysRole> findAllByProgramCode(String programCode);
 
+    Optional<SysRole> findByProgramCodeAndId(String programCode, Long id);
+
     Optional<SysRole> findByProgramCodeAndRoleCode(String programCode, String roleCode);
 
     boolean existsByProgramCodeAndRoleCode(String programCode, String roleCode);

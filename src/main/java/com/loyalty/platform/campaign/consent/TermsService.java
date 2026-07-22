@@ -1,6 +1,7 @@
 package com.loyalty.platform.campaign.consent;
 
 import com.loyalty.platform.common.exception.BusinessException;
+import com.loyalty.platform.common.util.HtmlSanitizer;
 import com.loyalty.platform.domain.entity.campaign.TermsAcceptance;
 import com.loyalty.platform.domain.entity.campaign.TermsMaster;
 import com.loyalty.platform.domain.repository.campaign.TermsAcceptanceRepository;
@@ -149,7 +150,12 @@ public class TermsService {
                     old.getTermsType(), old.getTermsVersion());
         }
 
-        // 2. 保存新版本
+        // 2. XSS 防护：净化条款内容 HTML
+        if (newVersion.getTermsContent() != null) {
+            newVersion.setTermsContent(HtmlSanitizer.sanitize(newVersion.getTermsContent()));
+        }
+
+        // 3. 保存新版本
         newVersion.setActive(true);
         if (newVersion.getReleasedAt() == null) {
             newVersion.setReleasedAt(Instant.now());

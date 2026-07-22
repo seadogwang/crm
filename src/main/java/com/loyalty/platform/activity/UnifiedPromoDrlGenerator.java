@@ -2,6 +2,7 @@ package com.loyalty.platform.activity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loyalty.platform.domain.entity.RuleDefinition;
+import com.loyalty.platform.rules.DrlSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -32,9 +33,9 @@ public class UnifiedPromoDrlGenerator {
         drl.append("import com.loyalty.platform.rules.drl.EventFact;\n");
         drl.append("import com.loyalty.platform.rules.action.ActionCollector;\n");
         drl.append("\n");
-        drl.append("rule \"").append(ruleCode).append("\"\n");
+        drl.append("rule \"").append(DrlSanitizer.escapeDrlString(ruleCode)).append("\"\n");
         if (ruleGroup != null && !ruleGroup.isBlank()) {
-            drl.append("    ruleflow-group \"").append(ruleGroup).append("\"\n");
+            drl.append("    ruleflow-group \"").append(DrlSanitizer.escapeDrlString(ruleGroup)).append("\"\n");
         }
         drl.append("    salience ").append((priority)).append("\n");
         drl.append("when\n");
@@ -66,12 +67,12 @@ public class UnifiedPromoDrlGenerator {
             } else if ("Member".equals(entity) && "tier_code".equals(attr) && value instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<String> tiers = (List<String>) value;
-                String joined = tiers.stream().map(t -> "$member.getTierCode().equals(\"" + t + "\")").collect(Collectors.joining(" || "));
+                String joined = tiers.stream().map(t -> "$member.getTierCode().equals(\"" + DrlSanitizer.escapeDrlString(t) + "\")").collect(Collectors.joining(" || "));
                 drl.append("    eval(").append(joined).append(")\n");
             } else if ("Order".equals(entity) && "combination_sku_set".equals(attr) && "CONTAINS_ALL".equals(operator) && value instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<String> skus = (List<String>) value;
-                String skuList = skus.stream().map(s -> "\"" + s + "\"").collect(Collectors.joining(","));
+                String skuList = skus.stream().map(s -> "\"" + DrlSanitizer.escapeDrlString(s) + "\"").collect(Collectors.joining(","));
                 drl.append("    eval($event.containsAllSkus(new java.util.HashSet<>(java.util.Arrays.asList(").append(skuList).append("))))\n");
             }
         }
@@ -240,9 +241,14 @@ public class UnifiedPromoDrlGenerator {
         // Award with accumulative limit parameters
         drl.append("    if (_pts.compareTo(java.math.BigDecimal.ZERO) > 0) {\n");
         if (accLimit != null) {
-            drl.append("        collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"REWARD\", _pts, \"").append(ruleCode).append("\", null, new java.math.BigDecimal(\"").append(accLimit).append("\"), \"").append(excessStrategy).append("\", new java.math.BigDecimal(\"").append(dwMult).append("\"), ").append(dwContinue).append(");\n");
+            drl.append("        collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"REWARD\", _pts, \"")
+               .append(DrlSanitizer.escapeDrlString(ruleCode)).append("\", null, new java.math.BigDecimal(\"")
+               .append(accLimit).append("\"), \"")
+               .append(DrlSanitizer.escapeDrlString(excessStrategy)).append("\", new java.math.BigDecimal(\"")
+               .append(dwMult).append("\"), ").append(dwContinue).append(");\n");
         } else {
-            drl.append("        collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"REWARD\", _pts, \"").append(ruleCode).append("\", null);\n");
+            drl.append("        collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"REWARD\", _pts, \"")
+               .append(DrlSanitizer.escapeDrlString(ruleCode)).append("\", null);\n");
         }
         drl.append("    }\n");
 
@@ -256,6 +262,10 @@ public class UnifiedPromoDrlGenerator {
         if (obj instanceof Number n) return new BigDecimal(n.toString());
         String s = obj.toString();
         if (s.isBlank()) return null;
+        // 安全校验：仅接受纯数字字符串
+        if (!s.matches("-?\\d+(\\.\\d+)?")) {
+            throw new IllegalArgumentException("Invalid numeric value: " + s);
+        }
         return new BigDecimal(s);
     }
 }

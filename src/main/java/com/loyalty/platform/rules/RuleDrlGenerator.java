@@ -23,7 +23,7 @@ public class RuleDrlGenerator {
      */
     public String generate(RuleDefinition rule) {
         String ruleName = safeName(rule.getRuleName() != null ? rule.getRuleName() : rule.getRuleCode());
-        String ruleGroup = rule.getRuleGroup() != null ? rule.getRuleGroup() : "base";
+        String ruleGroup = rule.getRuleGroup() != null ? DrlSanitizer.escapeDrlString(rule.getRuleGroup()) : "base";
         int priority = rule.getPriority() != null ? rule.getPriority() : 100;
 
         StringBuilder sb = new StringBuilder();
@@ -60,21 +60,28 @@ public class RuleDrlGenerator {
             String type = (String) cond.get("type");
             if ("VARIABLE".equals(type)) {
                 hasVariable = true;
-                String varCode = (String) cond.get("varCode");
-                String op = (String) cond.getOrDefault("operator", ">=");
+                String varCode = DrlSanitizer.validateIdentifier((String) cond.get("varCode"), "varCode");
+                String op = DrlSanitizer.escapeDrlString((String) cond.getOrDefault("operator", ">="));
                 Object threshold = cond.get("threshold");
-                conditions.add("    $vars: VariableFact(getValue(\"" + varCode + "\") " + op + " " + threshold + ")");
+                String safeThreshold = threshold instanceof Number
+                        ? DrlSanitizer.toSafeBigDecimalStr(threshold, "threshold")
+                        : "\"" + DrlSanitizer.escapeDrlString(String.valueOf(threshold)) + "\"";
+                conditions.add("    $vars: VariableFact(getValue(\"" + DrlSanitizer.escapeDrlString(varCode) + "\") " + op + " " + safeThreshold + ")");
             } else if ("EVENT_ATTRIBUTE".equals(type) || "MEMBER_ATTRIBUTE".equals(type)) {
-                String field = (String) cond.get("field");
-                String op = (String) cond.getOrDefault("operator", ">=");
+                String field = DrlSanitizer.validateIdentifier((String) cond.get("field"), "field");
+                String op = DrlSanitizer.escapeDrlString((String) cond.getOrDefault("operator", ">="));
                 Object value = cond.get("value");
                 boolean isMember = "MEMBER_ATTRIBUTE".equals(type);
                 String obj = isMember ? "$member" : "$event";
                 String fn = isMember ? "getExtNumber" : "getPayloadNumber";
                 if (value instanceof List) {
-                    conditions.add("    eval(java.util.Arrays.asList(" + value + ").contains(" + obj + "." + fn + "(\"" + field + "\")))");
+                    String safeList = toSafeListLiteral((List<?>) value);
+                    conditions.add("    eval(java.util.Arrays.asList(" + safeList + ").contains(" + obj + "." + fn + "(\"" + DrlSanitizer.escapeDrlString(field) + "\")))");
                 } else {
-                    conditions.add("    eval(" + obj + "." + fn + "(\"" + field + "\") " + op + " " + value + ")");
+                    String safeValue = value instanceof Number
+                            ? DrlSanitizer.toSafeBigDecimalStr(value, "value")
+                            : "\"" + DrlSanitizer.escapeDrlString(String.valueOf(value)) + "\"";
+                    conditions.add("    eval(" + obj + "." + fn + "(\"" + DrlSanitizer.escapeDrlString(field) + "\") " + op + " " + safeValue + ")");
                 }
             }
         }
@@ -89,51 +96,51 @@ public class RuleDrlGenerator {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> types = (List<Map<String, Object>>) reward.getOrDefault("types", List.of());
             for (Map<String, Object> rt : types) {
-                String pointType = (String) rt.get("pointType");
+                String pointType = DrlSanitizer.validateIdentifier((String) rt.get("pointType"), "pointType");
                 String mode = (String) rt.get("mode");
                 if (pointType == null) continue;
 
                 if ("FIXED_VALUE".equals(mode)) {
-                    int points = rt.get("points") instanceof Number n ? n.intValue() : 0;
+                    int points = DrlSanitizer.toSafeInt(rt.get("points"), "points");
                     sb.append("    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"")
-                      .append(pointType).append("\", new java.math.BigDecimal(\"").append(points).append("\"), \"")
-                      .append(ruleName).append("\", null);\n");
+                      .append(DrlSanitizer.escapeDrlString(pointType)).append("\", new java.math.BigDecimal(\"").append(points).append("\"), \"")
+                      .append(DrlSanitizer.escapeDrlString(ruleName)).append("\", null);\n");
                 } else if ("FIXED_MULTIPLIER".equals(mode)) {
-                    double multiplier = rt.get("multiplier") instanceof Number n ? n.doubleValue() : 1.0;
+                    double multiplier = DrlSanitizer.toSafeDouble(rt.get("multiplier"), "multiplier");
                     sb.append("    java.math.BigDecimal _base = $event.getPayloadNumber(\"total_amount\");\n");
                     sb.append("    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"")
-                      .append(pointType).append("\", _base.multiply(new java.math.BigDecimal(\"").append(multiplier)
-                      .append("\")).setScale(0, java.math.RoundingMode.DOWN), \"").append(ruleName).append("\", null);\n");
+                      .append(DrlSanitizer.escapeDrlString(pointType)).append("\", _base.multiply(new java.math.BigDecimal(\"").append(multiplier)
+                      .append("\")).setScale(0, java.math.RoundingMode.DOWN), \"").append(DrlSanitizer.escapeDrlString(ruleName)).append("\", null);\n");
                 } else if ("STEP".equals(mode) || "STEP_CYCLE".equals(mode)) {
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> steps = (List<Map<String, Object>>) rt.getOrDefault("steps", List.of());
                     sb.append("    java.math.BigDecimal _amount = $event.getPayloadNumber(\"total_amount\");\n");
                     sb.append("    java.math.BigDecimal _pts = java.math.BigDecimal.ZERO;\n");
                     for (Map<String, Object> step : steps) {
-                        int lower = step.get("lower") instanceof Number n ? n.intValue() : 0;
+                        int lower = DrlSanitizer.toSafeInt(step.get("lower"), "step.lower");
                         Object upperObj = step.get("upper");
                         boolean isCycle = Boolean.TRUE.equals(step.get("isCycleThreshold"));
-                        double mul = step.get("multiplier") instanceof Number n ? n.doubleValue() : 1.0;
+                        double mul = DrlSanitizer.toSafeDouble(step.get("multiplier"), "step.multiplier");
                         if (isCycle) {
-                            String upper = upperObj != null ? String.valueOf(upperObj) : "999999";
+                            String upper = upperObj != null ? String.valueOf(DrlSanitizer.toSafeInt(upperObj, "step.upper")) : "999999";
                             sb.append("    java.math.BigDecimal _seg = new java.math.BigDecimal(\"").append(upper).append("\").subtract(new java.math.BigDecimal(\"").append(lower).append("\"));\n");
                             sb.append("    while (_amount.compareTo(_seg) > 0) { _pts = _pts.add(_seg.multiply(new java.math.BigDecimal(\"").append(mul).append("\"))); _amount = _amount.subtract(_seg); }\n");
                         } else {
-                            String upper = upperObj != null ? String.valueOf(upperObj) : "999999";
+                            String upper = upperObj != null ? String.valueOf(DrlSanitizer.toSafeInt(upperObj, "step.upper")) : "999999";
                             sb.append("    if (_amount.compareTo(new java.math.BigDecimal(\"").append(lower).append("\")) > 0 && _amount.compareTo(new java.math.BigDecimal(\"").append(upper).append("\")) <= 0) { _pts = _pts.add(_amount.multiply(new java.math.BigDecimal(\"").append(mul).append("\"))); }\n");
                         }
                     }
                     @SuppressWarnings("unchecked")
                     Map<String, Object> limits = (Map<String, Object>) rt.get("limits");
                     if (limits != null) {
-                        int perOrder = limits.get("perOrderLimit") instanceof Number n ? n.intValue() : 0;
+                        int perOrder = DrlSanitizer.toSafeInt(limits.getOrDefault("perOrderLimit", 0), "perOrderLimit");
                         boolean unlimited = Boolean.TRUE.equals(limits.get("unlimitedPerOrder"));
                         if (!unlimited && perOrder > 0) {
                             sb.append("    if (_pts.compareTo(new java.math.BigDecimal(\"").append(perOrder).append("\")) > 0) _pts = new java.math.BigDecimal(\"").append(perOrder).append("\");\n");
                         }
                     }
                     sb.append("    collector.awardPoints($event.getProgramCode(), $event.getMemberId(), \"")
-                      .append(pointType).append("\", _pts, \"").append(ruleName).append("\", null);\n");
+                      .append(DrlSanitizer.escapeDrlString(pointType)).append("\", _pts, \"").append(DrlSanitizer.escapeDrlString(ruleName)).append("\", null);\n");
                 }
             }
         }
@@ -145,5 +152,20 @@ public class RuleDrlGenerator {
 
     private String safeName(String name) {
         return name.replaceAll("[^a-zA-Z0-9_]", "_");
+    }
+
+    /** 将列表转换为安全的 DRL 字面量字符串 */
+    private String toSafeListLiteral(List<?> list) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(", ");
+            Object item = list.get(i);
+            if (item instanceof Number) {
+                sb.append(item);
+            } else {
+                sb.append("\"").append(DrlSanitizer.escapeDrlString(String.valueOf(item))).append("\"");
+            }
+        }
+        return sb.toString();
     }
 }

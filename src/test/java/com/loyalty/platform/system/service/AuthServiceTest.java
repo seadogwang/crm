@@ -37,9 +37,11 @@ class AuthServiceTest {
 
     private AuthService authService;
 
+    private static final String TEST_SECRET = "test-jwt-secret-key-for-unit-tests";
+
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepo, userRoleRepo, rolePermissionRepo);
+        authService = new AuthService(userRepo, userRoleRepo, rolePermissionRepo, TEST_SECRET);
     }
 
     // ==================== BCrypt 密码哈希 ====================
@@ -71,7 +73,7 @@ class AuthServiceTest {
 
         // 解析 payload 验证字段
         SecretKey key = Keys.hmacShaKeyFor(
-                AuthService.JWT_SECRET.getBytes(StandardCharsets.UTF_8));
+                TEST_SECRET.getBytes(StandardCharsets.UTF_8));
         Claims claims = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token).getPayload();
 
@@ -91,7 +93,7 @@ class AuthServiceTest {
                 .id(1L).username("u").platformRole("OPERATOR").programCode("X").build();
         String token = authService.generateToken(user, Set.of(), "X");
         SecretKey key = Keys.hmacShaKeyFor(
-                AuthService.JWT_SECRET.getBytes(StandardCharsets.UTF_8));
+                TEST_SECRET.getBytes(StandardCharsets.UTF_8));
         Claims claims = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token).getPayload();
 

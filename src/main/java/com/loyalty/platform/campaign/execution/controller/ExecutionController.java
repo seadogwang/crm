@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Campaign 执行引擎 REST API。
@@ -61,14 +62,30 @@ public class ExecutionController {
     }
 
     // ========================================================================
-    // 执行节点
+    // 执行节点（调试接口 — 仅允许已知 worker 类型）
     // ========================================================================
+
+    private static final Set<String> ALLOWED_JOB_TYPES = Set.of(
+            "campaign-audience-filter", "campaign-content-generate",
+            "campaign-decision", "campaign-notification", "campaign-webhook");
 
     @PostMapping("/instance/{instanceKey}/execute/{jobType}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> executeNode(
             @PathVariable long instanceKey,
             @PathVariable String jobType,
             @RequestBody(required = false) Map<String, Object> variables) {
+        if (!ALLOWED_JOB_TYPES.contains(jobType)) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("ERR_INVALID_JOB_TYPE", "Unknown job type: " + jobType));
+        }
+        // 校验 variables 中的 programCode
+        if (variables != null && variables.containsKey("programCode")) {
+            String pc = (String) variables.get("programCode");
+            if (pc != null && !pc.matches("^[A-Za-z0-9_*-]+$")) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("ERR_INVALID_INPUT", "Invalid programCode"));
+            }
+        }
         Map<String, Object> result = executionService.executeNode(instanceKey, jobType, variables);
         return ResponseEntity.ok(ApiResponse.success(result));
     }

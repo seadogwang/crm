@@ -14,6 +14,8 @@ public interface SysUserRepository extends BaseRepository<SysUser, Long> {
 
     Optional<SysUser> findByProgramCodeAndUsername(String programCode, String username);
 
+    Optional<SysUser> findByProgramCodeAndId(String programCode, Long id);
+
     List<SysUser> findAllByProgramCode(String programCode);
 
     Page<SysUser> findAllByProgramCode(String programCode, Pageable pageable);

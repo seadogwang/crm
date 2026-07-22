@@ -113,7 +113,8 @@ public class TierDrlGenerator {
 
         drl.append("then\n");
         drl.append("    collector.upgradeTier($member.getMemberId(), \"")
-                .append(targetTier).append("\", \"UPGRADE\", \"").append(ruleCode).append("\", null);\n");
+                .append(DrlSanitizer.escapeDrlString(targetTier)).append("\", \"UPGRADE\", \"")
+                .append(DrlSanitizer.escapeDrlString(ruleCode)).append("\", null);\n");
         drl.append("end\n");
 
         return drl.toString();
@@ -156,7 +157,7 @@ public class TierDrlGenerator {
 
         // 仅匹配指定等级的会员
         if (tierSource != null) {
-            drl.append(", tierCode == \"").append(tierSource).append("\"");
+            drl.append(", tierCode == \"").append(DrlSanitizer.escapeDrlString(tierSource)).append("\"");
         }
         drl.append(")\n");
 
@@ -168,7 +169,8 @@ public class TierDrlGenerator {
         drl.append("then\n");
         String downgradeTarget = (String) meta.getOrDefault("downgrade_target", "BASE");
         drl.append("    collector.downgradeTier($member.getMemberId(), \"")
-                .append(downgradeTarget).append("\", \"DOWNGRADE\", \"").append(ruleCode).append("\", null);\n");
+                .append(DrlSanitizer.escapeDrlString(downgradeTarget)).append("\", \"DOWNGRADE\", \"")
+                .append(DrlSanitizer.escapeDrlString(ruleCode)).append("\", null);\n");
         drl.append("end\n");
 
         return drl.toString();
@@ -185,9 +187,9 @@ public class TierDrlGenerator {
         drl.append("\n");
         drl.append("global ActionCollector collector;\n");
         drl.append("\n");
-        drl.append("rule \"").append(rule.getRuleCode()).append("\"\n");
+        drl.append("rule \"").append(DrlSanitizer.escapeDrlString(rule.getRuleCode())).append("\"\n");
         if (rule.getRuleGroup() != null && !rule.getRuleGroup().isBlank()) {
-            drl.append("    ruleflow-group \"").append(rule.getRuleGroup()).append("\"\n");
+            drl.append("    ruleflow-group \"").append(DrlSanitizer.escapeDrlString(rule.getRuleGroup())).append("\"\n");
         }
         int priority = rule.getPriority() != null ? rule.getPriority() : 0;
         drl.append("    salience ").append(priority).append("\n");
@@ -231,7 +233,7 @@ public class TierDrlGenerator {
             case "LAST_ORDER_DAYS":
                 return "$member.getExtNumber(\"last_order_days\")";
             default:
-                return "$member.getExtNumber(\"" + dimension + "\")";
+                return "$member.getExtNumber(\"" + DrlSanitizer.escapeDrlString(dimension) + "\")";
         }
     }
 
@@ -254,9 +256,6 @@ public class TierDrlGenerator {
      * 将值转换为 BigDecimal 的字符串表示。
      */
     private String toBigDecimalStr(Object value) {
-        if (value instanceof Number n) {
-            return "new java.math.BigDecimal(\"" + n + "\")";
-        }
-        return "new java.math.BigDecimal(\"" + value + "\")";
+        return DrlSanitizer.toSafeBigDecimalStr(value, "condition value");
     }
 }

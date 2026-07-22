@@ -170,20 +170,30 @@ public class EntityDesignService {
         String id = "rel_" + UUID.randomUUID().toString().substring(0, 8);
         relation.put("id", id);
 
-        // 存储关系：按源实体分组
+        // 存储关系：按源实体分组，检查重复
         String sourceEntity = (String) relation.get("sourceEntity");
+        String sourceField = (String) relation.get("sourceField");
+        String targetField = (String) relation.get("targetField");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> sourceRels = (List<Map<String, Object>>) entityRelations.get(sourceEntity);
         if (sourceRels == null) {
             sourceRels = new ArrayList<>();
             entityRelations.put(sourceEntity, sourceRels);
         }
+        // 去重：相同 sourceField + targetField 已存在则跳过
+        String targetEntity = (String) relation.get("targetEntity");
+        boolean exists = sourceRels.stream().anyMatch(r ->
+            sourceField.equals(r.get("sourceField")) && targetField.equals(r.get("targetField"))
+            && targetEntity.equals(r.get("targetEntity")));
+        if (exists) {
+            log.warn("[EntityDesign] 关系已存在，跳过: {}:{} -> {}:{}", sourceEntity, sourceField, targetEntity, targetField);
+            return schema;
+        }
         sourceRels.add(relation);
 
         schema.setEntityRelations(entityRelations);
 
         // 将目标实体的字段嵌套到源实体的 field_schema 中
-        String targetEntity = (String) relation.get("targetEntity");
         if (targetEntity != null) {
             String childKey = targetEntity.toLowerCase() + "s";
             Optional<ProgramSchema> targetSchema = schemaRepo.findByProgramCodeAndEntityType(programCode, targetEntity.toUpperCase());
@@ -216,6 +226,28 @@ public class EntityDesignService {
         schema.setUpdatedAt(LocalDateTime.now());
         log.info("[EntityDesign] 添加关系: {} -> {}，嵌套字段已同步", sourceEntity, targetEntity);
         return schemaRepo.save(schema);
+    }
+
+    /** 更新关系类型 */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public ProgramSchema updateRelation(String programCode, String entityType,
+                                         String sourceEntity, String relationId, String relationType) {
+        ProgramSchema schema = getEntityForEdit(programCode, entityType);
+        Map<String, Object> entityRelations = schema.getEntityRelations();
+        if (entityRelations != null) {
+            List<Map<String, Object>> sourceRels = (List<Map<String, Object>>) entityRelations.get(sourceEntity);
+            if (sourceRels != null) {
+                for (Map<String, Object> r : sourceRels) {
+                    if (relationId.equals(r.get("id"))) {
+                        r.put("relationType", relationType);
+                        schema.setUpdatedAt(LocalDateTime.now());
+                        return schemaRepo.save(schema);
+                    }
+                }
+            }
+        }
+        throw new BusinessException("ERR_RELATION_NOT_FOUND", "关系不存在: " + relationId);
     }
 
     /** 删除关系 */

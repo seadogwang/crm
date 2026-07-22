@@ -109,6 +109,10 @@ public class CampaignPlan {
     @Column(name = "owner_program_code", length = 32)
     private String ownerProgramCode;
 
+    /** 租户隔离列 — 与 owner_program_code 保持一致，供 TenantHibernateInterceptor 自动注入过滤条件 */
+    @Column(name = "program_code", length = 32)
+    private String programCode;
+
     @Column(name = "created_by", length = 64)
     private String createdBy;
 

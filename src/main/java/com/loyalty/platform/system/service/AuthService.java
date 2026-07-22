@@ -14,6 +14,7 @@ import io.jsonwebtoken.security.Keys;
 import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -29,8 +30,8 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    /** JWT 签名密钥 — 必须与 MultiTenantRbacInterceptor 中的 JWT_SECRET 完全一致 */
-    static final String JWT_SECRET = "loyalty-saas-jwt-secret-key-2026";
+    /** JWT 签名密钥 — 从 application.yml 的 loyalty.security.jwt-secret 注入，支持环境变量覆盖 */
+    private final String jwtSecret;
 
     /** Token 有效期：24 小时 */
     private static final long TOKEN_TTL_HOURS = 24;
@@ -41,10 +42,12 @@ public class AuthService {
 
     public AuthService(SysUserRepository userRepo,
                        SysUserRoleRepository userRoleRepo,
-                       SysRolePermissionRepository rolePermissionRepo) {
+                       SysRolePermissionRepository rolePermissionRepo,
+                       @Value("${loyalty.security.jwt-secret}") String jwtSecret) {
         this.userRepo = userRepo;
         this.userRoleRepo = userRoleRepo;
         this.rolePermissionRepo = rolePermissionRepo;
+        this.jwtSecret = jwtSecret;
     }
 
     /**
@@ -141,7 +144,7 @@ public class AuthService {
      * </pre>
      */
     String generateToken(SysUser user, Set<String> permissions, String programCode) {
-        SecretKey key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8));
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         Instant now = Instant.now();
         Instant exp = now.plus(TOKEN_TTL_HOURS, ChronoUnit.HOURS);
 

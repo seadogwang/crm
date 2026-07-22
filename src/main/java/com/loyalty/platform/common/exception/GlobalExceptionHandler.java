@@ -75,11 +75,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.ok(ApiResponse.error("ERR_NOT_FOUND", e.getMessage()));
     }
 
-    /** 未分类异常 → HTTP 200（兜底，避免 P0 事故） */
+    /** 未分类异常 → HTTP 500（记录异常并触发监控告警） */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnknown(Exception e, HttpServletRequest request) {
-        log.error("[API] 未捕获异常: path={}", request.getRequestURI(), e);
-        // 【关键】即使是未知异常，也返回 HTTP 200，避免触发第三方熔断
-        return ResponseEntity.ok(ApiResponse.error("ERR_INTERNAL", "系统繁忙，请稍后重试"));
+        String errorId = UUID.randomUUID().toString().substring(0, 8);
+        log.error("[API] 未捕获异常: errorId={}, path={}", errorId, request.getRequestURI(), e);
+        // 返回 HTTP 500 以便负载均衡器/API 网关/监控系统检测到故障
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("ERR_INTERNAL", "系统繁忙，请稍后重试 (" + errorId + ")"));
     }
 }

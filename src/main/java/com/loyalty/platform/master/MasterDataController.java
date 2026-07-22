@@ -239,6 +239,7 @@ public class MasterDataController {
             m.put("nodeLevel", n.getNodeLevel());
             m.put("sortOrder", n.getSortOrder());
             m.put("status", n.getStatus());
+            m.put("extAttributes", n.getExtAttributes());
             return m;
         }).toList();
         return ResponseEntity.ok(ApiResponse.success(result));
@@ -258,6 +259,7 @@ public class MasterDataController {
                 .nodeLevel(body.containsKey("nodeLevel") ? (Integer) body.get("nodeLevel") : 1)
                 .sortOrder(body.containsKey("sortOrder") ? (Integer) body.get("sortOrder") : 0)
                 .status((String) body.getOrDefault("status", "ACTIVE"))
+                .extAttributes((String) body.get("extAttributes"))
                 .build();
         hierarchyRepo.save(node);
         return ResponseEntity.ok(ApiResponse.success(Map.of("id", node.getId())));
@@ -274,6 +276,7 @@ public class MasterDataController {
         if (body.containsKey("nodeLevel")) node.setNodeLevel((Integer) body.get("nodeLevel"));
         if (body.containsKey("sortOrder")) node.setSortOrder((Integer) body.get("sortOrder"));
         if (body.containsKey("status")) node.setStatus((String) body.get("status"));
+        if (body.containsKey("extAttributes")) node.setExtAttributes((String) body.get("extAttributes"));
         node.setUpdatedAt(LocalDateTime.now());
         hierarchyRepo.save(node);
         return ResponseEntity.ok(ApiResponse.success(Map.of("updated", true)));

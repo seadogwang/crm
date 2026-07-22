@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -55,8 +56,12 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    /** JWT 签名密钥（生产环境应使用 Vault/KMS 动态获取） */
-    private static final String JWT_SECRET = "loyalty-saas-jwt-secret-key-2026";
+    /** JWT 签名密钥 — 从 application.yml 的 loyalty.security.jwt-secret 注入，须与 AuthService 一致 */
+    private final String jwtSecret;
+
+    public MultiTenantRbacInterceptor(@Value("${loyalty.security.jwt-secret}") String jwtSecret) {
+        this.jwtSecret = jwtSecret;
+    }
     private static final String TOKEN_PREFIX = "Bearer ";
 
     /** 白名单路径（无需鉴权） */
@@ -66,26 +71,74 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
             "/api/auth/login"
     );
 
+    private static final Set<String> AUTHENTICATED_ONLY_PATHS = Set.of(
+            "/api/auth/me"
+    );
+
     /** API 路径 → 所需权限映射 */
     private static final Map<String, OperationPermission> PATH_PERMISSION_MAP = new LinkedHashMap<>();
 
     static {
+        PATH_PERMISSION_MAP.put("/api/admin/system", OperationPermission.SYSTEM_READ);
+        PATH_PERMISSION_MAP.put("/api/admin/audit", OperationPermission.AUDIT_READ);
+        PATH_PERMISSION_MAP.put("/api/admin/one-id", OperationPermission.TENANT_READ);
+        PATH_PERMISSION_MAP.put("/api/admin/llm-config", OperationPermission.SYSTEM_READ);
+        PATH_PERMISSION_MAP.put("/api/admin/programs", OperationPermission.TENANT_READ);
+        PATH_PERMISSION_MAP.put("/api/admin/rules", OperationPermission.RULE_READ);
+        PATH_PERMISSION_MAP.put("/api/admin/channels", OperationPermission.CHANNEL_READ);
+        PATH_PERMISSION_MAP.put("/api/admin", OperationPermission.TENANT_READ);
+        PATH_PERMISSION_MAP.put("/api/campaign", OperationPermission.CAMPAIGN_READ);
+        PATH_PERMISSION_MAP.put("/api/master-data", OperationPermission.MASTER_DATA_READ);
+        PATH_PERMISSION_MAP.put("/api/point-types", OperationPermission.RULE_READ);
+        PATH_PERMISSION_MAP.put("/api/variables", OperationPermission.RULE_READ);
+        PATH_PERMISSION_MAP.put("/api/events", OperationPermission.RULE_READ);
+        PATH_PERMISSION_MAP.put("/api/event-data", OperationPermission.RULE_READ);
         PATH_PERMISSION_MAP.put("/api/members", OperationPermission.MEMBER_READ);
         PATH_PERMISSION_MAP.put("/api/schemas", OperationPermission.SCHEMA_READ);
         PATH_PERMISSION_MAP.put("/api/programs", OperationPermission.TENANT_READ);
         PATH_PERMISSION_MAP.put("/api/rules", OperationPermission.RULE_READ);
         PATH_PERMISSION_MAP.put("/api/channels", OperationPermission.CHANNEL_READ);
         PATH_PERMISSION_MAP.put("/api/audit", OperationPermission.AUDIT_READ);
+        PATH_PERMISSION_MAP.put("/api/entity-designer", OperationPermission.SCHEMA_READ);
+        PATH_PERMISSION_MAP.put("/api/layouts", OperationPermission.SCHEMA_READ);
+        PATH_PERMISSION_MAP.put("/api/spi", OperationPermission.TENANT_READ);
+        PATH_PERMISSION_MAP.put("/api/open", OperationPermission.TENANT_READ);
+    }
+
+    // DELETE 需要删除权限（比写权限更严格）
+    private static final Map<String, OperationPermission> DELETE_PERMISSION_MAP = new LinkedHashMap<>();
+
+    static {
+        DELETE_PERMISSION_MAP.put("/api/admin/system", OperationPermission.SYSTEM_DELETE);
+        DELETE_PERMISSION_MAP.put("/api/admin", OperationPermission.TENANT_WRITE);
+        DELETE_PERMISSION_MAP.put("/api/campaign", OperationPermission.CAMPAIGN_WRITE);
+        DELETE_PERMISSION_MAP.put("/api/members", OperationPermission.MEMBER_DELETE);
     }
 
     // POST/PUT/DELETE 需要写权限
     private static final Map<String, OperationPermission> WRITE_PERMISSION_MAP = new LinkedHashMap<>();
 
     static {
+        WRITE_PERMISSION_MAP.put("/api/admin/system", OperationPermission.SYSTEM_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/admin/audit", OperationPermission.AUDIT_EXPORT);
+        WRITE_PERMISSION_MAP.put("/api/admin/one-id", OperationPermission.TENANT_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/admin/llm-config", OperationPermission.SYSTEM_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/admin/programs", OperationPermission.TENANT_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/admin/rules", OperationPermission.RULE_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/admin/channels", OperationPermission.CHANNEL_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/admin", OperationPermission.TENANT_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/campaign", OperationPermission.CAMPAIGN_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/master-data", OperationPermission.MASTER_DATA_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/point-types", OperationPermission.RULE_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/variables", OperationPermission.RULE_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/events", OperationPermission.RULE_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/event-data", OperationPermission.RULE_WRITE);
         WRITE_PERMISSION_MAP.put("/api/members", OperationPermission.MEMBER_WRITE);
         WRITE_PERMISSION_MAP.put("/api/schemas", OperationPermission.SCHEMA_WRITE);
         WRITE_PERMISSION_MAP.put("/api/rules", OperationPermission.RULE_WRITE);
         WRITE_PERMISSION_MAP.put("/api/channels", OperationPermission.CHANNEL_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/entity-designer", OperationPermission.SCHEMA_WRITE);
+        WRITE_PERMISSION_MAP.put("/api/layouts", OperationPermission.SCHEMA_WRITE);
     }
 
     @Override
@@ -161,6 +214,13 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
 
         // 6. 权限校验
         OperationPermission required = resolveRequiredPermission(path, method);
+        if (required == null && !isAuthenticatedOnly(path)) {
+            log.warn("[RBAC] 鏈槧灏勭殑 API 璺緞榛樿鎷掔粷: user={}, path={}, method={}",
+                    ctx.getUsername(), path, method);
+            writeError(response, HttpStatus.FORBIDDEN, "ERR_PERMISSION_UNMAPPED",
+                    "API 鏉冮檺鏈厤缃? " + path);
+            return false;
+        }
         if (required != null && !ctx.hasPermission(required)) {
             log.warn("[RBAC] 权限不足: user={}, role={}, path={}, required={}",
                     ctx.getUsername(), ctx.getRole(), path, required);
@@ -205,7 +265,7 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
 
         // 验证签名: HMAC-SHA256(header.payload, secret)
         Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(JWT_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
         byte[] expectedSig = mac.doFinal((parts[0] + "." + parts[1]).getBytes(StandardCharsets.UTF_8));
         byte[] actualSig = Base64.getUrlDecoder().decode(parts[2]);
 
@@ -223,7 +283,8 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
         ctx.setProgramCode((String) payload.get("program_code"));
 
         String roleStr = (String) payload.get("role");
-        ctx.setRole(roleStr != null ? PlatformRole.fromString(roleStr) : PlatformRole.OPERATOR);
+        PlatformRole role = roleStr != null ? PlatformRole.fromString(roleStr) : PlatformRole.OPERATOR;
+        ctx.setRole(role != null ? role : PlatformRole.OPERATOR);
 
         // 解析权限集
         List<String> permList = (List<String>) payload.get("permissions");
@@ -246,10 +307,19 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
         return ctx;
     }
 
-    private OperationPermission resolveRequiredPermission(String path, String method) {
+    OperationPermission resolveRequiredPermission(String path, String method) {
+        // 删除操作 — 需要更严格的权限
+        if ("DELETE".equalsIgnoreCase(method)) {
+            for (Map.Entry<String, OperationPermission> entry : DELETE_PERMISSION_MAP.entrySet()) {
+                if (path.startsWith(entry.getKey())) return entry.getValue();
+            }
+            // 回退到写权限映射
+            for (Map.Entry<String, OperationPermission> entry : WRITE_PERMISSION_MAP.entrySet()) {
+                if (path.startsWith(entry.getKey())) return entry.getValue();
+            }
+        }
         // 写操作
-        if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
-                || "DELETE".equalsIgnoreCase(method)) {
+        if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)) {
             for (Map.Entry<String, OperationPermission> entry : WRITE_PERMISSION_MAP.entrySet()) {
                 if (path.startsWith(entry.getKey())) return entry.getValue();
             }
@@ -258,7 +328,14 @@ public class MultiTenantRbacInterceptor implements HandlerInterceptor {
         for (Map.Entry<String, OperationPermission> entry : PATH_PERMISSION_MAP.entrySet()) {
             if (path.startsWith(entry.getKey())) return entry.getValue();
         }
-        return null; // 无特别要求
+        return null; // 无特别要求 — 会被拒绝（默认拒绝策略）
+    }
+
+    boolean isAuthenticatedOnly(String path) {
+        for (String authenticatedPath : AUTHENTICATED_ONLY_PATHS) {
+            if (path.startsWith(authenticatedPath)) return true;
+        }
+        return false;
     }
 
     private boolean isWhitelisted(String path) {

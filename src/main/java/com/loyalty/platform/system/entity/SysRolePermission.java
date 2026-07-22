@@ -19,4 +19,7 @@ public class SysRolePermission {
 
     @Column(name = "permission_code", nullable = false, length = 128)
     private String permissionCode;
+
+    @Column(name = "program_code", length = 64)
+    private String programCode;
 }

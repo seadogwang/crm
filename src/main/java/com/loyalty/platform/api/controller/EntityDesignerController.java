@@ -120,6 +120,17 @@ public class EntityDesignerController {
         return ResponseEntity.ok(ApiResponse.success(toEntityVO(entity)));
     }
 
+    /** 更新关系类型 */
+    @PutMapping("/entities/{entityType}/relations/{sourceEntity}/{relationId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateRelation(
+            @PathVariable String entityType, @PathVariable String sourceEntity,
+            @PathVariable String relationId, @RequestBody Map<String, Object> body) {
+        String pc = TenantContext.getRequired();
+        String relationType = (String) body.get("relationType");
+        ProgramSchema entity = entityService.updateRelation(pc, entityType, sourceEntity, relationId, relationType);
+        return ResponseEntity.ok(ApiResponse.success(toEntityVO(entity)));
+    }
+
     /** 删除关系 */
     @DeleteMapping("/entities/{entityType}/relations/{sourceEntity}/{relationId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> deleteRelation(

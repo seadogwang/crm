@@ -8,6 +8,7 @@ import com.loyalty.platform.campaign.canvas.service.DagValidatorService;
 import com.loyalty.platform.campaign.canvas.dto.GraphValidationResult;
 import com.loyalty.platform.campaign.canvas.dto.AIRequest;
 import com.loyalty.platform.common.exception.ResourceNotFoundException;
+import com.loyalty.platform.common.context.TenantContext;
 import com.loyalty.platform.domain.entity.campaign.CampaignPlan;
 import com.loyalty.platform.domain.repository.campaign.CampaignPlanRepository;
 import org.slf4j.Logger;
@@ -51,6 +52,12 @@ public class CampaignPlanService {
     public CampaignPlan createPlan(CampaignPlan plan) {
         if (plan.getId() == null) {
             plan.setId(UUID.randomUUID().toString());
+        }
+        // 租户隔离：从 TenantContext 注入 program_code
+        String pc = TenantContext.get();
+        if (pc != null && !pc.isBlank() && !"*".equals(pc)) {
+            plan.setProgramCode(pc);
+            plan.setOwnerProgramCode(pc);
         }
         // 默认触发类型
         if (plan.getTriggerType() == null) {

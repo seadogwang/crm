@@ -19,4 +19,7 @@ public class SysUserRole {
 
     @Column(name = "role_id", nullable = false)
     private Long roleId;
+
+    @Column(name = "program_code", length = 64)
+    private String programCode;
 }

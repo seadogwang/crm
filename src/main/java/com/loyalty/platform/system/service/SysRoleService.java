@@ -76,7 +76,7 @@ public class SysRoleService {
         @SuppressWarnings("unchecked")
         List<String> permissionIds = (List<String>) body.get("permissionIds");
         if (permissionIds != null) {
-            savePermissions(role.getId(), permissionIds);
+            savePermissions(role.getId(), permissionIds, pc);
         }
 
         log.info("[SysRole] 角色创建: name={}, code={}, program={}", roleName, roleCode, pc);
@@ -86,7 +86,8 @@ public class SysRoleService {
     /** 更新角色 */
     @Transactional
     public Map<String, Object> updateRole(Long id, Map<String, Object> body) {
-        SysRole role = roleRepo.findById(id)
+        String pc = TenantContext.getRequired();
+        SysRole role = roleRepo.findByProgramCodeAndId(pc, id)
                 .orElseThrow(() -> new IllegalArgumentException("角色不存在: " + id));
 
         if (body.containsKey("roleName")) role.setRoleName((String) body.get("roleName"));
@@ -100,7 +101,7 @@ public class SysRoleService {
             @SuppressWarnings("unchecked")
             List<String> permissionIds = (List<String>) body.get("permissionIds");
             if (permissionIds != null) {
-                savePermissions(id, permissionIds);
+                savePermissions(id, permissionIds, pc);
             }
         }
 
@@ -112,6 +113,9 @@ public class SysRoleService {
     /** 删除角色 */
     @Transactional
     public void deleteRole(Long id) {
+        String pc = TenantContext.getRequired();
+        roleRepo.findByProgramCodeAndId(pc, id)
+                .orElseThrow(() -> new IllegalArgumentException("瑙掕壊涓嶅瓨鍦? " + id));
         // 检查是否存在用户关联
         List<SysUserRole> userRoles = userRoleRepo.findAllByRoleId(id);
         if (!userRoles.isEmpty()) {
@@ -145,7 +149,7 @@ public class SysRoleService {
 
     // ==================== 私有辅助方法 ====================
 
-    private void savePermissions(Long roleId, List<String> permissionIds) {
+    private void savePermissions(Long roleId, List<String> permissionIds, String programCode) {
         for (String permCode : permissionIds) {
             // 验证权限代码合法
             try {
@@ -157,6 +161,7 @@ public class SysRoleService {
             rolePermissionRepo.save(SysRolePermission.builder()
                     .roleId(roleId)
                     .permissionCode(permCode)
+                    .programCode(programCode)
                     .build());
         }
     }

@@ -3,6 +3,7 @@ package com.loyalty.platform.system.service;
 import com.loyalty.platform.common.context.TenantContext;
 import com.loyalty.platform.system.entity.SysUser;
 import com.loyalty.platform.system.entity.SysUserRole;
+import com.loyalty.platform.system.repository.SysRoleRepository;
 import com.loyalty.platform.system.repository.SysUserRepository;
 import com.loyalty.platform.system.repository.SysUserRoleRepository;
 import org.mindrot.jbcrypt.BCrypt;
@@ -23,11 +24,14 @@ public class SysUserService {
 
     private final SysUserRepository userRepo;
     private final SysUserRoleRepository userRoleRepo;
+    private final SysRoleRepository roleRepo;
 
     public SysUserService(SysUserRepository userRepo,
-                          SysUserRoleRepository userRoleRepo) {
+                          SysUserRoleRepository userRoleRepo,
+                          SysRoleRepository roleRepo) {
         this.userRepo = userRepo;
         this.userRoleRepo = userRoleRepo;
+        this.roleRepo = roleRepo;
     }
 
     /** 列出当前租户下的所有用户 */
@@ -78,9 +82,13 @@ public class SysUserService {
         List<Number> roleIds = (List<Number>) body.get("roleIds");
         if (roleIds != null && !roleIds.isEmpty()) {
             for (Number rid : roleIds) {
+                Long roleId = rid.longValue();
+                roleRepo.findByProgramCodeAndId(pc, roleId)
+                        .orElseThrow(() -> new IllegalArgumentException("瑙掕壊涓嶅瓨鍦? " + roleId));
                 userRoleRepo.save(SysUserRole.builder()
                         .userId(user.getId())
-                        .roleId(rid.longValue())
+                        .roleId(roleId)
+                        .programCode(pc)
                         .build());
             }
         }
@@ -91,7 +99,8 @@ public class SysUserService {
     /** 更新用户信息 */
     @Transactional
     public Map<String, Object> updateUser(Long id, Map<String, Object> body) {
-        SysUser user = userRepo.findById(id)
+        String pc = TenantContext.getRequired();
+        SysUser user = userRepo.findByProgramCodeAndId(pc, id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
 
         if (body.containsKey("realName")) user.setRealName((String) body.get("realName"));
@@ -108,9 +117,12 @@ public class SysUserService {
             List<Number> roleIds = (List<Number>) body.get("roleIds");
             if (roleIds != null) {
                 for (Number rid : roleIds) {
+                    Long roleId = rid.longValue();
+                    roleRepo.findByProgramCodeAndId(pc, roleId)
+                            .orElseThrow(() -> new IllegalArgumentException("瑙掕壊涓嶅瓨鍦? " + roleId));
                     userRoleRepo.save(SysUserRole.builder()
                             .userId(id)
-                            .roleId(rid.longValue())
+                            .roleId(roleId)
                             .build());
                 }
             }
@@ -124,7 +136,8 @@ public class SysUserService {
     /** 重置密码 */
     @Transactional
     public void resetPassword(Long id, String newPassword) {
-        SysUser user = userRepo.findById(id)
+        String pc = TenantContext.getRequired();
+        SysUser user = userRepo.findByProgramCodeAndId(pc, id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
         if (newPassword == null || newPassword.isBlank()) {
             throw new IllegalArgumentException("密码不能为空");

@@ -26,6 +26,9 @@ class PlatformRolePermissionTest {
         assertTrue(perms.contains(OperationPermission.POINTS_REDEEM));
         assertTrue(perms.contains(OperationPermission.RULE_PUBLISH));
         assertTrue(perms.contains(OperationPermission.AUDIT_EXPORT));
+        assertTrue(perms.contains(OperationPermission.SYSTEM_WRITE));
+        assertTrue(perms.contains(OperationPermission.SYSTEM_DELETE));
+        assertTrue(perms.contains(OperationPermission.CAMPAIGN_WRITE));
         assertFalse(perms.contains(OperationPermission.TENANT_WRITE),
                 "TENANT_ADMIN 不应有租户管理权限（这些是 SUPER_ADMIN 专有）");
     }
@@ -64,6 +67,8 @@ class PlatformRolePermissionTest {
         assertTrue(perms.contains(OperationPermission.CHANNEL_WRITE));
         assertTrue(perms.contains(OperationPermission.SCHEMA_READ));
         assertTrue(perms.contains(OperationPermission.SCHEMA_WRITE));
+        assertTrue(perms.contains(OperationPermission.CAMPAIGN_WRITE));
+        assertTrue(perms.contains(OperationPermission.MASTER_DATA_WRITE));
         assertFalse(perms.contains(OperationPermission.AUDIT_EXPORT));
         assertFalse(perms.contains(OperationPermission.TENANT_WRITE));
     }
@@ -132,6 +137,6 @@ class PlatformRolePermissionTest {
     @Test @DisplayName("OperationPermission 枚举值数量")
     void permissionCount() {
         // 确保新增权限不会意外改变
-        assertEquals(17, OperationPermission.values().length);
+        assertEquals(23, OperationPermission.values().length);
     }
 }

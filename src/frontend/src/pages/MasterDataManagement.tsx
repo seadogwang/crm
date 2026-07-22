@@ -165,42 +165,51 @@ const HierarchyNode: React.FC<{
   );
 };
 
-// ==================== 层级数据管理 ====================
+// ==================== 分类管理 ====================
 const HierarchyManagement: React.FC = () => {
   const [defs, setDefs] = useState<any[]>([]);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [selectedDef, setSelectedDef] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [nodeForm, setNodeForm] = useState<any>({ nodeCode: '', nodeName: '', parentCode: '', nodeLevel: 1 });
+  const [extFields, setExtFields] = useState<Record<string, string>>({});
   const [createDefModal, setCreateDefModal] = useState(false);
   const [newDefCode, setNewDefCode] = useState('');
 
   const loadDefs = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/master-data/definitions');
-      setDefs((data?.data || []).filter((d: any) => d.dataType === 'HIERARCHY'));
+      const { data } = await api.get('/entity-designer/entities');
+      setDefs((data?.data || []).filter((d: any) => d.entityCategory === 'HIERARCHY'));
     } catch { setDefs([]); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { loadDefs(); }, []);
 
   const handleCreateDef = async () => {
-    if (!newDefCode.trim()) { message.warning('请输入层级类型编码'); return; }
+    if (!newDefCode.trim()) { message.warning('请输入分类编码'); return; }
     try {
-      await api.post('/master-data/types', { dataCode: newDefCode.toUpperCase(), dataName: newDefCode.toUpperCase(), dataType: 'HIERARCHY', status: 'ACTIVE' });
-      message.success('层级类型已创建');
+      await api.post('/entity-designer/entities', {
+        entityType: newDefCode.toUpperCase(),
+        displayName: newDefCode.toUpperCase(),
+        category: 'HIERARCHY'
+      });
+      message.success('分类已创建，请在实体设计器中配置字段');
       setCreateDefModal(false);
       setNewDefCode('');
       loadDefs();
     } catch (e: any) { message.error(e?.response?.data?.message || '创建失败'); }
   };
 
-  const loadTree = async (dataCode: string) => {
+  const openTree = async (dataCode: string, def: any) => {
+    setSelectedCode(dataCode);
+    setSelectedDef(def);
     try {
       const { data } = await api.get('/master-data/hierarchy/nodes', { params: { dataCode } });
       const nodes: any[] = data?.data || [];
+      setAllNodes(nodes);
       const roots = nodes.filter((n: any) => !n.parentCode);
       const buildTree = (parentNodes: any[]): DataNode[] =>
         parentNodes.map((n: any) => ({
@@ -210,7 +219,6 @@ const HierarchyManagement: React.FC = () => {
           isLeaf: !nodes.some((c: any) => c.parentCode === n.nodeCode),
         }));
       setTreeData(buildTree(roots));
-      setSelectedCode(dataCode);
     } catch { setTreeData([]); }
   };
 
@@ -225,30 +233,53 @@ const HierarchyManagement: React.FC = () => {
   const handleAddNode = async () => {
     if (!nodeForm.nodeCode) { message.warning('请输入节点代码'); return; }
     try {
-      await api.post('/master-data/hierarchy/nodes', { ...nodeForm, dataCode: selectedCode });
+      const body: any = { ...nodeForm, dataCode: selectedCode };
+      if (Object.keys(extFields).length > 0) {
+        body.extAttributes = JSON.stringify(extFields);
+      }
+      await api.post('/master-data/hierarchy/nodes', body);
       message.success('已添加');
       setAddModalOpen(false);
       setNodeForm({ nodeCode: '', nodeName: '', parentCode: '', nodeLevel: 1 });
-      loadTree(selectedCode!);
+      setExtFields({});
+      openTree(selectedCode!, selectedDef);
     } catch (e: any) { message.error(e?.response?.data?.message || '添加失败'); }
   };
 
   const handleDeleteNode = async (nodeId: string) => {
     try {
       await api.delete(`/master-data/hierarchy/nodes/${nodeId}`);
-      loadTree(selectedCode!);
+      openTree(selectedCode!, selectedDef);
+    } catch { message.error('删除失败'); }
+  };
+
+  const handleDeleteDef = async (dataCode: string) => {
+    try {
+      await api.delete(`/master-data/types/${dataCode}`);
+      message.success('已删除');
+      loadDefs();
     } catch { message.error('删除失败'); }
   };
 
   return (
-    <Card title="层级数据管理" size="small" extra={<Space><Button icon={<PlusOutlined />} size="small" onClick={() => setCreateDefModal(true)}>新建层级类型</Button><Button icon={<ReloadOutlined />} size="small" onClick={loadDefs}>刷新</Button></Space>}>
+    <Card title="分类管理" size="small" extra={<Button icon={<ReloadOutlined />} size="small" onClick={loadDefs}>刷新</Button>}>
       {!selectedCode ? (
-        <Table dataSource={defs} columns={[
-          { title: '编码', dataIndex: 'dataCode', width: 100 },
-          { title: '名称', dataIndex: 'dataName', width: 120 },
-          { title: '节点数', dataIndex: 'itemCount', width: 80, render: (v: number) => `${v ?? 0} 项` },
-          { title: '操作', width: 60, render: (_: any, r: any) => <Button size="small" type="link" icon={<UnorderedListOutlined style={{ color: '#1a1a1a' }} />} style={{ color: '#1a1a1a' }} onClick={() => { loadTree(r.dataCode); loadAllNodes(r.dataCode); }} /> },
-        ]} rowKey="dataCode" loading={loading} pagination={false} size="small" />
+        loading ? <Spin /> : defs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>暂无分类，点击"新建分类"创建</div>
+        ) : (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {defs.map((d: any) => (
+              <Card key={d.entityType} hoverable size="small" style={{ width: 200 }}
+                onClick={() => openTree(d.entityType, d)}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 600 }}>{d.entityType}</div>
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{d.description || d.entityType}</div>
+                  <div style={{ fontSize: 11, color: '#666', marginTop: 8 }}>{d.version} 个节点</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       ) : (
         <div>
           <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -265,23 +296,40 @@ const HierarchyManagement: React.FC = () => {
                 level={n?.nodeLevel || 0} nodeId={n?.id}
                 onAddChild={(pc, lvl) => { setNodeForm({ nodeCode: '', nodeName: '', parentCode: pc, nodeLevel: lvl }); setAddModalOpen(true); }}
                 onDelete={(id) => handleDeleteNode(id)}
-                onRenamed={() => loadTree(selectedCode!)}
+                onRenamed={() => openTree(selectedCode!, selectedDef)}
               />;
             }}
           />
 
-          <Modal title="添加节点" open={addModalOpen} onCancel={() => { setAddModalOpen(false); setNodeForm({ nodeCode: '', nodeName: '', parentCode: '', nodeLevel: 1 }); }} onOk={handleAddNode} width={400}>
+          <Modal title="添加节点" open={addModalOpen} onCancel={() => { setAddModalOpen(false); setNodeForm({ nodeCode: '', nodeName: '', parentCode: '', nodeLevel: 1 }); setExtFields({}); }} onOk={handleAddNode} width={400}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div><span style={{ fontSize: 12, color: '#666' }}>父节点：</span><Input size="small" value={nodeForm.parentCode || '(根节点)'} disabled style={{ width: 200 }} /></div>
               <div><span style={{ fontSize: 12, color: '#666' }}>节点代码：</span><Input size="small" placeholder="如 440100" value={nodeForm.nodeCode} onChange={e => setNodeForm({ ...nodeForm, nodeCode: e.target.value })} style={{ width: 200 }} /></div>
               <div><span style={{ fontSize: 12, color: '#666' }}>节点名称：</span><Input size="small" placeholder="如 广州市" value={nodeForm.nodeName} onChange={e => setNodeForm({ ...nodeForm, nodeName: e.target.value })} style={{ width: 200 }} /></div>
+              {selectedDef?.fieldSchema?.properties && (() => {
+                const schema = selectedDef.fieldSchema.properties;
+                // Filter out standard hierarchy fields
+                const standardFields = ['nodeCode', 'nodeName', 'parentCode', 'nodeLevel', 'id'];
+                const extProps = Object.entries(schema).filter(([key]) => !standardFields.includes(key));
+                if (extProps.length === 0) return null;
+                return extProps.map(([key, def]: [string, any]) => (
+                  <div key={key}>
+                    <span style={{ fontSize: 12, color: '#666' }}>{def.title || key}：</span>
+                    <Input size="small" placeholder={def.description || ''} value={extFields[key] || ''}
+                      onChange={e => setExtFields({ ...extFields, [key]: e.target.value })} style={{ width: 200 }} />
+                  </div>
+                ));
+              })()}
             </div>
           </Modal>
         </div>
       )}
 
-      <Modal title="新建层级类型" open={createDefModal} onCancel={() => { setCreateDefModal(false); setNewDefCode(''); }} onOk={handleCreateDef} width={400}>
-        <div><span style={{ fontSize: 12, color: '#666' }}>类型编码：</span><Input size="small" placeholder="如 REGION" value={newDefCode} onChange={e => setNewDefCode(e.target.value.toUpperCase())} style={{ width: 200 }} /></div>
+      <Modal title="新建分类" open={createDefModal} onCancel={() => { setCreateDefModal(false); setNewDefCode(''); }} onOk={handleCreateDef} width={400}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div><span style={{ fontSize: 12, color: '#666' }}>分类编码：</span><Input size="small" placeholder="如 REGION" value={newDefCode} onChange={e => setNewDefCode(e.target.value.toUpperCase())} style={{ width: 200 }} /></div>
+          <span style={{ fontSize: 11, color: '#999' }}>创建后请在「实体设计器」中配置字段和扩展属性</span>
+        </div>
       </Modal>
     </Card>
   );
@@ -374,20 +422,21 @@ const RecordManagement: React.FC = () => {
 
   const openCreate = () => {
     setEditRecord(null);
-    editForm.resetFields();
     setEditModalOpen(true);
+    editForm.resetFields();
   };
 
   const openEdit = (record: any) => {
     setEditRecord(record);
-    const values: any = {};
-    if (selectedEntity?.fields) {
-      for (const f of selectedEntity.fields) {
-        values[f.field] = record[f.field] ?? undefined;
-      }
-    }
-    editForm.setFieldsValue(values);
     setEditModalOpen(true);
+    editForm.resetFields();
+    if (selectedEntity?.fields) {
+      const vals: any = {};
+      for (const f of selectedEntity.fields) {
+        vals[f.field] = record[f.field] ?? undefined;
+      }
+      editForm.setFieldsValue(vals);
+    }
   };
 
   const handleSave = async () => {
@@ -452,6 +501,7 @@ const RecordManagement: React.FC = () => {
     if (!selectedEntity?.fields) return null;
     const groups: Record<string, any[]> = { '': [] };
     for (const f of selectedEntity.fields) {
+      if (f.showInUI === false || f.field === 'id') continue;
       const g = f.group || '';
       if (!groups[g]) groups[g] = [];
       groups[g].push(f);
@@ -516,7 +566,7 @@ const RecordManagement: React.FC = () => {
 };
 
 // ==================== 字段编辑器 ====================
-const FieldEditor: React.FC<{ fieldDef: any; masterData: any }> = ({ fieldDef, masterData }) => {
+const FieldEditor: React.FC<{ fieldDef: any; masterData: any; value?: any; onChange?: (v: any) => void }> = ({ fieldDef, masterData, value, onChange }) => {
   const [options, setOptions] = useState<any[]>([]);
   useEffect(() => {
     if (masterData?.dataCode && masterData.dataType !== 'HIERARCHY') {
@@ -528,7 +578,7 @@ const FieldEditor: React.FC<{ fieldDef: any; masterData: any }> = ({ fieldDef, m
 
   if (masterData) {
     if (masterData.dataType === 'HIERARCHY') {
-      return <Select size="small" mode={masterData.multi ? 'multiple' : undefined}
+      return <Select size="small" mode={masterData.multi ? 'multiple' : undefined} value={value} onChange={onChange}
         placeholder="请选择" showSearch optionFilterProp="label"
         onFocus={() => {
           api.get('/master-data/hierarchy/options', { params: { dataCode: masterData.dataCode, level: masterData.level || 1 } })
@@ -536,7 +586,7 @@ const FieldEditor: React.FC<{ fieldDef: any; masterData: any }> = ({ fieldDef, m
         }}
         options={options} />;
     }
-    return <Select size="small" showSearch optionFilterProp="label"
+    return <Select size="small" showSearch optionFilterProp="label" value={value} onChange={onChange}
       placeholder="请选择"
       options={options} />;
   }
@@ -544,22 +594,20 @@ const FieldEditor: React.FC<{ fieldDef: any; masterData: any }> = ({ fieldDef, m
   // 根据字段类型渲染
   const dbType = fieldDef?.['x-db-metadata']?.dataType || 'VARCHAR';
   if (dbType === 'INT' || dbType === 'BIGINT' || dbType === 'DECIMAL') {
-    return <InputNumber size="small" style={{ width: '100%' }} placeholder="请输入" />;
+    return <InputNumber size="small" style={{ width: '100%' }} placeholder="请输入" value={value} onChange={onChange} />;
   }
   if (dbType === 'BOOLEAN') {
-    return <Select size="small" options={[{ label: '是', value: true }, { label: '否', value: false }]} />;
+    return <Select size="small" value={value} onChange={onChange} options={[{ label: '是', value: true }, { label: '否', value: false }]} />;
   }
-  return <Input size="small" placeholder="请输入" />;
+  return <Input size="small" placeholder="请输入" value={value} onChange={e => onChange?.(e.target.value)} />;
 };
 
 // ==================== 主页面 ====================
 const MasterDataManagement: React.FC = () => (
-  <Tabs defaultActiveKey="enum" style={{ padding: 16 }}>
-    <TabPane tab="枚举值管理" key="enum"><EnumManagement /></TabPane>
-    <TabPane tab="层级数据管理" key="hierarchy"><HierarchyManagement /></TabPane>
-    <TabPane tab="主数据维护" key="records"><RecordManagement /></TabPane>
-    <TabPane tab="标签管理" key="tag"><TagManagement /></TabPane>
-  </Tabs>
+  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <HierarchyManagement />
+    <RecordManagement />
+  </div>
 );
 
 export default MasterDataManagement;
